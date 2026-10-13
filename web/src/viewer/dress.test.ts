@@ -66,6 +66,24 @@ describe('geosets', () => {
     expect(d.geosetChanges.find((c) => c.group === 13)?.fromSlot).toBe(7)
   })
 
+  test('a kilt or a robe hides the tabard\'s lower flap', () => {
+    // The client shows the tabard geoset only when neither the chest nor the legs set a dress
+    // (GeosetGroup[2]); wowdev.wiki DB/ItemDisplayInfo/GeosRenderPrep.
+    const kilt = item(2, 7, { geosetGroup: [0, 0, 1, 0, 0, 0] }) // Kilt of Elements: 1302
+    const tabard = item(3, 19, { geosetGroup: [1, 0, 0, 0, 0, 0] }) // 1202
+    const overKilt = dress(base, { character: 'x', items: { 7: 2, 19: 3 } }, byId(kilt, tabard))
+    expect(overKilt.geosets).toContain(1302)
+    expect(overKilt.geosets.filter((g) => Math.floor(g / 100) === 12)).toEqual([])
+    const robe = item(1, 20, { geosetGroup: [0, 0, 1, 0, 0, 0] })
+    expect(dress(base, { character: 'x', items: { 5: 1, 19: 3 } }, byId(robe, tabard)).geosets).not.toContain(1202)
+  })
+
+  test('a tabard over trousers keeps its flap', () => {
+    const legs = item(2, 7, { geosetGroup: [0, 0, 0, 0, 0, 0] })
+    const tabard = item(3, 19, { geosetGroup: [1, 0, 0, 0, 0, 0] })
+    expect(dress(base, { character: 'x', items: { 7: 2, 19: 3 } }, byId(legs, tabard)).geosets).toContain(1202)
+  })
+
   test('feet use GeosetGroup[1] as is, and 2 when it is 0', () => {
     const boots = (id: number, g1: number) => item(id, 8, { geosetGroup: [0, g1, 0, 0, 0, 0] })
     expect(dress(base, { character: 'x', items: { 8: 1 } }, byId(boots(1, 0))).geosets).toContain(2002)
