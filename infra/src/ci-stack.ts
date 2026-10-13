@@ -19,10 +19,11 @@ export interface CiStackProps extends StackProps {
    */
   subject: string
   /**
-   * An existing GitHub OIDC provider's ARN. An account has at most one per issuer URL, so if another
-   * stack already made one, pass it (context `githubOidcProviderArn`) instead of creating a second.
+   * Create the GitHub OIDC provider (context `createGithubOidcProvider=true`). An account has at most
+   * one per issuer URL, so by default the stack uses the one the account already has; CI deploys with
+   * no context and must not try to create a second.
    */
-  oidcProviderArn?: string
+  createOidcProvider?: boolean
 }
 
 // GitHub Actions' way into AWS, with no stored keys: an OIDC provider and two roles.
@@ -33,9 +34,9 @@ export interface CiStackProps extends StackProps {
 export class CiStack extends Stack {
   constructor(scope: Construct, id: string, props: CiStackProps) {
     super(scope, id, props)
-    const provider: IOidcProvider = props.oidcProviderArn
-      ? OidcProviderNative.fromOidcProviderArn(this, 'GitHubOidc', props.oidcProviderArn)
-      : new OidcProviderNative(this, 'GitHubOidc', { url: `https://${GITHUB_ISSUER}`, clientIds: ['sts.amazonaws.com'] })
+    const provider: IOidcProvider = props.createOidcProvider
+      ? new OidcProviderNative(this, 'GitHubOidc', { url: `https://${GITHUB_ISSUER}`, clientIds: ['sts.amazonaws.com'] })
+      : OidcProviderNative.fromOidcProviderArn(this, 'GitHubOidc', `arn:${this.partition}:iam::${this.account}:oidc-provider/${GITHUB_ISSUER}`)
 
     const trust = (sub: { StringEquals?: Record<string, string>; StringLike?: Record<string, string> }) =>
       new WebIdentityPrincipal(provider.oidcProviderArn, {

@@ -15,7 +15,7 @@ const subject = (app.node.tryGetContext('githubSubject') as string | undefined) 
 const webDistPath = (app.node.tryGetContext('webDist') as string | undefined) ?? fileURLToPath(new URL('../../web/dist-static', import.meta.url))
 
 const dns = new DnsStack(app, 'AltrobeDns', { env, domainName })
-new CiStack(app, 'AltrobeCi', { env, subject, oidcProviderArn: app.node.tryGetContext('githubOidcProviderArn') as string | undefined })
+new CiStack(app, 'AltrobeCi', { env, subject, createOidcProvider: app.node.tryGetContext('createGithubOidcProvider') === 'true' })
 // Uses the zone from AltrobeDns, so it deploys after it; AltrobeCi stands alone, so the first local
 // deploy can be AltrobeDns and AltrobeCi only (docs/deployment.md).
 new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName, deployRoleName: DEPLOY_ROLE_NAME, webDistPath })

@@ -38,9 +38,9 @@ account for CDK first (`npx cdk bootstrap`), with the default qualifier.
    aws iam list-open-id-connect-providers --profile <profile>
    ```
 
-   If it lists `token.actions.githubusercontent.com`, add
-   `-c githubOidcProviderArn=arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com`
-   to the deploy below. **WRITE OPERATION:**
+   `AltrobeCi` uses the account's existing `token.actions.githubusercontent.com` provider, because CI
+   deploys with no extra context. If the list doesn't have one, add `-c createGithubOidcProvider=true`
+   to the deploy below, once. **WRITE OPERATION:**
 
    ```sh
    npm --prefix infra ci
