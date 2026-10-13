@@ -100,6 +100,10 @@ locally, the deploy role in CI. It writes to AWS, so run it with `--dry-run` fir
 npm run publish:bundle -- --product wow_classic_beta --profile <profile> --dry-run
 ```
 
+Add `--prune` to delete every build folder but the new build and the one it replaced, after the
+switch. Without a distinct previous build (the first publish, or republishing the live build),
+nothing is pruned. The dry run still reads the bucket, to show what would be deleted.
+
 `--bucket` and `--distribution` default to `BUNDLE_BUCKET` and `ASSET_DISTRIBUTION_ID`, the
 `AltrobeSite` outputs ([deployment.md](deployment.md)); `--bundle` defaults to `output/bundle`. In
 order, it:
@@ -111,6 +115,25 @@ order, it:
 4. Invalidates `/{product}/current.json` in CloudFront.
 
 Rolling back is uploading the previous build's `current.json` and invalidating it; that build's files are still in the bucket.
+
+## Automatic publishing
+
+`.github/workflows/publish.yml` runs every six hours and from the Actions tab. It publishes with no
+approval, using the publish role ([deployment.md](deployment.md#publishing-a-bundle)). In order:
+
+1. `scripts/watch-bundle.mjs` asks the version service for the product's build and reads the live
+   `current.json`. If they match, the run stops there. It saves the version service's answer, so the
+   bake reads the same build (`--versions-file`), and the live build's manifest for the count check.
+2. The bake runs from the CDN with `--previous` set to the live manifest, so a build that drops a
+   count by more than 5% fails the run.
+3. The bake cache is deleted, and `web/e2e/static.spec.ts` runs against the new bundle.
+4. `npm run publish:bundle -- --prune` uploads the build, switches `current.json` and deletes builds
+   older than the previous one.
+
+A failed run changes nothing on the site and opens a "Bundle publish failed" issue, or comments on
+the open one. A bake took 21 minutes and peaked at 8.3 GB of disk on 2026-10-13 (3.1 GB of bundle,
+5.2 GB of cache), under the 14 GB a standard GitHub-hosted Linux runner has. If builds outgrow it,
+move the bake to CodeBuild through CDK.
 
 ## Run it from Blizzard's CDN
 

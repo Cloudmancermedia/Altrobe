@@ -4,6 +4,10 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  buildFromVersions,
+  buildsToPrune,
+  isNewBuild,
+  prunePlan,
   publishPlan,
   gameContentProblems,
   hasDotnetSdk,
@@ -150,4 +154,43 @@ test('publishPlan passes a profile to every command and refuses a current.json t
   const opts = { bundleDir: '/b', product: 'p', bucket: 'x', distribution: 'E1', profile: 'example', current: { build: '1', path: '1/' }, files: [] }
   assert.ok(publishPlan(opts).every((s) => s.args.slice(-2).join(' ') === '--profile example'))
   assert.throws(() => publishPlan({ ...opts, current: { build: '1', path: '../x/' } }), /current.json/)
+})
+
+const VERSIONS = `Region!STRING:0|BuildConfig!HEX:16|CDNConfig!HEX:16|KeyRing!HEX:16|BuildId!DEC:4|VersionsName!String:0|ProductConfig!HEX:16
+## seqn = 3312
+us|aa|bb||70338|1.60.1.70338|cc
+eu|aa|bb||70245|1.60.1.70245|cc
+`
+
+test('buildFromVersions reads the region\'s VersionsName from the version service answer, by column name', () => {
+  assert.equal(buildFromVersions(VERSIONS, 'us'), '1.60.1.70338')
+  assert.equal(buildFromVersions(VERSIONS, 'EU'), '1.60.1.70245')
+  const reordered = 'VersionsName!String:0|Region!STRING:0\n1.2.3.4|us\n'
+  assert.equal(buildFromVersions(reordered, 'us'), '1.2.3.4')
+  assert.throws(() => buildFromVersions(VERSIONS, 'kr'), /no build for region kr/)
+  assert.throws(() => buildFromVersions('', 'us'), /no header/)
+})
+
+test('isNewBuild is true when nothing is live or the live build differs', () => {
+  assert.equal(isNewBuild(null, '1.60.1.70338'), true)
+  assert.equal(isNewBuild({ build: '1.60.1.70245' }, '1.60.1.70338'), true)
+  assert.equal(isNewBuild({ build: '1.60.1.70338' }, '1.60.1.70338'), false)
+})
+
+test('buildsToPrune keeps the new and previous builds and never touches anything that is not a build folder', () => {
+  const folders = ['1.60.1.70100/', '1.60.1.70245/', '1.60.1.70338/', 'current.json', 'notes/', '../']
+  assert.deepEqual(buildsToPrune({ folders, current: '1.60.1.70338', previous: '1.60.1.70245' }), ['1.60.1.70100'])
+  // A republish of the live build has no distinct previous build, so nothing is pruned.
+  assert.deepEqual(buildsToPrune({ folders, current: '1.60.1.70338', previous: '1.60.1.70338' }), [])
+  // Without a known previous build (first publish, or a lost current.json), nothing is pruned.
+  assert.deepEqual(buildsToPrune({ folders, current: '1.60.1.70338', previous: null }), [])
+})
+
+test('prunePlan removes each build folder recursively, with the profile when given', () => {
+  assert.deepEqual(prunePlan({ bucket: 'b', product: 'p', builds: ['1.2', '1.3'] }), [
+    { kind: 'prune', args: ['s3', 'rm', 's3://b/p/1.2/', '--recursive'] },
+    { kind: 'prune', args: ['s3', 'rm', 's3://b/p/1.3/', '--recursive'] },
+  ])
+  assert.deepEqual(prunePlan({ bucket: 'b', product: 'p', builds: ['1.2'], profile: 'x' })[0].args.slice(-2), ['--profile', 'x'])
+  assert.throws(() => prunePlan({ bucket: 'b', product: 'p', builds: ['..'] }), /not a build/)
 })

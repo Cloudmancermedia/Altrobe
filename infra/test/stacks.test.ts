@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { App } from 'aws-cdk-lib'
 import { Match, Template } from 'aws-cdk-lib/assertions'
 import { describe, expect, test } from 'vitest'
-import { CiStack, DEPLOY_ROLE_NAME, DIFF_ROLE_NAME } from '../src/ci-stack.js'
+import { CiStack, DEPLOY_ROLE_NAME, DIFF_ROLE_NAME, PUBLISH_ROLE_NAME } from '../src/ci-stack.js'
 import { DnsStack } from '../src/dns-stack.js'
 import { BudgetStack } from '../src/budget-stack.js'
 import { SiteStack } from '../src/site-stack.js'
@@ -17,7 +17,7 @@ function stacks(opts: { createOidcProvider?: boolean; webDistPath?: string } = {
   const app = new App()
   const dns = new DnsStack(app, 'AltrobeDns', { env, domainName: 'altrobe.com' })
   const ci = new CiStack(app, 'AltrobeCi', { env, subject, createOidcProvider: opts.createOidcProvider })
-  const site = new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName: 'altrobe.com', deployRoleName: DEPLOY_ROLE_NAME, webDistPath: opts.webDistPath })
+  const site = new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName: 'altrobe.com', deployRoleName: DEPLOY_ROLE_NAME, publishRoleName: PUBLISH_ROLE_NAME, webDistPath: opts.webDistPath })
   return { dns: Template.fromStack(dns), ci: Template.fromStack(ci), site: Template.fromStack(site), siteStack: site }
 }
 
@@ -63,6 +63,31 @@ describe('AltrobeCi', () => {
     })
   })
 
+  test('the publish role trusts only workflows running on main, with no environment approval', () => {
+    stacks().ci.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: PUBLISH_ROLE_NAME,
+      AssumeRolePolicyDocument: Match.objectLike({
+        Statement: [Match.objectLike({
+          Action: 'sts:AssumeRoleWithWebIdentity',
+          Condition: {
+            StringEquals: {
+              'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+              'token.actions.githubusercontent.com:sub': `${subject}:ref:refs/heads/main`,
+            },
+          },
+        })],
+      }),
+    })
+  })
+
+  test('the publish role may not assume the CDK bootstrap roles', () => {
+    const { ci } = stacks()
+    const roles = ci.findResources('AWS::IAM::Role', { Properties: { RoleName: PUBLISH_ROLE_NAME } })
+    const [id] = Object.keys(roles)
+    const policies = Object.values(ci.findResources('AWS::IAM::Policy')).filter((p) => JSON.stringify(p.Properties.Roles).includes(id))
+    expect(policies).toHaveLength(0)
+  })
+
   test('the diff role trusts this repository only and may assume only the CDK lookup role', () => {
     const { ci } = stacks()
     ci.hasResourceProperties('AWS::IAM::Role', {
@@ -87,7 +112,7 @@ describe('AltrobeCi', () => {
     // GitHub gives repositories created after 2026-07-15 an immutable subject (owner@id/repo@id), so a
     // deleted name can't be reclaimed into these roles. Recreating the repository changes the IDs.
     const roles = Object.values(stacks().ci.findResources('AWS::IAM::Role'))
-    expect(roles).toHaveLength(2)
+    expect(roles).toHaveLength(3)
     for (const r of roles) {
       const text = JSON.stringify(r.Properties.AssumeRolePolicyDocument)
       expect(text).toContain('repo:Cloudmancermedia@52295078/altrobe@1413879660:')
@@ -184,6 +209,21 @@ describe('AltrobeSite', () => {
     expect(text).toContain(DEPLOY_ROLE_NAME)
     expect(text).toContain('s3:PutObject')
     expect(text).toContain('cloudfront:CreateInvalidation')
+  })
+
+  test('the publish role may read, write, list and delete the bundle bucket and invalidate only the asset distribution', () => {
+    const { site } = stacks()
+    const policies = Object.values(site.findResources('AWS::IAM::Policy')).filter((p) => JSON.stringify(p.Properties.Roles).includes(PUBLISH_ROLE_NAME))
+    expect(policies).toHaveLength(1)
+    const statements = policies[0].Properties.PolicyDocument.Statement as { Action: string | string[]; Resource: unknown }[]
+    const actions = statements.flatMap((s) => [s.Action].flat())
+    for (const a of ['s3:GetObject*', 's3:PutObject', 's3:DeleteObject*', 's3:List*']) expect(actions).toContain(a)
+    const invalidations = statements.filter((s) => [s.Action].flat().includes('cloudfront:CreateInvalidation'))
+    expect(invalidations).toHaveLength(1)
+    const target = JSON.stringify(invalidations[0].Resource)
+    expect(target).toContain('AssetDistribution')
+    expect(target).not.toContain('AppDistribution')
+    expect(actions.filter((a) => !a.startsWith('s3:') && a !== 'cloudfront:CreateInvalidation')).toEqual([])
   })
 
   test('the web build deploys only when it exists; bundle data never goes through CDK', () => {
