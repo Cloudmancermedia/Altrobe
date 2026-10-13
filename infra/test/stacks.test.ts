@@ -10,12 +10,13 @@ import { BudgetStack } from '../src/budget-stack.js'
 import { SiteStack } from '../src/site-stack.js'
 
 const env = { account: '123456789012', region: 'us-east-1' }
-const repo = 'Cloudmancermedia/altrobe'
+// The repository's immutable OIDC subject: owner and repository, each with its numeric ID.
+const subject = 'repo:Cloudmancermedia@52295078/altrobe@1413879660'
 
 function stacks(opts: { oidcProviderArn?: string; webDistPath?: string } = {}) {
   const app = new App()
   const dns = new DnsStack(app, 'AltrobeDns', { env, domainName: 'altrobe.com' })
-  const ci = new CiStack(app, 'AltrobeCi', { env, repo, oidcProviderArn: opts.oidcProviderArn })
+  const ci = new CiStack(app, 'AltrobeCi', { env, subject, oidcProviderArn: opts.oidcProviderArn })
   const site = new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName: 'altrobe.com', deployRoleName: DEPLOY_ROLE_NAME, webDistPath: opts.webDistPath })
   return { dns: Template.fromStack(dns), ci: Template.fromStack(ci), site: Template.fromStack(site), siteStack: site }
 }
@@ -52,7 +53,7 @@ describe('AltrobeCi', () => {
           Condition: {
             StringEquals: {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub': `repo:${repo}:environment:production`,
+              'token.actions.githubusercontent.com:sub': `${subject}:environment:production`,
             },
           },
         })],
@@ -68,7 +69,7 @@ describe('AltrobeCi', () => {
         Statement: [Match.objectLike({
           Condition: {
             StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
-            StringLike: { 'token.actions.githubusercontent.com:sub': `repo:${repo}:*` },
+            StringLike: { 'token.actions.githubusercontent.com:sub': `${subject}:*` },
           },
         })],
       }),
@@ -80,13 +81,15 @@ describe('AltrobeCi', () => {
     expect(text).not.toContain('cdk-hnb659fds-deploy-role')
   })
 
-  test('trust keys only on the repository name in sub, plus aud: no numeric repository or owner IDs', () => {
-    // The repository may be deleted and recreated, which changes its numeric IDs but not its name.
+  test('trust keys only on aud and the immutable sub, which names the owner and repository by ID', () => {
+    // GitHub gives repositories created after 2026-07-15 an immutable subject (owner@id/repo@id), so a
+    // deleted name can't be reclaimed into these roles. Recreating the repository changes the IDs.
     const roles = Object.values(stacks().ci.findResources('AWS::IAM::Role'))
     expect(roles).toHaveLength(2)
     for (const r of roles) {
       const text = JSON.stringify(r.Properties.AssumeRolePolicyDocument)
-      expect(text).not.toMatch(/repository_id|repository_owner_id|repository_owner|actor_id/)
+      expect(text).toContain('repo:Cloudmancermedia@52295078/altrobe@1413879660:')
+      expect(text).not.toContain('repo:Cloudmancermedia/altrobe:')
       const keys = r.Properties.AssumeRolePolicyDocument.Statement.flatMap((s: { Condition: Record<string, Record<string, string>> }) =>
         Object.values(s.Condition).flatMap((c) => Object.keys(c)))
       expect(keys.sort()).toEqual(['token.actions.githubusercontent.com:aud', 'token.actions.githubusercontent.com:sub'])

@@ -12,8 +12,12 @@ const GITHUB_ISSUER = 'token.actions.githubusercontent.com'
 const QUALIFIER = 'hnb659fds'
 
 export interface CiStackProps extends StackProps {
-  /** GitHub repository, owner/name. */
-  repo: string
+  /**
+   * The repository's OIDC subject prefix, as `gh api repos/{owner}/{repo}/actions/oidc/customization/sub`
+   * returns it (`sub_claim_prefix`): `repo:owner@ownerId/name@repoId` for repositories created after
+   * 2026-07-15. The IDs change if the repository is recreated.
+   */
+  subject: string
   /**
    * An existing GitHub OIDC provider's ARN. An account has at most one per issuer URL, so if another
    * stack already made one, pass it (context `githubOidcProviderArn`) instead of creating a second.
@@ -43,7 +47,7 @@ export class CiStack extends Stack {
 
     const diff = new Role(this, 'DiffRole', {
       roleName: DIFF_ROLE_NAME,
-      assumedBy: trust({ StringLike: { [`${GITHUB_ISSUER}:sub`]: `repo:${props.repo}:*` } }),
+      assumedBy: trust({ StringLike: { [`${GITHUB_ISSUER}:sub`]: `${props.subject}:*` } }),
       maxSessionDuration: Duration.hours(1),
       description: 'GitHub Actions: cdk diff (read only), for pull requests and before each deploy.',
     })
@@ -51,7 +55,7 @@ export class CiStack extends Stack {
 
     const deploy = new Role(this, 'DeployRole', {
       roleName: DEPLOY_ROLE_NAME,
-      assumedBy: trust({ StringEquals: { [`${GITHUB_ISSUER}:sub`]: `repo:${props.repo}:environment:production` } }),
+      assumedBy: trust({ StringEquals: { [`${GITHUB_ISSUER}:sub`]: `${props.subject}:environment:production` } }),
       maxSessionDuration: Duration.hours(2),
       description: 'GitHub Actions: cdk deploy and bundle publishing, from the production environment only.',
     })
