@@ -62,16 +62,36 @@ export class SiteStack extends Stack {
 }`),
     })
 
+    // Vite names everything under static/ by content hash, so browsers may keep it for good. index.html
+    // names the current hashes and changes on every deploy, so browsers recheck it each time.
+    const cacheControlHeaders = (id: string, value: string) => new ResponseHeadersPolicy(this, id, {
+      customHeadersBehavior: { customHeaders: [{ header: 'Cache-Control', value, override: true }] },
+    })
+    const appPageHeaders = cacheControlHeaders('AppPageHeaders', 'no-cache')
+    const appStaticHeaders = cacheControlHeaders('AppStaticHeaders', 'public, max-age=31536000, immutable')
+    const siteOrigin = S3BucketOrigin.withOriginAccessControl(siteBucket)
+
     const appDistribution = new Distribution(this, 'AppDistribution', {
       domainNames: [apex, www],
       certificate,
       defaultRootObject: 'index.html',
       defaultBehavior: {
-        origin: S3BucketOrigin.withOriginAccessControl(siteBucket),
+        origin: siteOrigin,
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: true,
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy: appPageHeaders,
         functionAssociations: [{ function: toApex, eventType: FunctionEventType.VIEWER_REQUEST }],
+      },
+      additionalBehaviors: {
+        'static/*': {
+          origin: siteOrigin,
+          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          compress: true,
+          cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+          responseHeadersPolicy: appStaticHeaders,
+          functionAssociations: [{ function: toApex, eventType: FunctionEventType.VIEWER_REQUEST }],
+        },
       },
       // The app routes in the browser: unknown paths get index.html (S3 answers 403 for a missing key
       // through origin access control).
