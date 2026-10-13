@@ -87,7 +87,10 @@ export class SiteStack extends Stack {
       defaultTtl: Duration.minutes(1), minTtl: Duration.seconds(0), maxTtl: Duration.minutes(1),
       enableAcceptEncodingGzip: true, enableAcceptEncodingBrotli: true,
     })
-    const assetHeaders = new ResponseHeadersPolicy(this, 'AssetHeaders', {
+    // The cache policies above set CloudFront's TTLs only; Cache-Control tells browsers the same, so a
+    // returning visitor reuses the files it already has.
+    const assetHeaderConfig = (cacheControl: string) => ({
+      customHeadersBehavior: { customHeaders: [{ header: 'Cache-Control', value: cacheControl, override: true }] },
       corsBehavior: {
         accessControlAllowOrigins: [`https://${apex}`],
         accessControlAllowMethods: ['GET', 'HEAD'],
@@ -102,6 +105,8 @@ export class SiteStack extends Stack {
         referrerPolicy: { referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN, override: true },
       },
     })
+    const assetHeaders = new ResponseHeadersPolicy(this, 'AssetHeaders', assetHeaderConfig('public, max-age=31536000, immutable'))
+    const pointerHeaders = new ResponseHeadersPolicy(this, 'PointerHeaders', assetHeaderConfig('public, max-age=60'))
     const bundleOrigin = S3BucketOrigin.withOriginAccessControl(bundleBucket)
     const assetDistribution = new Distribution(this, 'AssetDistribution', {
       domainNames: [assets],
@@ -121,7 +126,7 @@ export class SiteStack extends Stack {
           compress: true,
           allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
           cachePolicy: pointerCache,
-          responseHeadersPolicy: assetHeaders,
+          responseHeadersPolicy: pointerHeaders,
         },
       },
       comment: `${assets} game bundles`,

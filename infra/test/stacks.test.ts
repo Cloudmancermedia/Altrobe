@@ -167,6 +167,17 @@ describe('AltrobeSite', () => {
     })
   })
 
+  test('browsers keep build files for a year and recheck current.json after a minute', () => {
+    const { site } = stacks()
+    const cacheControl = (value: string) => site.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: Match.objectLike({
+        CustomHeadersConfig: { Items: [{ Header: 'Cache-Control', Value: value, Override: true }] },
+      }),
+    })
+    cacheControl('public, max-age=31536000, immutable')
+    cacheControl('public, max-age=60')
+  })
+
   test('apex, www and assets point at CloudFront over IPv4 and IPv6', () => {
     const { site } = stacks()
     for (const type of ['A', 'AAAA'])
