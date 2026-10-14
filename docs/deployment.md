@@ -16,14 +16,18 @@ All in one AWS account, in us-east-1 (CloudFront needs its certificate there).
 | `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. It exists only when an alert address is set; see below. |
 
 All three roles trust the repository's immutable OIDC subject (the token's `sub` claim, such as
-`repo:Cloudmancermedia@52295078/altrobe@1413879660:environment:production`, plus `aud`). GitHub gives
+`repo:Cloudmancermedia@52295078/Altrobe@1413879660:environment:production`, plus `aud`). GitHub gives
 repositories created after July 15, 2026 this form, which names the owner and repository by numeric
 ID, so nobody can reclaim a deleted name into these roles
 ([GitHub changelog](https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/)).
-If the repository is recreated, its IDs change: read the new prefix with
-`gh api repos/Cloudmancermedia/altrobe/actions/oidc/customization/sub` (`sub_claim_prefix`), set it
-as the default in `infra/src/app.ts` or pass `-c githubSubject=<prefix>`, and deploy `AltrobeCi`
-locally, since CI can't assume the roles until it is fixed. No AWS account ID or key is stored in the
+The subject also holds the owner and repository names, and IAM matches it exactly, case included.
+Renaming either one (as from `altrobe` to `Altrobe`) or recreating the repository changes it, and
+every job that assumes a role fails with `Not authorized to perform sts:AssumeRoleWithWebIdentity`.
+Read the new prefix with `gh api repos/Cloudmancermedia/Altrobe/actions/oidc/customization/sub`
+(`sub_claim_prefix`), set `GITHUB_SUBJECT` in `infra/src/ci-stack.ts` or pass
+`-c githubSubject=<prefix>`, and deploy `AltrobeCi` locally, since CI can't assume the roles until it
+is fixed. The name isn't matched with a wildcard: `*` would also match a crafted branch name in
+another repository of the same owner. No AWS account ID or key is stored in the
 repository: the account comes from the credentials in use (`CDK_DEFAULT_ACCOUNT`).
 
 ## First-time setup

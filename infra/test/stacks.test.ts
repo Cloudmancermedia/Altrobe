@@ -4,14 +4,14 @@ import { join } from 'node:path'
 import { App } from 'aws-cdk-lib'
 import { Match, Template } from 'aws-cdk-lib/assertions'
 import { describe, expect, test } from 'vitest'
-import { CiStack, DEPLOY_ROLE_NAME, DIFF_ROLE_NAME, PUBLISH_ROLE_NAME } from '../src/ci-stack.js'
+import { CiStack, DEPLOY_ROLE_NAME, DIFF_ROLE_NAME, GITHUB_SUBJECT, PUBLISH_ROLE_NAME } from '../src/ci-stack.js'
 import { DnsStack } from '../src/dns-stack.js'
 import { BudgetStack } from '../src/budget-stack.js'
 import { SiteStack } from '../src/site-stack.js'
 
 const env = { account: '123456789012', region: 'us-east-1' }
-// The repository's immutable OIDC subject: owner and repository, each with its numeric ID.
-const subject = 'repo:Cloudmancermedia@52295078/altrobe@1413879660'
+// The repository's immutable OIDC subject, as app.ts deploys it: owner and repository, each with its ID.
+const subject = GITHUB_SUBJECT
 
 function stacks(opts: { createOidcProvider?: boolean; webDistPath?: string } = {}) {
   const app = new App()
@@ -115,8 +115,10 @@ describe('AltrobeCi', () => {
     expect(roles).toHaveLength(3)
     for (const r of roles) {
       const text = JSON.stringify(r.Properties.AssumeRolePolicyDocument)
-      expect(text).toContain('repo:Cloudmancermedia@52295078/altrobe@1413879660:')
-      expect(text).not.toContain('repo:Cloudmancermedia/altrobe:')
+      // The name is matched exactly, case included: GitHub's sub_claim_prefix since the rename to Altrobe.
+      expect(text).toContain('repo:Cloudmancermedia@52295078/Altrobe@1413879660:')
+      expect(text).not.toContain('/altrobe@')
+      expect(text).not.toContain('repo:Cloudmancermedia/Altrobe:')
       const keys = r.Properties.AssumeRolePolicyDocument.Statement.flatMap((s: { Condition: Record<string, Record<string, string>> }) =>
         Object.values(s.Condition).flatMap((c) => Object.keys(c)))
       expect(keys.sort()).toEqual(['token.actions.githubusercontent.com:aud', 'token.actions.githubusercontent.com:sub'])
