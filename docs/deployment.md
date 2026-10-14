@@ -130,8 +130,10 @@ commit SHA; Dependabot keeps the pins current.
 Bundles are data, not infrastructure: CDK creates the bundle bucket and lets the publish and deploy
 roles write it, and `npm run publish:bundle` uploads each build (see
 [hosted-pipeline.md](hosted-pipeline.md#publish-a-build)). A build goes to `{product}/{build}/` before
-`{product}/current.json` is rewritten, then `current.json` is invalidated in CloudFront. Builds are
-cached for a year and `current.json` for a minute.
+`{product}/current.json` is rewritten, then `current.json` is invalidated in CloudFront. Models and
+textures are cached for a year and `current.json` for a minute. A build's JSON (catalog, sets, items)
+tells browsers to recheck after five minutes, because republishing the same build after a bake change
+rewrites it in place; the publish step then invalidates the whole build in CloudFront.
 
 `.github/workflows/publish.yml` does this on its own every six hours, and on demand from the Actions
 tab, with the publish role and no approval: it bakes each new build, checks it, publishes it and
