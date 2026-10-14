@@ -2,7 +2,9 @@
 
 A browser-based dressing room for World of Warcraft: Forever. See the same outfit on different races, save a look, and share it as a link.
 
-Early development.
+Try it at [altrobe.com](https://altrobe.com). Early development.
+
+If Altrobe is useful to you, you can [buy me a coffee](https://buymeacoffee.com/cloudmancer).
 
 ## Download and run
 
