@@ -11,6 +11,7 @@ export function footerLinks(features: Features): { label: string; href: string }
     ...(features.installs ? [] : [{ label: 'Download the local app', href: `${REPO}/releases/latest` }]),
     { label: 'Report a problem or rights concern', href: `${REPO}/issues/new` },
     { label: 'Source code', href: REPO },
+    { label: 'Buy me a coffee', href: 'https://buymeacoffee.com/cloudmancer' },
     // Credit for the Classic item names the game files leave out (ClassicItemNames, GPL-3.0).
     { label: 'Item names: cmangos', href: 'https://github.com/cmangos/classic-db' },
   ]

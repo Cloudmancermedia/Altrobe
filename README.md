@@ -5,6 +5,8 @@ name, guild and title, and share the look as a link.
 
 **Try it at [altrobe.com](https://altrobe.com)**, no install or account needed.
 
+If Altrobe is useful to you, you can [buy me a coffee](https://buymeacoffee.com/cloudmancer).
+
 ## What it does
 
 - Shows every playable race and sex, in the HD or classic (SD) models.
