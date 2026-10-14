@@ -64,7 +64,7 @@ public sealed class SetCatalog
     public ItemSetInfo? Get(int setId) => _byId.GetValueOrDefault(setId);
 
     // Notable sets (NotableSets) for a faction ("alliance" or "horde") and the given classes, grouped
-    // PvP (rare), PvP (epic), then tiers 0 to 3; empty groups are left out. A named set wins over an
+    // PvP (rare), PvP (epic), tiers 0 to 3, then data-mined sets no other group holds; empty groups are left out. A named set wins over an
     // unnamed copy of the same name, and a set repeating another's name and classes is dropped.
     public IReadOnlyList<SetGroup> Notable(string? faction, IReadOnlyCollection<int> classIds)
     {
@@ -74,6 +74,8 @@ public sealed class SetCatalog
             .Select(s => (set: s, cls: NotableSets.Classify(s)))
             .Where(x => x.cls is { } c && (c.Faction == null || c.Faction == faction) && (c.ClassMask == -1 || (c.ClassMask & wanted) != 0))
             .Select(x => (x.set, group: x.cls!.Value.Group, mask: x.cls.Value.ClassMask))
+            .Concat(_sets.Where(s => s.DataMined && NotableSets.Classify(s) == null && (s.ClassMask == -1 || (s.ClassMask & wanted) != 0))
+                .Select(s => (set: s, group: NotableSets.DataMined, mask: s.ClassMask)))
             .GroupBy(x => (x.group, name: x.set.Name.ToLowerInvariant(), x.mask))
             .Select(g => g.OrderBy(x => x.set.Unnamed).ThenBy(x => x.set.SetId).First())
             .ToList();
@@ -85,8 +87,9 @@ public sealed class SetCatalog
             .ToList();
     }
 
-    // Tier sets list in class order (warrior first); PvP sets, whose masks vary, by name.
-    static int TierClassOrder(int mask) => NotableSets.Tiers.ToList().FindIndex(t => mask == 1 << (t.ClassId - 1)) is var i and >= 0 ? i : int.MaxValue;
+    // Sets list in class order (warrior first), by the first class in the mask; a set for every class last.
+    static int TierClassOrder(int mask) => mask == -1 ? int.MaxValue
+        : NotableSets.Tiers.ToList().FindIndex(t => (mask & 1 << (t.ClassId - 1)) != 0) is var i and >= 0 ? i : int.MaxValue;
 
     // Item IDs of every piece of every set, ascending.
     public IReadOnlyList<int> PieceItemIds() => _pieceItemIds ??= _sets.SelectMany(s => s.Pieces.Select(p => p.Item.ItemId)).Distinct().Order().ToList();

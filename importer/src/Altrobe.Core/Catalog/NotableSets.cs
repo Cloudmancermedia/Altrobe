@@ -36,7 +36,7 @@ public static class NotableSets
         ("Field Marshal's", PvpEpic, "alliance"), ("Warlord's", PvpEpic, "horde"),
     ];
 
-    public static IReadOnlyList<string> GroupOrder { get; } = [PvpRare, PvpEpic, .. TierLabels];
+    public static IReadOnlyList<string> GroupOrder { get; } = [PvpRare, PvpEpic, .. TierLabels, DataMined];
 
     static readonly Dictionary<string, (string Group, int ClassId)> TierByName =
         Tiers.SelectMany(c => c.Sets.Select((name, i) => (name, group: TierLabels[i], c.ClassId)))

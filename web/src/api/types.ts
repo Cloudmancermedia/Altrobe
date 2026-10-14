@@ -187,8 +187,10 @@ export interface SetPiece {
   iconFileDataId: number
   unnamed?: boolean
 }
-/** One heading of notable sets (/sets/notable): "PvP (rare)", "PvP (epic)", "Tier 0" ... "Tier 3". */
+/** One heading of notable sets (/sets/notable): "PvP (rare)", "PvP (epic)", "Tier 0" ... "Tier 3", "Data-mined". */
 export interface SetGroup { group: string; sets: ItemSetResult[] }
+
+export type ClassSource = 'name' | 'curated' | 'armor'
 
 export interface ItemSetResult {
   setId: number
@@ -198,6 +200,12 @@ export interface ItemSetResult {
   unnamed?: boolean
   /** Best piece quality, or the tier's for an unnamed tier set; null when unknown. */
   quality?: number | null
+  /** Every piece unnamed, and most of them a look no named item has (NotableSets.DataMined). */
+  dataMined?: boolean
+  /** A data-mined set's armor type: cloth, leather, mail or plate; null without an armor piece. */
+  armor?: string | null
+  /** Where a data-mined set's class came from: its name, the curated list, or its armor type. */
+  classSource?: ClassSource | null
   /** Pieces that can be shown, each with the look slot it goes in. */
   pieces: SetPiece[]
   /** Pieces left out: not worn, no visual, or their slot is taken. */

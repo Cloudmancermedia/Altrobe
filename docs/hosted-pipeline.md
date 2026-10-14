@@ -31,7 +31,7 @@ Under the output folder:
 | `{product}/{build}/manifest.json` | counts, and what failed to convert |
 | `{product}/{build}/characters.json` | races and every base look |
 | `{product}/{build}/catalog.json`, `sets.json` | the item catalog and sets, for search in the browser |
-| `{product}/{build}/notable.json` | notable sets per race and class |
+| `{product}/{build}/notable.json` | notable sets per race and class, data-mined sets last |
 | `{product}/{build}/set-pieces.json` | every item that is a piece of some set |
 | `{product}/{build}/titles.json`, `names.json` | titles and the random-name lists |
 | `{product}/{build}/items/{itemId}.json` | the item resolved for every race, sex and body kind |
@@ -138,3 +138,16 @@ Encrypted files are skipped.
 Items the game files leave unnamed get Classic names from cmangos classic-db (`ClassicItemNames`);
 `catalog.json` marks them `nameSource: "cmangos"` and carries the GPL-3.0 credit. See
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+## Data-mined sets
+
+A set is data-mined when every piece is unnamed and at least half its pieces use a look no named item
+has; unnamed copies of named sets stay out (`SetCatalog`). `sets.json` and `notable.json` give each
+one `dataMined`, its `armor` type and a class mask with its `classSource`:
+
+- `name`: a tier set name, or a word or phrase only one class's tier sets use (`NotableSets`).
+- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs.
+- `armor`: the classes that wear its armor type; every class when it has no armor piece.
+
+`node tools/suggest-data-mined-classes.mjs <bundle>/<product>/<build>` suggests curated classes from
+shared helm and shoulder models. Check each one before adding it: shared models mislead.

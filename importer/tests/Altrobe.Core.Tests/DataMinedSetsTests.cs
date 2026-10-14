@@ -149,4 +149,23 @@ public class DataMinedSetsTests
         Assert.Null(set.ClassSource);
         Assert.Equal(-1, set.ClassMask);
     }
+
+    [Fact]
+    public void NotableListsDataMinedSetsLastForTheirClassesInClassThenNameOrder()
+    {
+        var sets = Named()
+            .Item(10, null, 5, 100, Cloth).Set(1600, "Whispering Garb", 10)       // cloth: Priest, Mage, Warlock
+            .Item(20, null, 5, 101, Cloth).Set(1601, "Arcanist Insight", 20)      // Mage by name
+            .Item(30, null, 5, 102, Plate).Set(1602, "Whispering Plate", 30)      // Warrior, Paladin
+            .Item(40, null, 13, 103).Set(1603, "Whispering Blades", 40)           // no armor: every class
+            .Item(50, null, 5, 104, Cloth).Set(1604, "Battlegear of Wrath", 50)   // a tier name: Tier 2, not data-mined's group
+            .Build();
+        var mage = sets.Notable("alliance", [8]);
+        Assert.Equal(NotableSets.DataMined, mage[^1].Group);
+        // Class order goes by the first class in the mask: cloth (Priest first) before Mage only.
+        Assert.Equal(["Whispering Garb", "Arcanist Insight", "Whispering Blades"], mage[^1].Sets.Select(x => x.Name));
+        var warrior = sets.Notable("alliance", [1]).Single(g => g.Group == NotableSets.DataMined);
+        Assert.Equal(["Whispering Plate", "Whispering Blades"], warrior.Sets.Select(x => x.Name));
+        Assert.Equal(NotableSets.DataMined, NotableSets.GroupOrder[^1]);
+    }
 }
