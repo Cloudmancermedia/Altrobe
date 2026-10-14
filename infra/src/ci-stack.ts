@@ -7,6 +7,11 @@ import type { Construct } from 'constructs'
 export const DIFF_ROLE_NAME = 'altrobe-github-diff'
 export const DEPLOY_ROLE_NAME = 'altrobe-github-deploy'
 export const PUBLISH_ROLE_NAME = 'altrobe-github-publish'
+// The repository's immutable OIDC subject prefix (`gh api repos/{owner}/{repo}/actions/oidc/customization/sub`,
+// `sub_claim_prefix`). It holds the names as well as the IDs, and IAM compares it exactly, case included:
+// renaming the owner or the repository (as to Altrobe) or recreating it means updating this and
+// deploying AltrobeCi locally, since CI can't assume the roles until then (docs/deployment.md).
+export const GITHUB_SUBJECT = 'repo:Cloudmancermedia@52295078/Altrobe@1413879660'
 
 const GITHUB_ISSUER = 'token.actions.githubusercontent.com'
 // The bootstrap stack's default qualifier (cdk bootstrap, no --qualifier).

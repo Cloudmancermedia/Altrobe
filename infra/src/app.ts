@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { App, Tags } from 'aws-cdk-lib'
 import { BudgetStack } from './budget-stack.js'
-import { CiStack, DEPLOY_ROLE_NAME, PUBLISH_ROLE_NAME } from './ci-stack.js'
+import { CiStack, DEPLOY_ROLE_NAME, GITHUB_SUBJECT, PUBLISH_ROLE_NAME } from './ci-stack.js'
 import { DnsStack } from './dns-stack.js'
 import { SiteStack } from './site-stack.js'
 
@@ -10,8 +10,9 @@ import { SiteStack } from './site-stack.js'
 const app = new App()
 const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' }
 const domainName = 'altrobe.com'
-// The repository's immutable OIDC subject (ci-stack.ts). Recreating the repository changes its IDs.
-const subject = (app.node.tryGetContext('githubSubject') as string | undefined) ?? 'repo:Cloudmancermedia@52295078/altrobe@1413879660'
+// The repository's immutable OIDC subject (ci-stack.ts GITHUB_SUBJECT). Renaming or recreating the
+// repository changes it.
+const subject = (app.node.tryGetContext('githubSubject') as string | undefined) ?? GITHUB_SUBJECT
 const webDistPath = (app.node.tryGetContext('webDist') as string | undefined) ?? fileURLToPath(new URL('../../web/dist-static', import.meta.url))
 
 const dns = new DnsStack(app, 'AltrobeDns', { env, domainName })
