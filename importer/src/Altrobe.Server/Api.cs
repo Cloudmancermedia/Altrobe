@@ -12,7 +12,7 @@ public static class Api
     // A set as the web app and MCP clients see it: pieces flattened to item fields plus the slot.
     public static object SetJson(ItemSetInfo s) => new
     {
-        s.SetId, s.Name, s.Internal, s.Unnamed, s.Quality, s.DataMined, s.Armor, s.ClassSource,
+        s.SetId, s.Name, s.Internal, s.Unnamed, s.Quality, s.DataMined, s.Armor, s.ClassSource, s.Origin,
         pieces = s.Pieces.Select(p => new { p.Slot, p.Item.ItemId, p.Item.Name, p.Item.Quality, p.Item.IconFileDataId, p.Item.Unnamed }),
         skipped = s.Skipped,
     };

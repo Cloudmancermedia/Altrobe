@@ -143,7 +143,20 @@ Items the game files leave unnamed get Classic names from cmangos classic-db (`C
 
 A set is data-mined when every piece is unnamed and at least half its pieces use a look no named item
 has; unnamed copies of named sets stay out (`SetCatalog`). `sets.json` and `notable.json` give each
-one `dataMined`, its `armor` type and a class mask with its `classSource`:
+one `dataMined`, its `armor` type, its `origin` and a class mask with its `classSource`.
+
+`origin` is `season-of-discovery` when Classic Era has a set with the same ID, else `forever`. The Era
+set IDs are in `importer/src/Altrobe.Core/Catalog/classic-era-sets.json` (from Era 1.15.9.70003), so
+the bake never reads Era. The sets panel lists `forever` sets as "New in Forever (data-mined)" after
+the tiers, and Season of Discovery's last. To refresh the list from Era's current build (about 300 MB
+of indexes):
+
+```sh
+dotnet importer/src/Altrobe.Server/bin/Debug/net10.0/Altrobe.Server.dll set-ids \
+  --product wow_classic_era --out importer/src/Altrobe.Core/Catalog/classic-era-sets.json
+```
+
+`classSource` says where the class mask came from:
 
 - `name`: a tier set name, or a word or phrase only one class's tier sets use (`NotableSets`).
 - `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs.

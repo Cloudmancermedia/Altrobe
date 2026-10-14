@@ -2,8 +2,10 @@ using System.Net;
 using Altrobe.Server;
 using Microsoft.Extensions.FileProviders;
 
-// `bake ...` writes a build as the hosted site's bundle and exits; anything else runs the local server.
+// `bake ...` writes a build as the hosted site's bundle and exits; `set-ids ...` lists a build's set IDs
+// (SetIdsCommand); anything else runs the local server.
 if (args.FirstOrDefault() == "bake") return await BakeCommand.RunAsync(args[1..], Console.Out);
+if (args.FirstOrDefault() == "set-ids") return await SetIdsCommand.RunAsync(args[1..], Console.Out);
 
 var settings = ServerSettings.FromArgs(args);
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions

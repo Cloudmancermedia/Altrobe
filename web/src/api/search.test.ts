@@ -106,8 +106,8 @@ describe('set search', () => {
   })
 
   test('a data-mined set keeps its armor and where its class came from', () => {
-    const dm: BundleSet = { ...sets[1], setId: 1600, name: 'Whispering Garb', dataMined: true, armor: 'cloth', classSource: 'armor', classMask: 400 }
-    expect(toSetResult(dm)).toMatchObject({ setId: 1600, dataMined: true, armor: 'cloth', classSource: 'armor' })
+    const dm: BundleSet = { ...sets[1], setId: 1600, name: 'Whispering Garb', dataMined: true, armor: 'cloth', classSource: 'armor', classMask: 400, origin: 'forever' }
+    expect(toSetResult(dm)).toMatchObject({ setId: 1600, dataMined: true, armor: 'cloth', classSource: 'armor', origin: 'forever' })
   })
 
   test('a set is flattened the way the API sends it (Api.SetJson)', () => {

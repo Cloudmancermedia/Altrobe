@@ -57,8 +57,9 @@ describe('setQuality', () => {
 })
 
 describe('data-mined sets', () => {
-  test('get their own heading; the other groups keep their names', () => {
-    expect(groupHeading('Data-mined')).toBe('Data-mined sets')
+  test('show under their own headings; the other groups keep their names', () => {
+    expect(groupHeading('New in Forever (data-mined)')).toBe('New in Forever (data-mined)')
+    expect(groupHeading('Season of Discovery')).toBe('Season of Discovery sets')
     expect(groupHeading('Tier 2')).toBe('Tier 2')
   })
 

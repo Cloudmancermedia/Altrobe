@@ -13,11 +13,12 @@ public class SetJsonTests
     [Fact]
     public void ADataMinedSetCarriesItsArmorAndWhereItsClassCameFrom()
     {
-        var set = new ItemSetInfo(1600, "Whispering Garb", [], [], false, true) { DataMined = true, Armor = "cloth", ClassMask = 400, ClassSource = "armor" };
+        var set = new ItemSetInfo(1600, "Whispering Garb", [], [], false, true) { DataMined = true, Armor = "cloth", ClassMask = 400, ClassSource = "armor", Origin = "forever" };
         var json = Json(set);
         Assert.True(json.GetProperty("dataMined").GetBoolean());
         Assert.Equal("cloth", json.GetProperty("armor").GetString());
         Assert.Equal("armor", json.GetProperty("classSource").GetString());
+        Assert.Equal("forever", json.GetProperty("origin").GetString());
     }
 
     [Fact]

@@ -34,10 +34,11 @@ public class DataMinedSetsTests
             return this;
         }
 
-        public SetCatalog Build(IReadOnlyDictionary<int, int[]>? curated = null)
+        // eraSets: set IDs Classic Era has (Season of Discovery's data-mined sets are among them).
+        public SetCatalog Build(IReadOnlyDictionary<int, int[]>? curated = null, IReadOnlySet<int>? eraSets = null)
         {
             var items = new ItemCatalog(_t);
-            return new SetCatalog(_t, items, curated ?? new Dictionary<int, int[]>());
+            return new SetCatalog(_t, items, curated ?? new Dictionary<int, int[]>(), eraSets ?? new HashSet<int>());
         }
     }
 
@@ -151,21 +152,34 @@ public class DataMinedSetsTests
     }
 
     [Fact]
-    public void NotableListsDataMinedSetsLastForTheirClassesInClassThenNameOrder()
+    public void ADataMinedSetClassicEraHasIsFromSeasonOfDiscoveryAndAnyOtherIsNewInForever()
     {
         var sets = Named()
-            .Item(10, null, 5, 100, Cloth).Set(1600, "Whispering Garb", 10)       // cloth: Priest, Mage, Warlock
-            .Item(20, null, 5, 101, Cloth).Set(1601, "Arcanist Insight", 20)      // Mage by name
-            .Item(30, null, 5, 102, Plate).Set(1602, "Whispering Plate", 30)      // Warrior, Paladin
-            .Item(40, null, 13, 103).Set(1603, "Whispering Blades", 40)           // no armor: every class
-            .Item(50, null, 5, 104, Cloth).Set(1604, "Battlegear of Wrath", 50)   // a tier name: Tier 2, not data-mined's group
-            .Build();
+            .Item(10, null, 5, 100, Cloth).Set(1704, "Arcanist Insight", 10)
+            .Item(20, null, 5, 101, Cloth).Set(2098, "Manaflare Regalia", 20)
+            .Build(eraSets: new HashSet<int> { 1704, 1 });
+        Assert.Equal("season-of-discovery", sets.Get(1704)!.Origin);
+        Assert.Equal("forever", sets.Get(2098)!.Origin);
+    }
+
+    [Fact]
+    public void NotableListsNewInForeverAfterTheTiersAndSeasonOfDiscoveryLastInClassThenNameOrder()
+    {
+        var sets = Named()
+            .Item(10, null, 5, 100, Cloth).Set(2100, "Whispering Garb", 10)        // cloth: Priest, Mage, Warlock
+            .Item(20, null, 5, 101, Cloth).Set(1704, "Arcanist Insight", 20)       // Mage by name; Season of Discovery
+            .Item(30, null, 5, 102, Plate).Set(2102, "Whispering Plate", 30)       // Warrior, Paladin
+            .Item(40, null, 13, 103).Set(2103, "Whispering Blades", 40)            // no armor: every class
+            .Item(50, null, 5, 104, Cloth).Set(2104, "Battlegear of Wrath", 50)    // a tier name: Tier 2, in no data-mined group
+            .Build(eraSets: new HashSet<int> { 1704 });
         var mage = sets.Notable("alliance", [8]);
-        Assert.Equal(NotableSets.DataMined, mage[^1].Group);
-        // Class order goes by the first class in the mask: cloth (Priest first) before Mage only.
-        Assert.Equal(["Whispering Garb", "Arcanist Insight", "Whispering Blades"], mage[^1].Sets.Select(x => x.Name));
-        var warrior = sets.Notable("alliance", [1]).Single(g => g.Group == NotableSets.DataMined);
-        Assert.Equal(["Whispering Plate", "Whispering Blades"], warrior.Sets.Select(x => x.Name));
-        Assert.Equal(NotableSets.DataMined, NotableSets.GroupOrder[^1]);
+        Assert.Equal([NotableSets.NewInForever, NotableSets.SeasonOfDiscovery], mage.Select(g => g.Group).TakeLast(2));
+        // Class order goes by the first class in the mask: cloth (Priest first), then every class.
+        Assert.Equal(["Whispering Garb", "Whispering Blades"], mage[^2].Sets.Select(x => x.Name));
+        Assert.Equal(["Arcanist Insight"], mage[^1].Sets.Select(x => x.Name));
+        var warrior = sets.Notable("alliance", [1]);
+        Assert.Equal(["Whispering Plate", "Whispering Blades"], warrior.Single(g => g.Group == NotableSets.NewInForever).Sets.Select(x => x.Name));
+        Assert.DoesNotContain(warrior, g => g.Group == NotableSets.SeasonOfDiscovery);
+        Assert.Equal([NotableSets.NewInForever, NotableSets.SeasonOfDiscovery], NotableSets.GroupOrder.TakeLast(2));
     }
 }
