@@ -8,7 +8,8 @@ const REPO = 'https://github.com/Cloudmancermedia/altrobe'
  */
 export function footerLinks(features: Features): { label: string; href: string }[] {
   return [
-    ...(features.installs ? [] : [{ label: 'Download the local app', href: `${REPO}/releases/latest` }]),
+    // The releases page, not /releases/latest, which skips pre-releases and the local app is in beta.
+    ...(features.installs ? [] : [{ label: 'Download the local app (works on Apple silicon Macs; Windows needs beta testers)', href: `${REPO}/releases` }]),
     { label: 'Report a problem or rights concern', href: `${REPO}/issues/new` },
     { label: 'Source code', href: REPO },
     // The licence and the notices for the code the site sends to browsers (dev/licence-files.ts).
