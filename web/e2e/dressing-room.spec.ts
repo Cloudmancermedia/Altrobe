@@ -128,7 +128,8 @@ test('the Sets tab equips every piece of a set in one click', async ({ page }) =
   const first = page.locator('.results li button').first()
   await expect(first).toContainText('Warlord')
   await first.click()
-  await expect(page.getByRole('region', { name: 'Equipped' }).locator('.slots li')).toHaveCount(6)
+  // A filled character-screen slot shows its item's name and buttons.
+  await expect(page.locator('.doll .doll-actions')).toHaveCount(6)
   await settled(page, 1)
 })
 

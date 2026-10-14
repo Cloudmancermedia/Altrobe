@@ -24,7 +24,8 @@ test('loads a character, equips an item and a set, with no install picker or pro
   const set = page.locator('.results li button').first()
   await expect(set).toContainText('Warlord')
   await set.click()
-  await expect(page.getByRole('region', { name: 'Equipped' }).locator('.slots li')).toHaveCount(7)
+  // A filled character-screen slot shows its item's name and buttons.
+  await expect(page.locator('.doll .doll-actions')).toHaveCount(7)
   await settled(page, 1)
   expect(await call(page, (h) => h.attached(0).length)).toBeGreaterThan(0)
 })
