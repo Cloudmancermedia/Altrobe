@@ -20,6 +20,11 @@ export default defineConfig(async ({ command, mode }) => {
     const { bundleServer } = await import('./dev/bundle-server.ts')
     plugins.push(bundleServer({ root: process.env.ALTROBE_BUNDLE_DIR ?? fileURLToPath(new URL('../output/bundle', import.meta.url)) }))
   }
+  // Builds only: serve LICENSE and THIRD_PARTY_NOTICES.md beside the app as .txt (dev/licence-files.ts).
+  if (command === 'build') {
+    const { licenceFiles } = await import('./dev/licence-files.ts')
+    plugins.push(licenceFiles())
+  }
   // Dev only: ALTROBE_API=http://127.0.0.1:5161 sends /api and /assets to a running local server.
   // The server rejects cross-site Origin headers, and the dev page is a different origin, so the
   // proxy drops the header; Host stays localhost, which the server accepts.

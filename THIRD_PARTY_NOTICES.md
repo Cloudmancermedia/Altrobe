@@ -4,7 +4,7 @@ Altrobe includes code ported from, and depends on, the open-source projects belo
 
 ## wow.export
 
-Parts of `tools/probe/Convert/` and its port in `importer/src/Altrobe.Core/Convert/` (M2, skin, skeleton, animation and BLP parsing, and the animation name table in `AnimationNames.cs`, which wow.export took from [wow.tools.local](https://github.com/Marlamin/wow.tools.local)), `tools/looks/looks.ts`, and `tools/viewer-test/` (`index.html`, `compositor.js`, `dress.js`, `m2-material.js`) are ported from [wow.export](https://github.com/Kruithne/wow.export). Each of those files says so in its header.
+Parts of `tools/probe/Convert/` and its port in `importer/src/Altrobe.Core/Convert/` (M2, skin, skeleton, animation and BLP parsing, and the animation name table in `AnimationNames.cs`, which wow.export took from [wow.tools.local](https://github.com/Marlamin/wow.tools.local)), `importer/src/Altrobe.Core/Resolve/` (`ItemResolver.cs`, `LookResolver.cs`), `web/src/viewer/` (`character.ts`, `compositor.ts`, `dress.ts`, `m2-material.ts`), `tools/looks/looks.ts`, and `tools/viewer-test/` (`index.html`, `compositor.js`, `dress.js`, `m2-material.js`) are ported from [wow.export](https://github.com/Kruithne/wow.export). Each of those files says so in its header.
 
 ```
 MIT License
@@ -68,6 +68,21 @@ These are downloaded at build or run time and are not copied into this repositor
 - [Microsoft.Extensions.AI](https://github.com/dotnet/extensions) (NuGet: Microsoft.Extensions.AI and Microsoft.Extensions.AI.OpenAI), MIT License. Runs the prompt box's tool calls.
 - [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) table definitions for tables or builds the vendored copies above do not cover, downloaded at run time into Altrobe's cache folder. The definitions are CC BY-SA 4.0 and the code is BSD-3-Clause.
 - [three.js](https://github.com/mrdoob/three.js) (npm), MIT License. The `tools/viewer-test/` prototype loads it from the jsDelivr CDN.
+
+## On altrobe.com
+
+The website sends browsers compiled copies of the software below, in its JavaScript and font files.
+Each is under the MIT License, whose text is reproduced under wow.export above, except Marcellus (see
+above). Altrobe's own licence is at [/LICENSE.txt](/LICENSE.txt) on the site.
+
+- Altrobe: Copyright (c) 2026 Ryan Williams, under the MIT License in `LICENSE`.
+- The wow.export ports in `web/src/viewer/` (see wow.export above).
+- React, React DOM and scheduler: Copyright (c) Meta Platforms, Inc. and affiliates. <https://github.com/facebook/react>
+- three.js: Copyright (c) 2010-2026 three.js authors. <https://github.com/mrdoob/three.js>
+- Marcellus font, through `@fontsource/marcellus`: SIL Open Font License 1.1.
+
+The game data the site loads from assets.altrobe.com is Blizzard Entertainment's and is not covered by
+any of these licences.
 
 ## In the downloadable packages
 
