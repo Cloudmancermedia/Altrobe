@@ -30,6 +30,31 @@ test('loads a character, equips an item and a set, with no install picker or pro
   expect(await call(page, (h) => h.attached(0).length)).toBeGreaterThan(0)
 })
 
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test('the page scrolls as one column: character first, then search, with the share buttons on screen', async ({ page }) => {
+    await openApp(page)
+    await expect(page.locator('[data-cell="main"] .cell-label')).not.toBeEmpty()
+    const box = await page.evaluate(() => {
+      const rect = (s: string) => document.querySelector(s)!.getBoundingClientRect()
+      const panel = (s: string) => { const e = document.querySelector(s)!; return { scroll: e.scrollHeight, client: e.clientHeight } }
+      const buttons = [...document.querySelectorAll('.share button')].map((b) => b.getBoundingClientRect().right)
+      return {
+        pageWidth: document.documentElement.scrollWidth,
+        doll: rect('.doll').top, find: rect('.side.right').top, character: rect('.side.left').top,
+        left: panel('.side.left'), right: panel('.side.right'), buttonsRight: Math.max(...buttons),
+      }
+    })
+    expect(box.pageWidth, 'no sideways scrolling').toBeLessThanOrEqual(390)
+    expect(box.buttonsRight, 'share buttons fit').toBeLessThanOrEqual(390)
+    expect(box.left.scroll, 'Character panel shows in full').toBeLessThanOrEqual(box.left.client + 1)
+    expect(box.right.scroll, 'Find panel shows in full').toBeLessThanOrEqual(box.right.client + 1)
+    expect(box.doll).toBeLessThan(box.find)
+    expect(box.find).toBeLessThan(box.character)
+  })
+})
+
 test('a Human Mage sees new-in-Forever sets after the classic groups, and one dresses the character', async ({ page }) => {
   await openApp(page)
   await call(page, (h) => h.commands.set_character(1, 0))
