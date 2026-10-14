@@ -214,7 +214,7 @@ describe('AltrobeSite', () => {
     const { site } = stacks()
     const policies = site.findResources('AWS::CloudFront::ResponseHeadersPolicy')
     const [assets] = Object.values(site.findResources('AWS::CloudFront::Distribution'))
-      .filter((d) => JSON.stringify(d.Properties.DistributionConfig.Aliases).includes('assets.altrobe.com'))
+      .filter((d) => (d.Properties.DistributionConfig.Aliases as string[]).some((alias) => alias === 'assets.altrobe.com'))
     const json = assets.Properties.DistributionConfig.CacheBehaviors.find((b: { PathPattern: string }) => b.PathPattern === '*.json')
     const header = policies[json.ResponseHeadersPolicyId.Ref].Properties.ResponseHeadersPolicyConfig
     expect(header.CustomHeadersConfig.Items[0]).toEqual({ Header: 'Cache-Control', Value: 'public, max-age=300', Override: true })
