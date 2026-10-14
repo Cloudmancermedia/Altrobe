@@ -271,3 +271,43 @@ export function publishPlan({ bundleDir, product, bucket, distribution, profile,
     { kind: 'invalidate', args: ['cloudfront', 'create-invalidation', '--distribution-id', distribution, '--paths', `/${product}/current.json`, ...tail] },
   ]
 }
+
+// The build the version service names for a region (VersionsName), from its BPSV answer: a header
+// row of Name!TYPE:size columns, "##" comment lines, then pipe-separated rows. Columns are found by
+// name, as in importer/src/Altrobe.Core/Hosted/VersionService.cs.
+export function buildFromVersions(text, region) {
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('##'))
+  if (lines.length === 0) throw new Error('The version service answered with no header row.')
+  const columns = lines[0].split('|').map((c) => c.split('!')[0].toLowerCase())
+  const col = (name) => {
+    const i = columns.indexOf(name.toLowerCase())
+    if (i < 0) throw new Error(`The version service answer has no ${name} column.`)
+    return i
+  }
+  const [r, v] = [col('Region'), col('VersionsName')]
+  const rows = lines.slice(1).map((l) => l.split('|')).filter((f) => f.length === columns.length)
+  const row = rows.find((f) => f[r].toLowerCase() === region.toLowerCase())
+  if (!row) throw new Error(`The version service lists no build for region ${region} (has: ${rows.map((f) => f[r]).join(', ')}).`)
+  return row[v]
+}
+
+// live is the published current.json, or null when nothing is published yet.
+export const isNewBuild = (live, build) => !live || live.build !== build
+
+const BUILD_FOLDER = /^\d+(\.\d+)+$/
+
+// Build folders under {product}/ to delete after publishing: every build but the new one and the one
+// it replaced, so a rollback is one current.json away. Without a distinct previous build (first
+// publish, a lost current.json, or a republish), nothing is pruned.
+export function buildsToPrune({ folders, current, previous }) {
+  if (!previous || previous === current) return []
+  return folders.map((f) => f.replace(/\/$/, '')).filter((f) => BUILD_FOLDER.test(f) && f !== current && f !== previous)
+}
+
+export function prunePlan({ bucket, product, builds, profile }) {
+  const tail = profile ? ['--profile', profile] : []
+  return builds.map((b) => {
+    if (!BUILD_FOLDER.test(b)) throw new Error(`"${b}" is not a build folder`)
+    return { kind: 'prune', args: ['s3', 'rm', `s3://${bucket}/${product}/${b}/`, '--recursive', ...tail] }
+  })
+}

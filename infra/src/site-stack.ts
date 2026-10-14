@@ -18,6 +18,8 @@ export interface SiteStackProps extends StackProps {
   domainName: string
   /** The GitHub deploy role (CiStack), granted the bundle bucket and invalidations by name. */
   deployRoleName: string
+  /** The GitHub publish role (CiStack), granted the bundle bucket and asset invalidations by name. */
+  publishRoleName: string
   /** The static web build (`npm --prefix web run build:static`). Without it, nothing is deployed to the site bucket. */
   webDistPath?: string
 }
@@ -25,7 +27,7 @@ export interface SiteStackProps extends StackProps {
 // The public site: the web app at altrobe.com (www redirects to it) and the baked game bundles at
 // assets.altrobe.com, on separate buckets and hostnames (docs/hosted-pipeline.md). Both buckets
 // are private; CloudFront reads them through origin access control. Bundles are data: the publish
-// step uploads them with the deploy role, never through CDK.
+// step uploads them with the publish role (or the deploy role by hand), never through CDK.
 export class SiteStack extends Stack {
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props)
@@ -144,6 +146,11 @@ export class SiteStack extends Stack {
     bundleBucket.grantReadWrite(deployRole)
     appDistribution.grantCreateInvalidation(deployRole)
     assetDistribution.grantCreateInvalidation(deployRole)
+    // Publishing deletes builds older than the previous one, so it needs delete as well as write.
+    const publishRole = Role.fromRoleName(this, 'PublishRole', props.publishRoleName)
+    bundleBucket.grantReadWrite(publishRole)
+    bundleBucket.grantDelete(publishRole)
+    assetDistribution.grantCreateInvalidation(publishRole)
 
     if (props.webDistPath && existsSync(props.webDistPath)) {
       new BucketDeployment(this, 'WebDeployment', {

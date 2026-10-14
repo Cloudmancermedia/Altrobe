@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { App, Tags } from 'aws-cdk-lib'
 import { BudgetStack } from './budget-stack.js'
-import { CiStack, DEPLOY_ROLE_NAME } from './ci-stack.js'
+import { CiStack, DEPLOY_ROLE_NAME, PUBLISH_ROLE_NAME } from './ci-stack.js'
 import { DnsStack } from './dns-stack.js'
 import { SiteStack } from './site-stack.js'
 
@@ -18,7 +18,7 @@ const dns = new DnsStack(app, 'AltrobeDns', { env, domainName })
 new CiStack(app, 'AltrobeCi', { env, subject, createOidcProvider: app.node.tryGetContext('createGithubOidcProvider') === 'true' })
 // Uses the zone from AltrobeDns, so it deploys after it; AltrobeCi stands alone, so the first local
 // deploy can be AltrobeDns and AltrobeCi only (docs/deployment.md).
-new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName, deployRoleName: DEPLOY_ROLE_NAME, webDistPath })
+new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName, deployRoleName: DEPLOY_ROLE_NAME, publishRoleName: PUBLISH_ROLE_NAME, webDistPath })
 
 // Every Altrobe resource carries this tag, so the budget counts only Altrobe's spend. The budget
 // exists only when an alert address is set (repository secret BUDGET_EMAIL in CI, or

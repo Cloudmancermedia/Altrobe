@@ -6,6 +6,7 @@ import type { Construct } from 'constructs'
 // and GitHub's repository variables can hold the ARNs.
 export const DIFF_ROLE_NAME = 'altrobe-github-diff'
 export const DEPLOY_ROLE_NAME = 'altrobe-github-deploy'
+export const PUBLISH_ROLE_NAME = 'altrobe-github-publish'
 
 const GITHUB_ISSUER = 'token.actions.githubusercontent.com'
 // The bootstrap stack's default qualifier (cdk bootstrap, no --qualifier).
@@ -26,11 +27,13 @@ export interface CiStackProps extends StackProps {
   createOidcProvider?: boolean
 }
 
-// GitHub Actions' way into AWS, with no stored keys: an OIDC provider and two roles.
+// GitHub Actions' way into AWS, with no stored keys: an OIDC provider and three roles.
 // - diff: any workflow in the repository, pull requests included; may only read (CDK lookup role).
 // - deploy: only jobs in the repository's `production` environment, which needs the maintainer's
 //   approval; may assume the CDK bootstrap roles. The site stack grants it the bundle bucket and
 //   invalidations by name.
+// - publish: workflows running on main (the scheduled bundle publish), with no approval; may assume
+//   nothing. The site stack grants it the bundle bucket and the asset distribution's invalidations.
 export class CiStack extends Stack {
   constructor(scope: Construct, id: string, props: CiStackProps) {
     super(scope, id, props)
@@ -65,7 +68,15 @@ export class CiStack extends Stack {
       resources: ['deploy-role', 'file-publishing-role', 'image-publishing-role', 'lookup-role'].map(bootstrapRole),
     }))
 
+    const publish = new Role(this, 'PublishRole', {
+      roleName: PUBLISH_ROLE_NAME,
+      assumedBy: trust({ StringEquals: { [`${GITHUB_ISSUER}:sub`]: `${props.subject}:ref:refs/heads/main` } }),
+      maxSessionDuration: Duration.hours(1),
+      description: 'GitHub Actions: publish baked bundles from main, without approval. Bundle bucket and asset invalidations only.',
+    })
+
     new CfnOutput(this, 'DiffRoleArn', { value: diff.roleArn, description: 'GitHub repository variable AWS_DIFF_ROLE_ARN' })
     new CfnOutput(this, 'DeployRoleArn', { value: deploy.roleArn, description: 'GitHub repository variable AWS_DEPLOY_ROLE_ARN' })
+    new CfnOutput(this, 'PublishRoleArn', { value: publish.roleArn, description: 'GitHub repository variable AWS_PUBLISH_ROLE_ARN' })
   }
 }
