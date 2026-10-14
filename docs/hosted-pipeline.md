@@ -31,7 +31,7 @@ Under the output folder:
 | `{product}/{build}/manifest.json` | counts, and what failed to convert |
 | `{product}/{build}/characters.json` | races and every base look |
 | `{product}/{build}/catalog.json`, `sets.json` | the item catalog and sets, for search in the browser |
-| `{product}/{build}/notable.json` | notable sets per race and class |
+| `{product}/{build}/notable.json` | notable sets per race and class, data-mined sets last |
 | `{product}/{build}/set-pieces.json` | every item that is a piece of some set |
 | `{product}/{build}/titles.json`, `names.json` | titles and the random-name lists |
 | `{product}/{build}/items/{itemId}.json` | the item resolved for every race, sex and body kind |
@@ -161,3 +161,31 @@ Encrypted files are skipped.
 Items the game files leave unnamed get Classic names from cmangos classic-db (`ClassicItemNames`);
 `catalog.json` marks them `nameSource: "cmangos"` and carries the GPL-3.0 credit. See
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+## Data-mined sets
+
+Altrobe covers Classic and Forever. Season of Discovery's sets are left out everywhere: the set IDs in
+`importer/src/Altrobe.Core/Catalog/season-of-discovery-sets.json` are Classic Era sets none of whose
+pieces cmangos classic-db (1.12) has. The `set-ids` command writes that list from Era's current build
+(about 300 MB of indexes); the bake never reads Era. The list in the repository comes from Era
+1.15.9.70003.
+
+```sh
+dotnet importer/src/Altrobe.Server/bin/Debug/net10.0/Altrobe.Server.dll set-ids --product wow_classic_era \
+  --season-of-discovery --out importer/src/Altrobe.Core/Catalog/season-of-discovery-sets.json
+```
+
+Of the rest, a set is data-mined when every piece is unnamed and at least half its pieces use a look
+no named item has; unnamed copies of named sets stay out (`SetCatalog`). Those came with Forever, so
+the sets panel lists them as "New in Forever (data-mined)" after Tier 3. `sets.json` and
+`notable.json` give each one `dataMined`, its `armor` type and a class mask with its `classSource`:
+
+- `name`: a tier set name, or a word or phrase only one class's tier sets use (`NotableSets`).
+- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs.
+- `armor`: the classes that wear its armor type; every class when it has no armor piece.
+
+`node tools/suggest-data-mined-classes.mjs <bundle>/<product>/<build>` suggests curated classes from
+shared helm and shoulder models. Check each one before adding it: shared models mislead.
+
+Leaving Season of Discovery out dropped the set count from 520 to 220 on 1.60.1.70338, more than the
+count check allows. The first publish after that change goes out by hand, without `--previous`.

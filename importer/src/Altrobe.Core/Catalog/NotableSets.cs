@@ -36,7 +36,7 @@ public static class NotableSets
         ("Field Marshal's", PvpEpic, "alliance"), ("Warlord's", PvpEpic, "horde"),
     ];
 
-    public static IReadOnlyList<string> GroupOrder { get; } = [PvpRare, PvpEpic, .. TierLabels];
+    public static IReadOnlyList<string> GroupOrder { get; } = [PvpRare, PvpEpic, .. TierLabels, NewInForever];
 
     static readonly Dictionary<string, (string Group, int ClassId)> TierByName =
         Tiers.SelectMany(c => c.Sets.Select((name, i) => (name, group: TierLabels[i], c.ClassId)))
@@ -54,8 +54,9 @@ public static class NotableSets
         return null;
     }
 
-    // Data-mined sets list after the tiers (SetCatalog.DataMined).
-    public const string DataMined = "Data-mined";
+    // Data-mined sets (ItemSetInfo.DataMined), after the tiers. Season of Discovery's are left out
+    // (SetCatalog), so the rest came with Forever.
+    public const string NewInForever = "New in Forever (data-mined)";
 
     // Words that only one class's tier set names use, for data-mined sets such as "Arcanist Insight".
     // Plain English words from those names (Valor, Might, Wrath, Faith, Elements, Genesis, Enigma,

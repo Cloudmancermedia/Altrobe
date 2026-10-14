@@ -2,7 +2,7 @@
 // backend). Ports ItemCatalog.Search and SetCatalog.Search: the catalogs come already ordered (by
 // name, dev and NPC entries last), so a search keeps their order. search.test.ts runs the server's
 // test cases against these.
-import type { ItemSearchResult, ItemSetResult } from './types'
+import type { ClassSource, ItemSearchResult, ItemSetResult } from './types'
 
 /** An ItemSummary as catalog.json and sets.json hold it; the search API sends the same fields. */
 export interface BundleItem extends ItemSearchResult {
@@ -24,6 +24,9 @@ export interface BundleSet {
   unnamed?: boolean
   quality?: number | null
   classMask?: number
+  dataMined?: boolean
+  armor?: string | null
+  classSource?: ClassSource | null
 }
 
 export interface ItemQuery {
@@ -89,6 +92,7 @@ export function searchSetsIn(sets: BundleSet[], query: SetQuery): { total: numbe
 export function toSetResult(s: BundleSet): ItemSetResult {
   return {
     setId: s.setId, name: s.name, internal: s.internal, unnamed: s.unnamed, quality: s.quality,
+    dataMined: s.dataMined, armor: s.armor, classSource: s.classSource,
     pieces: s.pieces.map((p) => ({ slot: p.slot, itemId: p.item.itemId, name: p.item.name, quality: p.item.quality, iconFileDataId: p.item.iconFileDataId, unnamed: p.item.unnamed })),
     skipped: s.skipped,
   }

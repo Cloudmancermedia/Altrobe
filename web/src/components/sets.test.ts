@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { ItemSetResult } from '../api/types'
-import { DEFAULT_SET_PREFS, readSetPrefs, setQuality, withoutNotable, writeSetPrefs } from './sets'
+import { DEFAULT_SET_PREFS, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs } from './sets'
 
 const set = (setId: number): ItemSetResult => ({ setId, name: `Set ${setId}`, internal: false, unnamed: false, pieces: [], skipped: [] })
 
@@ -53,5 +53,19 @@ describe('setQuality', () => {
   })
   test('falls back to the best piece without one', () => {
     expect(setQuality({ ...set(1), pieces: [piece(2), piece(3)] })).toBe(3)
+  })
+})
+
+describe('data-mined sets', () => {
+  test('show the set ID, armor type, and a note when the class came from armor type', () => {
+    const base = { ...set(1600), pieces: [{ slot: 'chest', itemId: 1, name: 'x', quality: -1, iconFileDataId: 0 }], unnamed: true }
+    expect(setDetails({ ...base, dataMined: true, armor: 'cloth', classSource: 'armor' })).toBe('1 pieces · set 1600 · cloth · Class by armor type')
+    expect(setDetails({ ...base, dataMined: true, armor: 'leather', classSource: 'name' })).toBe('1 pieces · set 1600 · leather')
+    expect(setDetails({ ...base, dataMined: true, armor: null, classSource: 'armor' })).toBe('1 pieces · set 1600 · no armor')
+  })
+
+  test('other sets keep their details', () => {
+    expect(setDetails({ ...set(218), unnamed: true })).toBe('0 pieces · set 218 · pieces unnamed in this build')
+    expect(setDetails({ ...set(102), internal: true })).toBe('0 pieces · set 102 · dev set')
   })
 })

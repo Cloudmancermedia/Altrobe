@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Definitions\*.dbd;Definitions\manifest.json" LogicalName="Definitions/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Catalog\data-mined-classes.json" LogicalName="Catalog/data-mined-classes.json" />
+    <EmbeddedResource Include="Catalog\data-mined-classes.json;Catalog\season-of-discovery-sets.json" LogicalName="Catalog/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,3 +29,22 @@ test('loads a character, equips an item and a set, with no install picker or pro
   await settled(page, 1)
   expect(await call(page, (h) => h.attached(0).length)).toBeGreaterThan(0)
 })
+
+test('a Human Mage sees new-in-Forever sets after the classic groups, and one dresses the character', async ({ page }) => {
+  await openApp(page)
+  await call(page, (h) => h.commands.set_character(1, 0))
+  await settled(page, 1)
+  await page.getByRole('region', { name: 'Find items' }).getByRole('radio', { name: 'sets' }).click()
+  await page.locator('.search-controls').getByLabel('Class').selectOption({ label: 'Mage' })
+
+  const headings = page.locator('h3.result-group')
+  await expect(headings.filter({ hasText: 'New in Forever (data-mined)' })).toHaveCount(1)
+  const names = await headings.allTextContents()
+  expect(names.indexOf('New in Forever (data-mined)')).toBe(names.indexOf('Tier 3') + 1)
+
+  const before = await call(page, (h) => JSON.stringify(h.commands.get_look()))
+  const first = page.locator('h3.result-group:text-is("New in Forever (data-mined)") + ul.results li button').first()
+  await expect(first).toContainText(/cloth|no armor/)
+  await first.click()
+  await settled(page, 1, (h: Hooks, look: string) => JSON.stringify(h.commands.get_look()) !== look, before)
+})
