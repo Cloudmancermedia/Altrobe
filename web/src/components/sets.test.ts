@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { ItemSetResult } from '../api/types'
-import { DEFAULT_SET_PREFS, groupHeading, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs } from './sets'
+import { DEFAULT_SET_PREFS, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs } from './sets'
 
 const set = (setId: number): ItemSetResult => ({ setId, name: `Set ${setId}`, internal: false, unnamed: false, pieces: [], skipped: [] })
 
@@ -57,12 +57,6 @@ describe('setQuality', () => {
 })
 
 describe('data-mined sets', () => {
-  test('show under their own headings; the other groups keep their names', () => {
-    expect(groupHeading('New in Forever (data-mined)')).toBe('New in Forever (data-mined)')
-    expect(groupHeading('Season of Discovery')).toBe('Season of Discovery sets')
-    expect(groupHeading('Tier 2')).toBe('Tier 2')
-  })
-
   test('show the set ID, armor type, and a note when the class came from armor type', () => {
     const base = { ...set(1600), pieces: [{ slot: 'chest', itemId: 1, name: 'x', quality: -1, iconFileDataId: 0 }], unnamed: true }
     expect(setDetails({ ...base, dataMined: true, armor: 'cloth', classSource: 'armor' })).toBe('1 pieces · set 1600 · cloth · Class by armor type')

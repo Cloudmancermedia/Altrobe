@@ -15,8 +15,7 @@ public sealed record SkippedPiece(int ItemId, string Reason);
 // Quality: the best piece quality; for an unnamed tier set, its tier's (NotableSets.TierQuality); else null.
 // DataMined: every piece unnamed and at least half of them a look no named item has (SetCatalog). For
 // these only: Armor, the pieces' armor type; ClassMask from ClassSource, "name" (NotableSets.ClassByName),
-// "curated" (data-mined-classes.json) or "armor" (NotableSets.ArmorClasses; -1 with no armor piece); Origin,
-// "season-of-discovery" when Classic Era has the set (classic-era-sets.json), else "forever".
+// "curated" (data-mined-classes.json) or "armor" (NotableSets.ArmorClasses; -1 with no armor piece).
 public sealed record ItemSetInfo(int SetId, string Name, IReadOnlyList<SetPiece> Pieces, IReadOnlyList<SkippedPiece> Skipped, bool Internal, bool Unnamed = false)
 {
     public int ClassMask { get; init; } = -1;
@@ -24,7 +23,6 @@ public sealed record ItemSetInfo(int SetId, string Name, IReadOnlyList<SetPiece>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool DataMined { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Armor { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ClassSource { get; init; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Origin { get; init; }
 }
 
 // IncludeInternal: also list developer sets and match developer pieces. An exact set ID finds one either way.
@@ -41,17 +39,18 @@ public sealed class SetCatalog
     readonly IReadOnlyList<ItemSetInfo> _sets;
     readonly Dictionary<int, ItemSetInfo> _byId;
 
-    // curated: set ID -> class IDs for data-mined sets the name doesn't place. eraSets: the set IDs Classic
-    // Era has, which puts a data-mined set in Season of Discovery. Both default to the shipped files.
-    public SetCatalog(ITables tables, ItemCatalog items, IReadOnlyDictionary<int, int[]>? curated = null, IReadOnlySet<int>? eraSets = null)
+    // curated: set ID -> class IDs for data-mined sets the name doesn't place. sodSets: Season of Discovery's
+    // set IDs, which are left out: Altrobe covers Classic and Forever. Both default to the shipped files
+    // (season-of-discovery-sets.json comes from the set-ids command).
+    public SetCatalog(ITables tables, ItemCatalog items, IReadOnlyDictionary<int, int[]>? curated = null, IReadOnlySet<int>? sodSets = null)
     {
         curated ??= Resource<Dictionary<int, int[]>>("Catalog/data-mined-classes.json");
-        eraSets ??= Resource<HashSet<int>>("Catalog/classic-era-sets.json");
+        sodSets ??= Resource<HashSet<int>>("Catalog/season-of-discovery-sets.json");
         var namedLooks = items.All.Where(i => !i.Unnamed).Select(i => i.DisplayInfoId).ToHashSet();
         _sets = tables.Get(T.ItemSet)
             .Select(r => Build(r, items))
-            .Where(s => s.Pieces.Count > 0)
-            .Select(s => IsDataMined(s, namedLooks) ? WithDataMinedClass(s, curated) with { Origin = eraSets.Contains(s.SetId) ? "season-of-discovery" : "forever" } : s)
+            .Where(s => s.Pieces.Count > 0 && !sodSets.Contains(s.SetId))
+            .Select(s => IsDataMined(s, namedLooks) ? WithDataMinedClass(s, curated) : s)
             .OrderBy(s => s.Internal)
             .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.SetId)
@@ -67,8 +66,8 @@ public sealed class SetCatalog
     public ItemSetInfo? Get(int setId) => _byId.GetValueOrDefault(setId);
 
     // Notable sets (NotableSets) for a faction ("alliance" or "horde") and the given classes, grouped
-    // PvP (rare), PvP (epic), tiers 0 to 3, then data-mined sets no other group holds, new in Forever before
-    // Season of Discovery's; empty groups are left out. A named set wins over an
+    // PvP (rare), PvP (epic), tiers 0 to 3, then data-mined sets no other group holds (new in Forever);
+    // empty groups are left out. A named set wins over an
     // unnamed copy of the same name, and a set repeating another's name and classes is dropped.
     public IReadOnlyList<SetGroup> Notable(string? faction, IReadOnlyCollection<int> classIds)
     {
@@ -79,7 +78,7 @@ public sealed class SetCatalog
             .Where(x => x.cls is { } c && (c.Faction == null || c.Faction == faction) && (c.ClassMask == -1 || (c.ClassMask & wanted) != 0))
             .Select(x => (x.set, group: x.cls!.Value.Group, mask: x.cls.Value.ClassMask))
             .Concat(_sets.Where(s => s.DataMined && NotableSets.Classify(s) == null && (s.ClassMask == -1 || (s.ClassMask & wanted) != 0))
-                .Select(s => (set: s, group: s.Origin == "season-of-discovery" ? NotableSets.SeasonOfDiscovery : NotableSets.NewInForever, mask: s.ClassMask)))
+                .Select(s => (set: s, group: NotableSets.NewInForever, mask: s.ClassMask)))
             .GroupBy(x => (x.group, name: x.set.Name.ToLowerInvariant(), x.mask))
             .Select(g => g.OrderBy(x => x.set.Unnamed).ThenBy(x => x.set.SetId).First())
             .ToList();

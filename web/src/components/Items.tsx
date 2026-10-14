@@ -9,7 +9,7 @@ import type { Look } from '../look/look'
 import { rememberItems, setNotices, useStore } from '../store'
 import { otherSlots, SLOT_ORDER, type SlotName } from '../viewer/dress'
 import { SEARCH_HINT, searchText } from './search-query'
-import { groupHeading, readSetPrefs, setDetails, setQuality, type SetPrefs, withoutNotable, writeSetPrefs } from './sets'
+import { readSetPrefs, setDetails, setQuality, type SetPrefs, withoutNotable, writeSetPrefs } from './sets'
 
 const PAGE = 50
 
@@ -101,7 +101,7 @@ function SetSearch({ build }: { build: string }) {
       <div aria-live="polite" aria-busy={state === 'loading'}>
         {browsing && groups.map((g) => (
           <div key={g.group}>
-            <h3 className="result-group">{groupHeading(g.group)}</h3>
+            <h3 className="result-group">{g.group}</h3>
             <SetList build={build} sets={g.sets} onPick={equip} />
           </div>
         ))}

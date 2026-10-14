@@ -187,15 +187,10 @@ export interface SetPiece {
   iconFileDataId: number
   unnamed?: boolean
 }
-/**
- * One heading of notable sets (/sets/notable): "PvP (rare)", "PvP (epic)", "Tier 0" ... "Tier 3", then the
- * data-mined sets: "New in Forever (data-mined)" and "Season of Discovery".
- */
+/** One heading of notable sets (/sets/notable): "PvP (rare)", "PvP (epic)", "Tier 0" ... "Tier 3", "New in Forever (data-mined)". */
 export interface SetGroup { group: string; sets: ItemSetResult[] }
 
 export type ClassSource = 'name' | 'curated' | 'armor'
-/** Where a data-mined set comes from: Classic Era has it (Season of Discovery), or it doesn't (Forever). */
-export type SetOrigin = 'season-of-discovery' | 'forever'
 
 export interface ItemSetResult {
   setId: number
@@ -211,7 +206,6 @@ export interface ItemSetResult {
   armor?: string | null
   /** Where a data-mined set's class came from: its name, the curated list, or its armor type. */
   classSource?: ClassSource | null
-  origin?: SetOrigin | null
   /** Pieces that can be shown, each with the look slot it goes in. */
   pieces: SetPiece[]
   /** Pieces left out: not worn, no visual, or their slot is taken. */

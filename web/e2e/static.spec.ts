@@ -29,7 +29,7 @@ test('loads a character, equips an item and a set, with no install picker or pro
   expect(await call(page, (h) => h.attached(0).length)).toBeGreaterThan(0)
 })
 
-test('a Human Mage sees new-in-Forever sets after the classic groups and Season of Discovery last; one dresses the character', async ({ page }) => {
+test('a Human Mage sees new-in-Forever sets after the classic groups, and one dresses the character', async ({ page }) => {
   await openApp(page)
   await call(page, (h) => h.commands.set_character(1, 0))
   await settled(page, 1)
@@ -37,10 +37,9 @@ test('a Human Mage sees new-in-Forever sets after the classic groups and Season 
   await page.locator('.search-controls').getByLabel('Class').selectOption({ label: 'Mage' })
 
   const headings = page.locator('h3.result-group')
-  await expect(headings.filter({ hasText: 'Season of Discovery sets' })).toHaveCount(1)
+  await expect(headings.filter({ hasText: 'New in Forever (data-mined)' })).toHaveCount(1)
   const names = await headings.allTextContents()
   expect(names.indexOf('New in Forever (data-mined)')).toBe(names.indexOf('Tier 3') + 1)
-  expect(names.indexOf('Season of Discovery sets')).toBe(names.indexOf('New in Forever (data-mined)') + 1)
 
   const before = await call(page, (h) => JSON.stringify(h.commands.get_look()))
   const first = page.locator('h3.result-group:text-is("New in Forever (data-mined)") + ul.results li button').first()

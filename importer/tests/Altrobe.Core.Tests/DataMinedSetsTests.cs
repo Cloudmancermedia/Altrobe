@@ -34,11 +34,11 @@ public class DataMinedSetsTests
             return this;
         }
 
-        // eraSets: set IDs Classic Era has (Season of Discovery's data-mined sets are among them).
-        public SetCatalog Build(IReadOnlyDictionary<int, int[]>? curated = null, IReadOnlySet<int>? eraSets = null)
+        // sodSets: Season of Discovery's set IDs, which are left out.
+        public SetCatalog Build(IReadOnlyDictionary<int, int[]>? curated = null, IReadOnlySet<int>? sodSets = null)
         {
             var items = new ItemCatalog(_t);
-            return new SetCatalog(_t, items, curated ?? new Dictionary<int, int[]>(), eraSets ?? new HashSet<int>());
+            return new SetCatalog(_t, items, curated ?? new Dictionary<int, int[]>(), sodSets ?? new HashSet<int>());
         }
     }
 
@@ -152,34 +152,37 @@ public class DataMinedSetsTests
     }
 
     [Fact]
-    public void ADataMinedSetClassicEraHasIsFromSeasonOfDiscoveryAndAnyOtherIsNewInForever()
+    public void SeasonOfDiscoverySetsAreLeftOutEverywhere()
     {
         var sets = Named()
-            .Item(10, null, 5, 100, Cloth).Set(1704, "Arcanist Insight", 10)
-            .Item(20, null, 5, 101, Cloth).Set(2098, "Manaflare Regalia", 20)
-            .Build(eraSets: new HashSet<int> { 1704, 1 });
-        Assert.Equal("season-of-discovery", sets.Get(1704)!.Origin);
-        Assert.Equal("forever", sets.Get(2098)!.Origin);
+            .Item(10, null, 5, 100, Cloth).Set(1704, "Arcanist Insight", 10)      // data-mined, Season of Discovery
+            .Item(20, null, 5, 900, Plate).Set(1682, "Battlegear of Valor", 20)    // an unnamed copy, Season of Discovery
+            .Item(30, null, 5, 101, Cloth).Set(2098, "Manaflare Regalia", 30)     // Forever
+            .Build(sodSets: new HashSet<int> { 1704, 1682 });
+        Assert.Null(sets.Get(1704));
+        Assert.Null(sets.Get(1682));
+        Assert.True(sets.Get(2098)!.DataMined);
+        Assert.DoesNotContain(sets.Search(new SetQuery(IncludeInternal: true)).Sets, x => x.SetId is 1704 or 1682);
+        Assert.DoesNotContain(10, sets.PieceItemIds());
+        Assert.DoesNotContain(sets.Notable("alliance", [8]).SelectMany(g => g.Sets), x => x.SetId == 1704);
     }
 
     [Fact]
-    public void NotableListsNewInForeverAfterTheTiersAndSeasonOfDiscoveryLastInClassThenNameOrder()
+    public void NotableListsNewInForeverSetsAfterTheTiersInClassThenNameOrder()
     {
         var sets = Named()
             .Item(10, null, 5, 100, Cloth).Set(2100, "Whispering Garb", 10)        // cloth: Priest, Mage, Warlock
-            .Item(20, null, 5, 101, Cloth).Set(1704, "Arcanist Insight", 20)       // Mage by name; Season of Discovery
+            .Item(20, null, 5, 101, Cloth).Set(2101, "Arcanist Insight", 20)       // Mage by name
             .Item(30, null, 5, 102, Plate).Set(2102, "Whispering Plate", 30)       // Warrior, Paladin
             .Item(40, null, 13, 103).Set(2103, "Whispering Blades", 40)            // no armor: every class
-            .Item(50, null, 5, 104, Cloth).Set(2104, "Battlegear of Wrath", 50)    // a tier name: Tier 2, in no data-mined group
-            .Build(eraSets: new HashSet<int> { 1704 });
+            .Item(50, null, 5, 104, Cloth).Set(2104, "Battlegear of Wrath", 50)    // a tier name: Tier 2, not data-mined's group
+            .Build();
         var mage = sets.Notable("alliance", [8]);
-        Assert.Equal([NotableSets.NewInForever, NotableSets.SeasonOfDiscovery], mage.Select(g => g.Group).TakeLast(2));
-        // Class order goes by the first class in the mask: cloth (Priest first), then every class.
-        Assert.Equal(["Whispering Garb", "Whispering Blades"], mage[^2].Sets.Select(x => x.Name));
-        Assert.Equal(["Arcanist Insight"], mage[^1].Sets.Select(x => x.Name));
-        var warrior = sets.Notable("alliance", [1]);
-        Assert.Equal(["Whispering Plate", "Whispering Blades"], warrior.Single(g => g.Group == NotableSets.NewInForever).Sets.Select(x => x.Name));
-        Assert.DoesNotContain(warrior, g => g.Group == NotableSets.SeasonOfDiscovery);
-        Assert.Equal([NotableSets.NewInForever, NotableSets.SeasonOfDiscovery], NotableSets.GroupOrder.TakeLast(2));
+        Assert.Equal(NotableSets.NewInForever, mage[^1].Group);
+        // Class order goes by the first class in the mask: cloth (Priest first) before Mage only, every class last.
+        Assert.Equal(["Whispering Garb", "Arcanist Insight", "Whispering Blades"], mage[^1].Sets.Select(x => x.Name));
+        var warrior = sets.Notable("alliance", [1]).Single(g => g.Group == NotableSets.NewInForever);
+        Assert.Equal(["Whispering Plate", "Whispering Blades"], warrior.Sets.Select(x => x.Name));
+        Assert.Equal(NotableSets.NewInForever, NotableSets.GroupOrder[^1]);
     }
 }

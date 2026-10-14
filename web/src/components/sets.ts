@@ -39,11 +39,6 @@ export function setQuality(s: ItemSetResult): number {
   return s.quality ?? Math.max(...s.pieces.map((p) => p.quality))
 }
 
-/** The heading over a notable group: the server's group name, with "sets" after Season of Discovery. */
-export function groupHeading(group: string): string {
-  return group === 'Season of Discovery' ? 'Season of Discovery sets' : group
-}
-
 /** The line under a set's name. A data-mined set shows its armor type, and says when its class was guessed from it. */
 export function setDetails(s: ItemSetResult): string {
   const parts = [`${s.pieces.length} pieces`, `set ${s.setId}`]

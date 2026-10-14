@@ -34,7 +34,8 @@ public class NotableSetsTests
             R(("ID", 341), ("Name_lang", "Champion's Regalia"), ("ItemID", new[] { 43 })),
             R(("ID", 1619), ("Name_lang", "Knight-Lieutenant's Plate"), ("ItemID", new[] { 44 })),
             R(("ID", 500), ("Name_lang", "Lorekeeper's Garb"), ("ItemID", new[] { 45 })));
-        return new SetCatalog(t, new ItemCatalog(t));
+        // No Season of Discovery list: 1619 is a made-up set here, whatever the shipped list holds.
+        return new SetCatalog(t, new ItemCatalog(t), sodSets: new HashSet<int>());
     }
 
     static void Visual(InMemoryTables t, int id, int inv) =>
