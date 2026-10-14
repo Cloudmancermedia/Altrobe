@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { footerLinks } from './footer'
+import { copyrightLine, footerLinks } from './footer'
 
 const LOCAL_APP = 'Download the local app (works on Apple silicon Macs; Windows needs beta testers)'
 
@@ -20,5 +20,10 @@ describe('footerLinks', () => {
   test('links the licence notices the build serves beside the app', () => {
     const notices = footerLinks({ installs: false, session: false, assistant: false }).find((l) => l.label === 'Licenses')
     expect(notices?.href).toBe('/THIRD_PARTY_NOTICES.txt')
+  })
+
+  test('the copyright line carries the current year, so it never needs a yearly edit', () => {
+    expect(copyrightLine(new Date('2026-10-14T12:00:00Z'))).toBe('© 2026 Ryan Williams')
+    expect(copyrightLine(new Date('2031-03-01T12:00:00Z'))).toBe('© 2026–2031 Ryan Williams')
   })
 })

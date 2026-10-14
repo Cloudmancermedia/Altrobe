@@ -18,3 +18,10 @@ export function footerLinks(features: Features): { label: string; href: string }
     { label: 'Item names: cmangos', href: 'https://github.com/cmangos/classic-db' },
   ]
 }
+
+/** The site's copyright line, from the first year to the visitor's current one (the holder in LICENSE). */
+export function copyrightLine(now = new Date()): string {
+  const first = 2026
+  const year = now.getFullYear()
+  return `© ${year > first ? `${first}–${year}` : first} Ryan Williams`
+}
