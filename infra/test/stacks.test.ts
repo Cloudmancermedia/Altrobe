@@ -194,7 +194,7 @@ describe('AltrobeSite', () => {
     site.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: Match.objectLike({
         Aliases: ['assets.altrobe.com'],
-        CacheBehaviors: [Match.objectLike({ PathPattern: '*/current.json' })],
+        CacheBehaviors: [Match.objectLike({ PathPattern: '*/current.json' }), Match.objectLike({ PathPattern: '*.json' })],
       }),
     })
   })
@@ -208,6 +208,18 @@ describe('AltrobeSite', () => {
     })
     cacheControl('public, max-age=31536000, immutable')
     cacheControl('public, max-age=60')
+  })
+
+  test("browsers recheck a build's JSON after five minutes, since a rebake can rewrite it in place", () => {
+    const { site } = stacks()
+    const policies = site.findResources('AWS::CloudFront::ResponseHeadersPolicy')
+    const [assets] = Object.values(site.findResources('AWS::CloudFront::Distribution'))
+      .filter((d) => (d.Properties.DistributionConfig.Aliases as string[]).some((alias) => alias === 'assets.altrobe.com'))
+    const json = assets.Properties.DistributionConfig.CacheBehaviors.find((b: { PathPattern: string }) => b.PathPattern === '*.json')
+    const header = policies[json.ResponseHeadersPolicyId.Ref].Properties.ResponseHeadersPolicyConfig
+    expect(header.CustomHeadersConfig.Items[0]).toEqual({ Header: 'Cache-Control', Value: 'public, max-age=300', Override: true })
+    // Same CORS as the rest of the bundle.
+    expect(header.CorsConfig.AccessControlAllowOrigins.Items).toEqual(['https://altrobe.com'])
   })
 
   test('browsers keep the web app\'s hashed files for a year and recheck index.html every time', () => {

@@ -113,6 +113,8 @@ order, it:
    ([deployment.md](deployment.md#publishing-a-bundle) says why).
 3. Uploads `{product}/current.json`, so the site moves to the build only once every file is there.
 4. Invalidates `/{product}/current.json` in CloudFront.
+5. When the build was already live (a bake change republishing the same build), invalidates
+   `/{product}/{build}/*` too, since its JSON was rewritten under the same paths.
 
 Rolling back is uploading the previous build's `current.json` and invalidating it; that build's files are still in the bucket.
 

@@ -43,23 +43,22 @@ const walk = (dir) => {
 }
 try { walk(buildDir) } catch (e) { fail(`Could not read the build folder ${buildDir}: ${e.message}`) }
 
-let plan
-try {
-  plan = publishPlan({ bundleDir: opts.bundle, product: opts.product, bucket: opts.bucket, distribution: opts.distribution, profile: opts.profile, current, files })
-} catch (e) {
-  fail(e.message)
-}
 // Reads only, so --dry-run runs these too. A failed read returns null.
 const profileArgs = opts.profile ? ['--profile', opts.profile] : []
 const awsRead = (args) => {
   const r = spawnSync('aws', [...args, ...profileArgs], { encoding: 'utf8' })
   return r.status === 0 ? r.stdout : null
 }
-// The build live before this publish: kept by --prune, so a rollback is one current.json away.
-let previous = null
-if (opts.prune) {
-  const text = awsRead(['s3', 'cp', `s3://${opts.bucket}/${opts.product}/current.json`, '-'])
-  previous = text ? JSON.parse(text).build : null
+// The build live before this publish: kept by --prune, so a rollback is one current.json away. When it
+// is this build, the publish rewrites files CloudFront may hold, so the plan invalidates the build.
+const liveText = awsRead(['s3', 'cp', `s3://${opts.bucket}/${opts.product}/current.json`, '-'])
+const previous = liveText ? JSON.parse(liveText).build : null
+
+let plan
+try {
+  plan = publishPlan({ bundleDir: opts.bundle, product: opts.product, bucket: opts.bucket, distribution: opts.distribution, profile: opts.profile, current, files, republish: previous === current.build })
+} catch (e) {
+  fail(e.message)
 }
 
 console.log(`Publishing ${opts.product} ${current.build}: ${files.length} files, ${plan.filter((s) => s.kind === 'gzip').length} gzipped.`)
@@ -81,7 +80,7 @@ try {
     if (listed === null) fail(`Could not list s3://${opts.bucket}/${opts.product}/ to prune old builds.`)
     const folders = (JSON.parse(listed) ?? []).map((p) => p.slice(opts.product.length + 1))
     const builds = buildsToPrune({ folders, current: current.build, previous })
-    console.log(previous ? `Keeping ${current.build} and ${previous}; pruning ${builds.length ? builds.join(', ') : 'nothing'}.` : 'No distinct previous build, so nothing is pruned.')
+    console.log(previous && previous !== current.build ? `Keeping ${current.build} and ${previous}; pruning ${builds.length ? builds.join(', ') : 'nothing'}.` : 'No distinct previous build, so nothing is pruned.')
     for (const step of prunePlan({ bucket: opts.bucket, product: opts.product, builds, profile: opts.profile })) {
       console.log(`aws ${step.args.join(' ')}`)
       if (!opts.dryRun) run('aws', step.args)

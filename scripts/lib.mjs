@@ -253,7 +253,9 @@ export const contentType = (path) => CONTENT_TYPES[path.slice(path.lastIndexOf('
  * rewrite `{product}/current.json` and invalidate it, so the site switches only once every file is up.
  * `files` are the build folder's files (`path` relative to it, `size` in bytes).
  */
-export function publishPlan({ bundleDir, product, bucket, distribution, profile, current, files }) {
+// republish: the build is already live, so its files may be cached under the same paths; the plan ends
+// by invalidating the whole build in CloudFront (a wildcard is only allowed at the end of a path).
+export function publishPlan({ bundleDir, product, bucket, distribution, profile, current, files, republish = false }) {
   if (current.path !== `${current.build}/` || current.build.includes('/') || current.build.includes('..')) {
     throw new Error(`current.json names folder "${current.path}", not the build "${current.build}/"`)
   }
@@ -269,6 +271,7 @@ export function publishPlan({ bundleDir, product, bucket, distribution, profile,
     })),
     { kind: 'current', args: ['s3', 'cp', join(bundleDir, product, 'current.json'), `s3://${bucket}/${product}/current.json`, '--content-type', 'application/json', ...tail] },
     { kind: 'invalidate', args: ['cloudfront', 'create-invalidation', '--distribution-id', distribution, '--paths', `/${product}/current.json`, ...tail] },
+    ...(republish ? [{ kind: 'invalidate-build', args: ['cloudfront', 'create-invalidation', '--distribution-id', distribution, '--paths', `/${product}/${current.build}/*`, ...tail] }] : []),
   ]
 }
 

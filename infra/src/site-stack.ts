@@ -99,8 +99,10 @@ export class SiteStack extends Stack {
       comment: `${apex} web app`,
     })
 
-    // Builds are immutable under {product}/{build}/; only {product}/current.json moves when a new build
-    // is published, so it is cached for a minute and everything else for a year.
+    // Models and textures under {product}/{build}/v{N}/ never change, so they are cached for a year.
+    // {product}/current.json moves when a new build is published, so it is cached for a minute. A build's
+    // JSON (catalog, sets, items) can be rewritten when a bake change republishes the same build: CloudFront
+    // keeps it until the publish step invalidates the build, and browsers recheck it after five minutes.
     const buildCache = new CachePolicy(this, 'BuildCache', {
       defaultTtl: Duration.days(365), minTtl: Duration.days(1), maxTtl: Duration.days(365),
       enableAcceptEncodingGzip: true, enableAcceptEncodingBrotli: true,
@@ -129,6 +131,7 @@ export class SiteStack extends Stack {
     })
     const assetHeaders = new ResponseHeadersPolicy(this, 'AssetHeaders', assetHeaderConfig('public, max-age=31536000, immutable'))
     const pointerHeaders = new ResponseHeadersPolicy(this, 'PointerHeaders', assetHeaderConfig('public, max-age=60'))
+    const dataHeaders = new ResponseHeadersPolicy(this, 'DataHeaders', assetHeaderConfig('public, max-age=300'))
     const bundleOrigin = S3BucketOrigin.withOriginAccessControl(bundleBucket)
     const assetDistribution = new Distribution(this, 'AssetDistribution', {
       domainNames: [assets],
@@ -149,6 +152,14 @@ export class SiteStack extends Stack {
           allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
           cachePolicy: pointerCache,
           responseHeadersPolicy: pointerHeaders,
+        },
+        '*.json': {
+          origin: bundleOrigin,
+          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          compress: true,
+          allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+          cachePolicy: buildCache,
+          responseHeadersPolicy: dataHeaders,
         },
       },
       comment: `${assets} game bundles`,

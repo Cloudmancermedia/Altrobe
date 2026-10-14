@@ -150,6 +150,15 @@ test('publishPlan syncs the build, gzips files CloudFront will not compress, the
   assert.deepEqual(invalidate.args, ['cloudfront', 'create-invalidation', '--distribution-id', 'E123', '--paths', '/wow_classic_beta/current.json'])
 })
 
+test('republishing the live build also clears that build from CloudFront, after the switch', () => {
+  const plan = publishPlan({
+    bundleDir: '/b', product: 'wow_classic_beta', bucket: 'x', distribution: 'E1', republish: true,
+    current: { build: '1.60.1.70338', path: '1.60.1.70338/' }, files: [],
+  })
+  assert.deepEqual(plan.map((s) => s.kind), ['sync', 'current', 'invalidate', 'invalidate-build'])
+  assert.deepEqual(plan.at(-1).args, ['cloudfront', 'create-invalidation', '--distribution-id', 'E1', '--paths', '/wow_classic_beta/1.60.1.70338/*'])
+})
+
 test('publishPlan passes a profile to every command and refuses a current.json that names another folder', () => {
   const opts = { bundleDir: '/b', product: 'p', bucket: 'x', distribution: 'E1', profile: 'example', current: { build: '1', path: '1/' }, files: [] }
   assert.ok(publishPlan(opts).every((s) => s.args.slice(-2).join(' ') === '--profile example'))
