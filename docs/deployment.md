@@ -12,7 +12,7 @@ All in one AWS account, in us-east-1 (CloudFront needs its certificate there).
 | --- | --- |
 | `AltrobeDns` | the `altrobe.com` public hosted zone; outputs its nameservers |
 | `AltrobeCi` | GitHub's OIDC provider and three roles: `altrobe-github-diff` (read only, any branch or pull request in the repository), `altrobe-github-deploy` (only jobs in the `production` environment) and `altrobe-github-publish` (workflows on `main`, no approval; the bundle bucket and the asset distribution only) |
-| `AltrobeSite` | the certificate for `altrobe.com`, `www.altrobe.com` and `assets.altrobe.com`; a private bucket and CloudFront distribution for the web app (www redirects to the apex); a private bucket and distribution for the game bundles at `assets.altrobe.com`; DNS records; the web app's files |
+| `AltrobeSite` | the certificate for `altrobe.com`, `www.altrobe.com` and `assets.altrobe.com`; a private bucket and CloudFront distribution for the web app (www redirects to the apex; browsers keep the hashed files under `static/` for a year and recheck `index.html` on every visit); a private bucket and distribution for the game bundles at `assets.altrobe.com`; DNS records; the web app's files |
 | `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. It exists only when an alert address is set; see below. |
 
 All three roles trust the repository's immutable OIDC subject (the token's `sub` claim, such as

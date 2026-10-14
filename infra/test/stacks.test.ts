@@ -210,6 +210,21 @@ describe('AltrobeSite', () => {
     cacheControl('public, max-age=60')
   })
 
+  test('browsers keep the web app\'s hashed files for a year and recheck index.html every time', () => {
+    const { site } = stacks()
+    const policies = site.findResources('AWS::CloudFront::ResponseHeadersPolicy')
+    const cacheControlOf = (ref: { Ref: string } | undefined) =>
+      ref && policies[ref.Ref]?.Properties.ResponseHeadersPolicyConfig.CustomHeadersConfig?.Items
+        .find((h: { Header: string }) => h.Header === 'Cache-Control')?.Value
+    const [app] = Object.values(site.findResources('AWS::CloudFront::Distribution'))
+      .filter((d) => JSON.stringify(d.Properties.DistributionConfig.Comment).includes('web app'))
+    const config = app.Properties.DistributionConfig
+    expect(cacheControlOf(config.DefaultCacheBehavior.ResponseHeadersPolicyId)).toBe('no-cache')
+    const statics = config.CacheBehaviors.find((b: { PathPattern: string }) => b.PathPattern === 'static/*')
+    expect(statics).toBeDefined()
+    expect(cacheControlOf(statics.ResponseHeadersPolicyId)).toBe('public, max-age=31536000, immutable')
+  })
+
   test('apex, www and assets point at CloudFront over IPv4 and IPv6', () => {
     const { site } = stacks()
     for (const type of ['A', 'AAAA'])
