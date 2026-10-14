@@ -204,6 +204,13 @@ export function dress(look: DressLook, state: DressState, resolvedById: Map<numb
       geosetChanges.push({ group, geoset: group * 100 + pick.value, fromSlot: pick.slot })
     }
   }
+  // A dress (a robe from the chest, or a kilt from the legs) hides the tabard's lower flap: the client
+  // shows the tabard geoset only without one (wowdev.wiki DB/ItemDisplayInfo/GeosRenderPrep).
+  const trousers = geosetChanges.find((c) => c.group === CG.TROUSERS)
+  if (trousers && trousers.geoset >= CG.TROUSERS * 100 + 2 && geosetChanges.some((c) => c.group === CG.TABARD)) {
+    clearGroup(show, CG.TABARD)
+    geosetChanges.splice(geosetChanges.findIndex((c) => c.group === CG.TABARD), 1)
+  }
   // Helmet hides (hair, ears, facial features). HideGeosetGroup values are group numbers, already
   // filtered by race and sex in the resolver. A hide with option flags spares its group when the
   // customization option filling that group has one of them: Helm of Might keeps the Undead jaw.
