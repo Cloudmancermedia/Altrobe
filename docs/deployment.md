@@ -144,3 +144,26 @@ it can't assume the CDK roles or touch the web app's distribution.
 
 CloudFront compresses only files between 1 KB and 10 MB. The publish step must gzip larger files
 itself (such as `catalog.json` and big models) and upload them with `Content-Encoding: gzip`.
+
+## Switching products
+
+The site shows one product, set by the `BUNDLE_PRODUCT` repository variable (unset means
+`wow_classic_beta`, Forever's beta). `publish.yml` bakes and publishes that product, and `deploy.yml`
+builds the web app to read it (`VITE_ALTROBE_PRODUCT`).
+
+When Forever launches, its beta closes and the game moves to a public product, whose name we only
+learn on the day. `publish.yml`'s `launch-watch` job checks every six hours
+(`scripts/find-forever-launch.mjs`). When a public product, one named `wow_*` that isn't a beta, PTR
+or China product, reaches Forever's 1.60 builds, it opens the issue "Forever is live on a public
+product". To switch:
+
+1. Set the variable to the product the issue names:
+   `gh variable set BUNDLE_PRODUCT --repo Cloudmancermedia/Altrobe --body <product>`.
+2. Run "Publish bundle" from the Actions tab and wait for it to finish. It bakes the new product
+   into `{product}/` on the bundle bucket (about 25 minutes), and leaves the beta's folder alone.
+3. Run "Deploy" from the Actions tab on `main` and approve it. The web app then reads the new
+   product.
+4. Open altrobe.com: the header shows the new product and build. Close the issue.
+
+Publish before deploying: a web app that points at a product with nothing published shows "Altrobe
+could not load its game data".
