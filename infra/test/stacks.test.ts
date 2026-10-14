@@ -10,12 +10,13 @@ import { BudgetStack } from '../src/budget-stack.js'
 import { SiteStack } from '../src/site-stack.js'
 
 const env = { account: '123456789012', region: 'us-east-1' }
-const repo = 'Cloudmancermedia/altrobe'
+// The repository's immutable OIDC subject: owner and repository, each with its numeric ID.
+const subject = 'repo:Cloudmancermedia@52295078/altrobe@1413879660'
 
-function stacks(opts: { oidcProviderArn?: string; webDistPath?: string } = {}) {
+function stacks(opts: { createOidcProvider?: boolean; webDistPath?: string } = {}) {
   const app = new App()
   const dns = new DnsStack(app, 'AltrobeDns', { env, domainName: 'altrobe.com' })
-  const ci = new CiStack(app, 'AltrobeCi', { env, repo, oidcProviderArn: opts.oidcProviderArn })
+  const ci = new CiStack(app, 'AltrobeCi', { env, subject, createOidcProvider: opts.createOidcProvider })
   const site = new SiteStack(app, 'AltrobeSite', { env, zone: dns.zone, domainName: 'altrobe.com', deployRoleName: DEPLOY_ROLE_NAME, webDistPath: opts.webDistPath })
   return { dns: Template.fromStack(dns), ci: Template.fromStack(ci), site: Template.fromStack(site), siteStack: site }
 }
@@ -35,12 +36,14 @@ describe('AltrobeDns', () => {
 })
 
 describe('AltrobeCi', () => {
-  test('creates the GitHub OIDC provider unless an existing one is passed in', () => {
-    stacks().ci.hasResourceProperties('AWS::IAM::OIDCProvider', {
+  test("uses the account's existing GitHub OIDC provider unless asked to create one", () => {
+    // CI deploys with no context, so the default must be the provider the account already has.
+    const { ci } = stacks()
+    ci.resourceCountIs('AWS::IAM::OIDCProvider', 0)
+    expect(JSON.stringify(ci.findResources('AWS::IAM::Role'))).toContain(':oidc-provider/token.actions.githubusercontent.com')
+    stacks({ createOidcProvider: true }).ci.hasResourceProperties('AWS::IAM::OIDCProvider', {
       Url: 'https://token.actions.githubusercontent.com', ClientIdList: ['sts.amazonaws.com'],
     })
-    stacks({ oidcProviderArn: 'arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com' })
-      .ci.resourceCountIs('AWS::IAM::OIDCProvider', 0)
   })
 
   test('the deploy role trusts only this repository in the production environment', () => {
@@ -52,7 +55,7 @@ describe('AltrobeCi', () => {
           Condition: {
             StringEquals: {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub': `repo:${repo}:environment:production`,
+              'token.actions.githubusercontent.com:sub': `${subject}:environment:production`,
             },
           },
         })],
@@ -68,7 +71,7 @@ describe('AltrobeCi', () => {
         Statement: [Match.objectLike({
           Condition: {
             StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
-            StringLike: { 'token.actions.githubusercontent.com:sub': `repo:${repo}:*` },
+            StringLike: { 'token.actions.githubusercontent.com:sub': `${subject}:*` },
           },
         })],
       }),
@@ -80,13 +83,15 @@ describe('AltrobeCi', () => {
     expect(text).not.toContain('cdk-hnb659fds-deploy-role')
   })
 
-  test('trust keys only on the repository name in sub, plus aud: no numeric repository or owner IDs', () => {
-    // The repository may be deleted and recreated, which changes its numeric IDs but not its name.
+  test('trust keys only on aud and the immutable sub, which names the owner and repository by ID', () => {
+    // GitHub gives repositories created after 2026-07-15 an immutable subject (owner@id/repo@id), so a
+    // deleted name can't be reclaimed into these roles. Recreating the repository changes the IDs.
     const roles = Object.values(stacks().ci.findResources('AWS::IAM::Role'))
     expect(roles).toHaveLength(2)
     for (const r of roles) {
       const text = JSON.stringify(r.Properties.AssumeRolePolicyDocument)
-      expect(text).not.toMatch(/repository_id|repository_owner_id|repository_owner|actor_id/)
+      expect(text).toContain('repo:Cloudmancermedia@52295078/altrobe@1413879660:')
+      expect(text).not.toContain('repo:Cloudmancermedia/altrobe:')
       const keys = r.Properties.AssumeRolePolicyDocument.Statement.flatMap((s: { Condition: Record<string, Record<string, string>> }) =>
         Object.values(s.Condition).flatMap((c) => Object.keys(c)))
       expect(keys.sort()).toEqual(['token.actions.githubusercontent.com:aud', 'token.actions.githubusercontent.com:sub'])

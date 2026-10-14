@@ -15,10 +15,16 @@ All in one AWS account, in us-east-1 (CloudFront needs its certificate there).
 | `AltrobeSite` | the certificate for `altrobe.com`, `www.altrobe.com` and `assets.altrobe.com`; a private bucket and CloudFront distribution for the web app (www redirects to the apex); a private bucket and distribution for the game bundles at `assets.altrobe.com`; DNS records; the web app's files |
 | `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. It exists only when an alert address is set; see below. |
 
-Both roles trust the repository by name only (the token's `sub` claim, such as
-`repo:Cloudmancermedia/altrobe:environment:production`, plus `aud`), never by numeric ID, so a
-deleted and recreated repository keeps working. No AWS account ID or key is stored in the repository:
-the account comes from the credentials in use (`CDK_DEFAULT_ACCOUNT`).
+Both roles trust the repository's immutable OIDC subject (the token's `sub` claim, such as
+`repo:Cloudmancermedia@52295078/altrobe@1413879660:environment:production`, plus `aud`). GitHub gives
+repositories created after July 15, 2026 this form, which names the owner and repository by numeric
+ID, so nobody can reclaim a deleted name into these roles
+([GitHub changelog](https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/)).
+If the repository is recreated, its IDs change: read the new prefix with
+`gh api repos/Cloudmancermedia/altrobe/actions/oidc/customization/sub` (`sub_claim_prefix`), set it
+as the default in `infra/src/app.ts` or pass `-c githubSubject=<prefix>`, and deploy `AltrobeCi`
+locally, since CI can't assume the roles until it is fixed. No AWS account ID or key is stored in the
+repository: the account comes from the credentials in use (`CDK_DEFAULT_ACCOUNT`).
 
 ## First-time setup
 
@@ -32,9 +38,9 @@ account for CDK first (`npx cdk bootstrap`), with the default qualifier.
    aws iam list-open-id-connect-providers --profile <profile>
    ```
 
-   If it lists `token.actions.githubusercontent.com`, add
-   `-c githubOidcProviderArn=arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com`
-   to the deploy below. **WRITE OPERATION:**
+   `AltrobeCi` uses the account's existing `token.actions.githubusercontent.com` provider, because CI
+   deploys with no extra context. If the list doesn't have one, add `-c createGithubOidcProvider=true`
+   to the deploy below, once. **WRITE OPERATION:**
 
    ```sh
    npm --prefix infra ci
