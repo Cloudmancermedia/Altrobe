@@ -54,6 +54,46 @@ public static class NotableSets
         return null;
     }
 
+    // Data-mined sets list after the tiers (SetCatalog.DataMined).
+    public const string DataMined = "Data-mined";
+
+    // Words that only one class's tier set names use, for data-mined sets such as "Arcanist Insight".
+    // Plain English words from those names (Valor, Might, Wrath, Faith, Elements, Genesis, Enigma,
+    // Oracle, Redemption) are left out: other sets use them too.
+    public static readonly IReadOnlyDictionary<string, int> ClassStems = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Conqueror"] = 1, ["Dreadnaught"] = 1,
+        ["Lightforge"] = 2, ["Soulforge"] = 2, ["Lawbringer"] = 2, ["Judgement"] = 2, ["Avenger"] = 2,
+        ["Beaststalker"] = 3, ["Beastmaster"] = 3, ["Giantstalker"] = 3, ["Dragonstalker"] = 3, ["Striker"] = 3, ["Cryptstalker"] = 3,
+        ["Shadowcraft"] = 4, ["Darkmantle"] = 4, ["Nightslayer"] = 4, ["Bloodfang"] = 4, ["Deathdealer"] = 4, ["Bonescythe"] = 4,
+        ["Devout"] = 5, ["Virtuous"] = 5, ["Prophecy"] = 5, ["Transcendence"] = 5,
+        ["Earthfury"] = 7, ["Stormcaller"] = 7, ["Earthshatterer"] = 7,
+        ["Magister"] = 8, ["Sorcerer"] = 8, ["Arcanist"] = 8, ["Netherwind"] = 8, ["Frostfire"] = 8,
+        ["Dreadmist"] = 9, ["Deathmist"] = 9, ["Felheart"] = 9, ["Nemesis"] = 9, ["Doomcaller"] = 9, ["Plagueheart"] = 9,
+        ["Wildheart"] = 11, ["Feralheart"] = 11, ["Cenarion"] = 11, ["Stormrage"] = 11, ["Dreamwalker"] = 11,
+    };
+
+    // Phrases of plain words that only one class's tier set name uses together.
+    public static readonly IReadOnlyDictionary<string, int> ClassPhrases = new Dictionary<string, int> { ["Ten Storms"] = 7, ["Five Thunders"] = 7 };
+
+    // The classes that wear each armor type in Classic.
+    public static readonly IReadOnlyDictionary<string, int[]> ArmorClasses = new Dictionary<string, int[]>
+    {
+        ["plate"] = [1, 2], ["mail"] = [3, 7], ["leather"] = [4, 11], ["cloth"] = [5, 8, 9],
+    };
+
+    // The class mask a data-mined set's name gives: a tier set name, else a class stem or phrase. Null
+    // when the name names no class, or more than one.
+    public static int? ClassByName(string setName)
+    {
+        if (TierByName.TryGetValue(setName, out var tier)) return 1 << (tier.ClassId - 1);
+        var classes = System.Text.RegularExpressions.Regex.Split(setName, "[^A-Za-z]+")
+            .Select(w => ClassStems.TryGetValue(w, out var c) ? c : 0)
+            .Concat(ClassPhrases.Where(p => setName.Contains(p.Key, StringComparison.OrdinalIgnoreCase)).Select(p => p.Value))
+            .Where(c => c != 0).Distinct().ToList();
+        return classes.Count == 1 ? 1 << (classes[0] - 1) : null;
+    }
+
     // Tiers 0 and 0.5 are rare (3), tiers 1-3 epic (4). Null for a set not in the tier list. Used where the
     // pieces have no quality of their own: tier 1 and 2 in the Forever beta have no ItemSparse rows.
     public static int? TierQuality(string setName) =>

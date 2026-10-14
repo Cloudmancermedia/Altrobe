@@ -22,6 +22,9 @@ public sealed record ItemSummary(int ItemId, string Name, string Slot, int Inven
     // Where the name came from when the game files have none: "cmangos" (ClassicItemNames).
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? NameSource { get; init; }
+    // The look (ItemDisplayInfo ID). In process only: data-mined sets compare looks with named items.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int DisplayInfoId { get; init; }
 }
 
 // IncludeInternal: also list developer and NPC items. IncludeUnnamed: also list items with no name (the
@@ -104,6 +107,7 @@ public sealed class ItemCatalog
             .Select(x =>
             {
                 var icon = item.TryGetValue(x.itemId, out var i) ? i.Int("IconFileDataID") : 0;
+                var displayId = appearance[x.ima.Int("ItemAppearanceID")].Int("ItemDisplayInfoID");
                 if (sparse.TryGetValue(x.itemId, out var s))
                 {
                     var inventoryType = s.Int("InventoryType");
@@ -112,7 +116,7 @@ public sealed class ItemCatalog
                         s.Int("OverallQualityID"), icon, IsInternal(name))
                     {
                         RequiredLevel = s.Int("RequiredLevel"), ItemLevel = s.Int("ItemLevel"), Armor = ArmorOf(i), AllowableClass = s.Int("AllowableClass"),
-                        Weapon = WeaponOf(i), Hands = HandsByInventoryType.GetValueOrDefault(inventoryType),
+                        Weapon = WeaponOf(i), Hands = HandsByInventoryType.GetValueOrDefault(inventoryType), DisplayInfoId = displayId,
                     };
                 }
                 var type = i!.Int("InventoryType");
@@ -122,12 +126,12 @@ public sealed class ItemCatalog
                     return new ItemSummary(x.itemId, c.Name, slot, type, c.Quality, icon, IsInternal(c.Name))
                     {
                         RequiredLevel = c.RequiredLevel, ItemLevel = c.ItemLevel, Armor = ArmorOf(i), AllowableClass = c.AllowableClass,
-                        Weapon = WeaponOf(i), Hands = HandsByInventoryType.GetValueOrDefault(type), NameSource = "cmangos",
+                        Weapon = WeaponOf(i), Hands = HandsByInventoryType.GetValueOrDefault(type), NameSource = "cmangos", DisplayInfoId = displayId,
                     };
                 var made = setOf.TryGetValue(x.itemId, out var setName) ? $"{setName}: {slot}" : $"Unnamed {slot} (item {x.itemId})";
                 return new ItemSummary(x.itemId, made, slot, type, UnknownQuality, icon, setName is not null && IsInternal(setName), Unnamed: true)
                 {
-                    Armor = ArmorOf(i), Weapon = WeaponOf(i), Hands = HandsByInventoryType.GetValueOrDefault(type),
+                    Armor = ArmorOf(i), Weapon = WeaponOf(i), Hands = HandsByInventoryType.GetValueOrDefault(type), DisplayInfoId = displayId,
                 };
             })
             .Where(i => i.Name.Length > 0 && i.Slot.Length > 0)
