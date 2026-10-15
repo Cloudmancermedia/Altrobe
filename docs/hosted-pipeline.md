@@ -33,6 +33,7 @@ Under the output folder:
 | `{product}/{build}/catalog.json`, `sets.json` | the item catalog and sets, for search in the browser |
 | `{product}/{build}/notable.json` | notable sets per race and class, data-mined sets last |
 | `{product}/{build}/set-pieces.json` | every item that is a piece of some set |
+| `{product}/{build}/popular-weapons.json` | the Weapons tab: `all` (no class) and each class ID, from `Catalog/popular-weapons.json`; a bad ID fails the bake |
 | `{product}/{build}/titles.json`, `names.json` | titles and the random-name lists |
 | `{product}/{build}/items/{itemId}.json` | the item resolved for every race, sex and body kind |
 | `{product}/{build}/v{N}/models/{fdid}.glb`, `.json` | converted models |

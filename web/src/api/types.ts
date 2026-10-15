@@ -189,6 +189,8 @@ export interface SetPiece {
 }
 /** One heading of notable sets (/sets/notable): "PvP (rare)", "PvP (epic)", "Tier 0" ... "Tier 3", "New in Forever (data-mined)". */
 export interface SetGroup { group: string; sets: ItemSetResult[] }
+/** One heading of the Weapons tab (/weapons/popular): "Popular" with no class, else "Two-hand", "One-hand", "Ranged". */
+export interface WeaponGroup { group: string; items: ItemSearchResult[] }
 
 export type ClassSource = 'name' | 'curated' | 'armor'
 

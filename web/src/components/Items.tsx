@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ApiError, getNotableSets, getSetPieces, searchSets, textureUrl } from '../api/client'
-import type { ItemSearchResult, ItemSetResult, SetGroup } from '../api/types'
+import { ApiError, getNotableSets, getPopularWeapons, getSetPieces, searchSets, textureUrl } from '../api/client'
+import type { ItemSearchResult, ItemSetResult, SetGroup, WeaponGroup } from '../api/types'
 import { commands, store } from '../app-state'
 import { replacedSetSlots, setPieceSlots } from '../commands'
 import { classChoices } from '../identity/identity'
@@ -21,9 +21,9 @@ export function ItemIcon({ build, fileDataId, quality }: { build: string; fileDa
   return <img className={cls} src={textureUrl(build, fileDataId)} alt="" width={32} height={32} loading="lazy" onError={() => setFailed(true)} />
 }
 
-/** The Find panel: whole sets (shown first: most visitors start from a set), or single items. */
+/** The Find panel: whole sets (shown first: most visitors start from a set), popular weapons, or single items. */
 export function ItemSearch({ build }: { build: string }) {
-  const [mode, setMode] = useState<'items' | 'sets'>('sets')
+  const [mode, setMode] = useState<'sets' | 'weapons' | 'items'>('sets')
   // A slot clicked on the character screen switches to item search for that slot.
   const findSlot = useStore(store, (s) => s.findSlot)
   const [seenFind, setSeenFind] = useState(findSlot?.n)
@@ -32,11 +32,11 @@ export function ItemSearch({ build }: { build: string }) {
     <section className="panel search" aria-label="Find">
       <h2>Find {mode}</h2>
       <div className="segmented find-mode" role="radiogroup" aria-label="Find">
-        {(['sets', 'items'] as const).map((m) => (
+        {(['sets', 'weapons', 'items'] as const).map((m) => (
           <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>{m}</button>
         ))}
       </div>
-      {mode === 'items' ? <SingleItemSearch build={build} /> : <SetSearch build={build} />}
+      {mode === 'items' ? <SingleItemSearch build={build} /> : mode === 'weapons' ? <PopularWeapons build={build} /> : <SetSearch build={build} />}
     </section>
   )
 }
@@ -138,6 +138,73 @@ function storage(): Storage | null {
   try { return window.localStorage } catch { return null }
 }
 
+/** One item result: click to equip it in its slot, with a button for each other slot it fits (Off hand). */
+function ItemRow({ build, r }: { build: string; r: ItemSearchResult }) {
+  return (
+    <li>
+      <button type="button" className="result" onClick={() => commands.equip_item(r.slot, r.itemId)}
+        title={`Equip in ${SLOT_LABELS[r.slot as SlotName] ?? r.slot}`}>
+        <ItemIcon build={build} fileDataId={r.iconFileDataId} quality={r.quality} />
+        <span className="result-text">
+          <span className={`qname q${r.quality}`}>{r.name}</span>
+          <span className="muted small">{SLOT_LABELS[r.slot as SlotName] ?? r.slot} · {r.itemId}{r.unnamed ? ' · unnamed in this build' : ''}{r.internal ? ' · dev or NPC item' : ''}</span>
+        </span>
+      </button>
+      {otherSlots(r).map((slot) => (
+        <button key={slot} type="button" className="link small" onClick={() => commands.equip_item(slot, r.itemId)}
+          title={`Equip ${r.name} in ${SLOT_LABELS[slot]}`}>
+          {SLOT_LABELS[slot]}
+        </button>
+      ))}
+    </li>
+  )
+}
+
+/** The Weapons tab: popular weapons for the character's class (Identity panel), or a "Popular" list with no class. */
+function PopularWeapons({ build }: { build: string }) {
+  // The lists shown and the class they are for; while the class differs, the new lists are loading.
+  const [shown, setShown] = useState<{ classId: number; groups: WeaponGroup[] } | null>(null)
+  const race = useStore(store, (s) => s.look.race)
+  const characters = useStore(store, (s) => s.characters)
+  const anyClass = useStore(store, (s) => s.anyClass)
+  const classes = classChoices(characters, race, anyClass)
+  const classId = useStore(store, (s) => s.look.identity?.classId ?? 0)
+
+  useEffect(() => {
+    let live = true
+    getPopularWeapons(classId || undefined).then((groups) => {
+      if (!live) return
+      rememberItems(store, groups.flatMap((g) => g.items))
+      setShown({ classId, groups })
+    }, (e) => {
+      if (live) setNotices(store, 'search', [`popular weapons failed: ${e instanceof ApiError ? e.message : String(e)}`])
+    })
+    return () => { live = false }
+  }, [classId])
+
+  const busy = shown?.classId !== classId
+  const groups = shown?.groups ?? []
+  return (
+    <>
+      <div className="search-controls">
+        <select aria-label="Class" value={classId} onChange={(e) => commands.set_identity({ classId: Number(e.target.value) || null })}>
+          <option value={0}>All classes</option>
+          {classes.map((c) => <option key={c.classId} value={c.classId}>{c.name}</option>)}
+        </select>
+      </div>
+      <div aria-live="polite" aria-busy={busy}>
+        {groups.map((g) => (
+          <div key={g.group}>
+            <h3 className="result-group">{g.group}</h3>
+            <ul className="results">{g.items.map((r) => <ItemRow key={r.itemId} build={build} r={r} />)}</ul>
+          </div>
+        ))}
+      </div>
+      {!busy && groups.length === 0 && <p className="muted small">No popular weapons for this class yet.</p>}
+    </>
+  )
+}
+
 function SingleItemSearch({ build }: { build: string }) {
   const [q, setQ] = useState('')
   const [slot, setSlot] = useState('')
@@ -198,24 +265,7 @@ function SingleItemSearch({ build }: { build: string }) {
         <label><input type="checkbox" checked={unnamed} onChange={(e) => reset(setUnnamed)(e.target.checked)} /> Show unnamed items</label>
       </div>
       <ul className="results" aria-live="polite" aria-busy={busy}>
-        {shown.map((r) => (
-          <li key={r.itemId}>
-            <button type="button" className="result" onClick={() => commands.equip_item(r.slot, r.itemId)}
-              title={`Equip in ${SLOT_LABELS[r.slot as SlotName] ?? r.slot}`}>
-              <ItemIcon build={build} fileDataId={r.iconFileDataId} quality={r.quality} />
-              <span className="result-text">
-                <span className={`qname q${r.quality}`}>{r.name}</span>
-                <span className="muted small">{SLOT_LABELS[r.slot as SlotName] ?? r.slot} · {r.itemId}{r.unnamed ? ' · unnamed in this build' : ''}{r.internal ? ' · dev or NPC item' : ''}</span>
-              </span>
-            </button>
-            {otherSlots(r).map((slot) => (
-              <button key={slot} type="button" className="link small" onClick={() => commands.equip_item(slot, r.itemId)}
-                title={`Equip ${r.name} in ${SLOT_LABELS[slot]}`}>
-                {SLOT_LABELS[slot]}
-              </button>
-            ))}
-          </li>
-        ))}
+        {shown.map((r) => <ItemRow key={r.itemId} build={build} r={r} />)}
       </ul>
       {text === null && <p className="muted small">{SEARCH_HINT}</p>}
       {text !== null && state === 'idle' && results.length === 0 && <p className="muted small">No items match.</p>}

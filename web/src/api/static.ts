@@ -4,7 +4,7 @@
 import type { Backend } from './backend'
 import { ApiError } from './errors'
 import { searchItemsIn, searchSetsIn, toSetResult, type BundleItem, type BundleSet } from './search'
-import type { BaseLook, CharactersResponse, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo } from './types'
+import type { BaseLook, CharactersResponse, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
 
 export interface StaticConfig {
   /** Where the bundle is served, such as /bundle or https://assets.example.com. */
@@ -16,6 +16,8 @@ export interface StaticConfig {
 interface Current { product: string; build: string; buildName?: string; path: string; assetVersion: number; assetPath: string }
 interface Characters extends CharactersResponse { looks: Record<string, BaseLook> }
 type NotableFile = Record<string, Record<string, { group: string; sets: BundleSet[] }[]>>
+// popular-weapons.json: "all" (no class) and each class ID.
+type WeaponsFile = Record<string, { group: string; items: BundleItem[] }[]>
 
 // The API's comma-separated list parameters (Api.Split).
 const list = (v: string | number | undefined) => (v === undefined || v === '' ? [] : String(v).split(',').map((s) => s.trim()).filter(Boolean))
@@ -105,6 +107,9 @@ export function createStaticBackend(config: StaticConfig): Backend {
       return searchSetsIn(await sets(), query).sets.map(toSetResult)
     },
 
+    async getPopularWeapons(classId): Promise<WeaponGroup[]> {
+      return (await build('popular-weapons.json') as WeaponsFile)[classId ? String(classId) : 'all'] ?? []
+    },
     async getNotableSets(race, classId): Promise<SetGroup[]> {
       const byRace = (await build('notable.json') as NotableFile)[String(race)]
       if (!byRace) throw new ApiError(400, 'bad_request', 'race must be a playable race ID from /characters.')
