@@ -166,12 +166,13 @@ public class BundleBakerTests : IDisposable
     public void TheAnimationListCoversCastingMeleeSpecialsMovementJumpAndMounted()
     {
         // The bake's short list: every cast, all melee, special melee attacks, run and walk,
-        // the mounted pose and the space bar (jump).
+        // stealth, the mounted pose and the space bar (jump).
         var names = BundleBaker.Animations.Select(AnimationNames.Name).ToHashSet();
         foreach (var n in new[] { "SpellCastDirected", "SpellCastOmni", "SpellCastArea", "ChannelCastDirected", "ReadySpellOmni",
                      "Attack1H", "Attack2H", "AttackOff", "Parry1H", "Ready2H", "ShieldBlock",
                      "Special1H", "Special2H", "ShieldBash", "Kick", "Whirlwind",
-                     "Walk", "Run", "Sprint", "JumpStart", "Jump", "JumpEnd", "Mount", "MountSpecial" })
+                     "Walk", "Run", "Sprint", "JumpStart", "Jump", "JumpEnd", "Mount", "MountSpecial",
+                     "StealthStand", "StealthWalk" })
             Assert.Contains(n, names);
         Assert.Equal(BundleBaker.Animations.Count, BundleBaker.Animations.Distinct().Count());
     }
