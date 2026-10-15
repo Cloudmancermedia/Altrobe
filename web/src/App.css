@@ -49,7 +49,7 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
 .cell-label { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
 /* Over the character's head: titled name, then <Guild>, one color. The stage sets transform. */
 .nameplate { position: absolute; left: 0; top: 0; pointer-events: none; text-align: center; white-space: nowrap;
-  font-family: var(--display); line-height: 1.05; color: var(--name-friendly); text-shadow: 0 0 3px #000, 1px 1px 2px #000, -1px -1px 2px #000; visibility: hidden; }
+  font-family: var(--display); font-size: 16px; line-height: 1.05; color: var(--name-friendly); text-shadow: 0 0 3px #000, 1px 1px 2px #000, -1px -1px 2px #000; visibility: hidden; }
 .nameplate.pvp { color: var(--name-pvp); }
 /* The player tooltip, bottom right of the view. Shown on hover or pinned. */
 .unit-tooltip { position: absolute; right: 12px; bottom: 12px; min-width: 180px; padding: 6px 10px; pointer-events: none;

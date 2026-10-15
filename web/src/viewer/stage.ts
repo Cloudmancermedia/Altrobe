@@ -79,7 +79,7 @@ export class StageView {
   /**
    * Keeps the nameplate above the head: anchored where the head is in the first animated
    * frame and kept there, so it doesn't bob with the idle breathing. It moves only when the camera does,
-   * and its size follows the character's height on screen.
+   * keeps one text size (NAME_PX), and stays inside the view.
    */
   placeNameplate(width: number, height: number) {
     const el = this.nameplate, c = this.character
@@ -97,11 +97,10 @@ export class StageView {
       }
       const head = screenPoint(this.plateHead, this.camera, width, height)
       const feet = screenPoint(new THREE.Vector3(this.plateHead.x, c.box.min.y, this.plateHead.z), this.camera, width, height)
-      if (head && feet) at = plateLayout(head, feet, this.nameplateRace)
+      if (head && feet) at = plateLayout(head, feet, { width, height }, { width: el.offsetWidth, height: el.offsetHeight }, this.nameplateRace)
     }
     el.style.visibility = at ? 'visible' : 'hidden'
     if (at) {
-      el.style.fontSize = `${at.fontSize}px`
       el.style.transform = `translate(${at.x}px, ${at.bottom}px) translate(-50%, -100%)`
     }
   }
