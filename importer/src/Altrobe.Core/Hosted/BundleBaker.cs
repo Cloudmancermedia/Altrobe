@@ -92,13 +92,15 @@ public static class BundleBaker
     static readonly (ModelSet set, string key)[] Bodies = [(ModelSet.Hd, "hd"), (ModelSet.Sd, "sd")];
 
     // The animations the site offers, by AnimationNames name: every
-    // cast, all melee and special melee attacks, ranged attacks, movement, the space bar (jump), the
+    // cast, all melee and special melee attacks, ranged attacks, movement, stealth, the space bar (jump), the
     // mounted pose and a few emotes. A body that lacks one simply doesn't offer it; looks list only
     // these. All animations would be about 1.7 GB per build, most of a bundle.
     static readonly string[] AnimationList =
     [
         // Movement and jump
         "Stand", "Walk", "Run", "Walkbackwards", "ShuffleLeft", "ShuffleRight", "Sprint", "JumpStart", "Jump", "JumpEnd", "JumpLandRun",
+        // Stealth (rogues, Night Elf Shadowmeld). Classic has no StealthRun (223 came with BC): stealth walks.
+        "StealthStand", "StealthWalk",
         // Casting
         "Spell", "SpellPrecast", "SpellCast", "SpellCastArea", "ReadySpellDirected", "ReadySpellOmni", "SpellCastDirected", "SpellCastOmni",
         "ChannelCastDirected", "ChannelCastOmni",
