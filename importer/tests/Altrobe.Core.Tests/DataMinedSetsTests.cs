@@ -119,6 +119,29 @@ public class DataMinedSetsTests
         Assert.Equal((Mask(5, 9), "curated"), (sets.Get(1600)!.ClassMask, sets.Get(1600)!.ClassSource));
     }
 
+    // The shipped file places each Forever set family in the one class it was made for (Phase 4 — Find
+    // Panel Spec): real set IDs from build 1.60.1.70374. Krol'dok (2135) and Goliaths' (1969) stay on armor type.
+    [Fact]
+    public void TheShippedFilePlacesEachForeverSetFamilyInItsClass()
+    {
+        using var s = typeof(SetCatalog).Assembly.GetManifestResourceStream("Catalog/data-mined-classes.json")!;
+        var shipped = System.Text.Json.JsonSerializer.Deserialize<Dictionary<int, int[]>>(s)!;
+        var expected = new Dictionary<int, int[]>
+        {
+            [2102] = [1], [2103] = [1],                          // Glory: Warrior
+            [2106] = [2], [2107] = [2], [2108] = [2],            // Justice: Paladin
+            [2101] = [3],                                        // Wildstalker: Hunter
+            [2099] = [4],                                        // Grimstitch: Rogue
+            [2104] = [5], [2105] = [5],                          // Conviction: Priest
+            [2109] = [7], [2110] = [7], [2111] = [7],            // Spiritcaller: Shaman
+            [2098] = [8],                                        // Manaflare: Mage
+            [2100] = [9],                                        // Demonheart: Warlock
+            [2112] = [11], [2113] = [11], [2114] = [11], [2115] = [11], // Grovekeeper: Druid
+        };
+        Assert.Equal(expected.OrderBy(e => e.Key).Select(e => (e.Key, string.Join(',', e.Value))),
+            shipped.OrderBy(e => e.Key).Select(e => (e.Key, string.Join(',', e.Value))));
+    }
+
     [Fact]
     public void TheNameWinsOverTheCuratedFile()
     {
