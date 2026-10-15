@@ -13,14 +13,15 @@ public sealed record SkippedPiece(int ItemId, string Reason);
 // Unnamed: every piece is unnamed in this build (ItemSummary.Unnamed), as tier 2 is in the Forever beta.
 // ClassMask: the classes every class-restricted piece allows (bit classId - 1), -1 when no piece is restricted.
 // Quality: the best piece quality; for an unnamed tier set, its tier's (NotableSets.TierQuality); else null.
-// DataMined: every piece unnamed and at least half of them a look no named item has (SetCatalog). For
-// these only: Armor, the pieces' armor type; ClassMask from ClassSource, "name" (NotableSets.ClassByName),
-// "curated" (data-mined-classes.json) or "armor" (NotableSets.ArmorClasses; -1 with no armor piece).
+// NewInForever: on Forever's set list (forever-sets.json), or every piece unnamed and at least half of them
+// a look no named item has (SetCatalog). For these only: Armor, the pieces' armor type; ClassMask from
+// ClassSource, "name" (NotableSets.ClassByName), "curated" (the list's classes) or "armor"
+// (NotableSets.ArmorClasses; -1 with no armor piece).
 public sealed record ItemSetInfo(int SetId, string Name, IReadOnlyList<SetPiece> Pieces, IReadOnlyList<SkippedPiece> Skipped, bool Internal, bool Unnamed = false)
 {
     public int ClassMask { get; init; } = -1;
     public int? Quality { get; init; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool DataMined { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool NewInForever { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Armor { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ClassSource { get; init; }
 }
@@ -39,18 +40,19 @@ public sealed class SetCatalog
     readonly IReadOnlyList<ItemSetInfo> _sets;
     readonly Dictionary<int, ItemSetInfo> _byId;
 
-    // curated: set ID -> class IDs for data-mined sets the name doesn't place. sodSets: Season of Discovery's
-    // set IDs, which are left out: Altrobe covers Classic and Forever. Both default to the shipped files
-    // (season-of-discovery-sets.json comes from the set-ids command).
-    public SetCatalog(ITables tables, ItemCatalog items, IReadOnlyDictionary<int, int[]>? curated = null, IReadOnlySet<int>? sodSets = null)
+    // foreverSets: Forever's set IDs, each with its class IDs (empty: from the name or armor type). They are new
+    // in Forever even once Blizzard names items that share their looks, as hotfixes do. sodSets: Season of
+    // Discovery's set IDs, which are left out: Altrobe covers Classic and Forever. Both default to the
+    // shipped files (season-of-discovery-sets.json comes from the set-ids command).
+    public SetCatalog(ITables tables, ItemCatalog items, IReadOnlyDictionary<int, int[]>? foreverSets = null, IReadOnlySet<int>? sodSets = null)
     {
-        curated ??= Resource<Dictionary<int, int[]>>("Catalog/data-mined-classes.json");
+        foreverSets ??= Resource<Dictionary<int, int[]>>("Catalog/forever-sets.json");
         sodSets ??= Resource<HashSet<int>>("Catalog/season-of-discovery-sets.json");
         var namedLooks = items.All.Where(i => !i.Unnamed).Select(i => i.DisplayInfoId).ToHashSet();
         _sets = tables.Get(T.ItemSet)
             .Select(r => Build(r, items))
             .Where(s => s.Pieces.Count > 0 && !sodSets.Contains(s.SetId))
-            .Select(s => IsDataMined(s, namedLooks) ? WithDataMinedClass(s, curated) : s)
+            .Select(s => !s.Internal && (foreverSets.ContainsKey(s.SetId) || HasNewLooks(s, namedLooks)) ? WithForeverClass(s, foreverSets) : s)
             .OrderBy(s => s.Internal)
             .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.SetId)
@@ -66,7 +68,7 @@ public sealed class SetCatalog
     public ItemSetInfo? Get(int setId) => _byId.GetValueOrDefault(setId);
 
     // Notable sets (NotableSets) for a faction ("alliance" or "horde") and the given classes, grouped
-    // PvP (rare), PvP (epic), tiers 0 to 3, then data-mined sets no other group holds (new in Forever);
+    // PvP (rare), PvP (epic), tiers 0 to 3, then new-in-Forever sets no other group holds;
     // empty groups are left out. A named set wins over an
     // unnamed copy of the same name, and a set repeating another's name and classes is dropped.
     public IReadOnlyList<SetGroup> Notable(string? faction, IReadOnlyCollection<int> classIds)
@@ -77,7 +79,7 @@ public sealed class SetCatalog
             .Select(s => (set: s, cls: NotableSets.Classify(s)))
             .Where(x => x.cls is { } c && (c.Faction == null || c.Faction == faction) && (c.ClassMask == -1 || (c.ClassMask & wanted) != 0))
             .Select(x => (x.set, group: x.cls!.Value.Group, mask: x.cls.Value.ClassMask))
-            .Concat(_sets.Where(s => s.DataMined && NotableSets.Classify(s) == null && (s.ClassMask == -1 || (s.ClassMask & wanted) != 0))
+            .Concat(_sets.Where(s => s.NewInForever && NotableSets.Classify(s) == null && (s.ClassMask == -1 || (s.ClassMask & wanted) != 0))
                 .Select(s => (set: s, group: NotableSets.NewInForever, mask: s.ClassMask)))
             .GroupBy(x => (x.group, name: x.set.Name.ToLowerInvariant(), x.mask))
             .Select(g => g.OrderBy(x => x.set.Unnamed).ThenBy(x => x.set.SetId).First())
@@ -108,21 +110,22 @@ public sealed class SetCatalog
         return new SetPage(matches.Count, matches.Skip(Math.Max(0, q.Offset)).Take(Math.Clamp(q.Limit, 1, MaxLimit)).ToList());
     }
 
-    // Not internal, every piece unnamed, and at least half the pieces a look no named item has. Unnamed
-    // copies of named sets (most of the Forever beta's unnamed sets) reuse every look and stay out.
-    static bool IsDataMined(ItemSetInfo set, HashSet<int> namedLooks) =>
-        !set.Internal && set.Unnamed && set.Pieces.Count(p => !namedLooks.Contains(p.Item.DisplayInfoId)) * 2 >= set.Pieces.Count;
+    // Every piece unnamed, and at least half the pieces a look no named item has: a set a new build adds
+    // before the list knows it. Unnamed copies of named sets (most of the Forever beta's unnamed sets)
+    // reuse every look and stay out.
+    static bool HasNewLooks(ItemSetInfo set, HashSet<int> namedLooks) =>
+        set.Unnamed && set.Pieces.Count(p => !namedLooks.Contains(p.Item.DisplayInfoId)) * 2 >= set.Pieces.Count;
 
-    // Class from the name, else the curated file, else armor type (spec Step 2); the first that matches wins.
-    static ItemSetInfo WithDataMinedClass(ItemSetInfo set, IReadOnlyDictionary<int, int[]> curated)
+    // Class from the name, else the list's classes, else armor type; the first that matches wins.
+    static ItemSetInfo WithForeverClass(ItemSetInfo set, IReadOnlyDictionary<int, int[]> foreverSets)
     {
         var armor = set.Pieces.Select(p => p.Item.Armor).Where(a => a != null)
             .GroupBy(a => a).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault();
         var (mask, source) = NotableSets.ClassByName(set.Name) is { } byName ? (byName, "name")
-            : curated.TryGetValue(set.SetId, out var ids) && ids.Length > 0 ? (MaskOf(ids), "curated")
+            : foreverSets.TryGetValue(set.SetId, out var ids) && ids.Length > 0 ? (MaskOf(ids), "curated")
             : armor != null ? (MaskOf(NotableSets.ArmorClasses[armor]), "armor")
             : (-1, "armor");
-        return set with { DataMined = true, Armor = armor, ClassMask = mask, ClassSource = source };
+        return set with { NewInForever = true, Armor = armor, ClassMask = mask, ClassSource = source };
     }
 
     static int MaskOf(IEnumerable<int> classIds) => classIds.Aggregate(0, (m, c) => m | (1 << (c - 1)));

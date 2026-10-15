@@ -24,7 +24,7 @@ export interface BundleSet {
   unnamed?: boolean
   quality?: number | null
   classMask?: number
-  dataMined?: boolean
+  newInForever?: boolean
   armor?: string | null
   classSource?: ClassSource | null
 }
@@ -92,7 +92,7 @@ export function searchSetsIn(sets: BundleSet[], query: SetQuery): { total: numbe
 export function toSetResult(s: BundleSet): ItemSetResult {
   return {
     setId: s.setId, name: s.name, internal: s.internal, unnamed: s.unnamed, quality: s.quality,
-    dataMined: s.dataMined, armor: s.armor, classSource: s.classSource,
+    newInForever: s.newInForever, armor: s.armor, classSource: s.classSource,
     pieces: s.pieces.map((p) => ({ slot: p.slot, itemId: p.item.itemId, name: p.item.name, quality: p.item.quality, iconFileDataId: p.item.iconFileDataId, unnamed: p.item.unnamed })),
     skipped: s.skipped,
   }

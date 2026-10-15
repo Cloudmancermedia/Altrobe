@@ -56,12 +56,12 @@ describe('setQuality', () => {
   })
 })
 
-describe('data-mined sets', () => {
+describe('new-in-Forever sets', () => {
   test('show the set ID, armor type, and a note when the class came from armor type', () => {
     const base = { ...set(1600), pieces: [{ slot: 'chest', itemId: 1, name: 'x', quality: -1, iconFileDataId: 0 }], unnamed: true }
-    expect(setDetails({ ...base, dataMined: true, armor: 'cloth', classSource: 'armor' })).toBe('1 pieces · set 1600 · cloth · Class by armor type')
-    expect(setDetails({ ...base, dataMined: true, armor: 'leather', classSource: 'name' })).toBe('1 pieces · set 1600 · leather')
-    expect(setDetails({ ...base, dataMined: true, armor: null, classSource: 'armor' })).toBe('1 pieces · set 1600 · no armor')
+    expect(setDetails({ ...base, newInForever: true, armor: 'cloth', classSource: 'armor' })).toBe('1 pieces · set 1600 · cloth · Class by armor type')
+    expect(setDetails({ ...base, newInForever: true, armor: 'leather', classSource: 'name' })).toBe('1 pieces · set 1600 · leather')
+    expect(setDetails({ ...base, newInForever: true, armor: null, classSource: 'armor' })).toBe('1 pieces · set 1600 · no armor')
   })
 
   test('other sets keep their details', () => {

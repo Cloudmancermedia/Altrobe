@@ -63,12 +63,12 @@ test('a Human Mage sees new-in-Forever sets after the classic groups, and one dr
   await page.locator('.search-controls').getByLabel('Class').selectOption({ label: 'Mage' })
 
   const headings = page.locator('h3.result-group')
-  await expect(headings.filter({ hasText: 'New in Forever (data-mined)' })).toHaveCount(1)
+  await expect(headings.filter({ hasText: 'New in Forever' })).toHaveCount(1)
   const names = await headings.allTextContents()
-  expect(names.indexOf('New in Forever (data-mined)')).toBe(names.indexOf('Tier 3') + 1)
+  expect(names.indexOf('New in Forever')).toBe(names.indexOf('Tier 3') + 1)
 
   const before = await call(page, (h) => JSON.stringify(h.commands.get_look()))
-  const first = page.locator('h3.result-group:text-is("New in Forever (data-mined)") + ul.results li button').first()
+  const first = page.locator('h3.result-group:text-is("New in Forever") + ul.results li button').first()
   await expect(first).toContainText(/cloth|no armor/)
   await first.click()
   await settled(page, 1, (h: Hooks, look: string) => JSON.stringify(h.commands.get_look()) !== look, before)

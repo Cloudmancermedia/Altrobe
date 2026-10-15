@@ -105,9 +105,9 @@ describe('set search', () => {
     expect(searchSetsIn(sets, { limit: 1000 }).sets).toHaveLength(3)
   })
 
-  test('a data-mined set keeps its armor and where its class came from', () => {
-    const dm: BundleSet = { ...sets[1], setId: 1600, name: 'Whispering Garb', dataMined: true, armor: 'cloth', classSource: 'armor', classMask: 400 }
-    expect(toSetResult(dm)).toMatchObject({ setId: 1600, dataMined: true, armor: 'cloth', classSource: 'armor' })
+  test('a new-in-Forever set keeps its armor and where its class came from', () => {
+    const dm: BundleSet = { ...sets[1], setId: 1600, name: 'Whispering Garb', newInForever: true, armor: 'cloth', classSource: 'armor', classMask: 400 }
+    expect(toSetResult(dm)).toMatchObject({ setId: 1600, newInForever: true, armor: 'cloth', classSource: 'armor' })
   })
 
   test('a set is flattened the way the API sends it (Api.SetJson)', () => {
