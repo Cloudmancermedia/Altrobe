@@ -82,7 +82,8 @@ npm --prefix web run test:e2e:static # one browser check against the bundle
 
 `ALTROBE_BUNDLE_DIR` points the dev server at another bundle folder. At build time,
 `VITE_ALTROBE_BUNDLE_URL` (default `/bundle`) says where the site fetches the bundle from, and
-`VITE_ALTROBE_PRODUCT` (default `wow_classic_beta`) which product folder it reads.
+`VITE_ALTROBE_PRODUCT` (default `wow_classic_beta`) which product folder it reads. CI sets it from the
+`BUNDLE_PRODUCT` repository variable ([deployment.md](deployment.md#switching-products)).
 
 ## The count check
 
@@ -124,7 +125,8 @@ Rolling back is uploading the previous build's `current.json` and invalidating i
 approval, using the publish role ([deployment.md](deployment.md#publishing-a-bundle)). In order:
 
 1. `scripts/watch-bundle.mjs` asks the version service for the product's build and reads the live
-   `current.json`. If they match, the run stops there. It saves the version service's answer, so the
+   `current.json`. If they match, the run stops there, unless the manual run's `force` input is set:
+   that rebakes and republishes the live build after a change to Altrobe's own data or code. It saves the version service's answer, so the
    bake reads the same build (`--versions-file`), and the live build's manifest for the count check.
 2. The bake runs from the CDN with `--previous` set to the live manifest, so a build that drops a
    count by more than 5% fails the run.
@@ -136,6 +138,9 @@ A failed run changes nothing on the site and opens a "Bundle publish failed" iss
 the open one. A bake took 21 minutes and peaked at 8.3 GB of disk on 2026-10-13 (3.1 GB of bundle,
 5.2 GB of cache), under the 14 GB a standard GitHub-hosted Linux runner has. If builds outgrow it,
 move the bake to CodeBuild through CDK.
+
+The same workflow's `launch-watch` job opens an issue when Forever's builds reach a public product, so
+the site can move off the beta ([deployment.md](deployment.md#switching-products)).
 
 ## Run it from Blizzard's CDN
 
@@ -183,7 +188,8 @@ the sets panel lists them as "New in Forever (data-mined)" after Tier 3. `sets.j
 `notable.json` give each one `dataMined`, its `armor` type and a class mask with its `classSource`:
 
 - `name`: a tier set name, or a word or phrase only one class's tier sets use (`NotableSets`).
-- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs.
+- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs. It places
+  each Forever set family (Glory, Justice, Grovekeeper and the rest) in its one class.
 - `armor`: the classes that wear its armor type; every class when it has no armor piece.
 
 `node tools/suggest-data-mined-classes.mjs <bundle>/<product>/<build>` suggests curated classes from

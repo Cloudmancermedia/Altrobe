@@ -122,7 +122,7 @@ test('customization choices are drawn, and the Randomize and Reset buttons chang
 
 test('the Sets tab equips every piece of a set in one click', async ({ page }) => {
   await openApp(page)
-  const panel = page.getByRole('region', { name: 'Find items' })
+  const panel = page.getByRole('region', { name: 'Find' })
   await panel.getByRole('radio', { name: 'sets' }).click()
   await page.getByLabel('Search sets').fill('warlord')
   const first = page.locator('.results li button').first()
@@ -151,7 +151,8 @@ test('Run plays a different pose from Stand, loaded as its own file', async ({ p
 
 test('an empty search shows a hint; typing finds Thunderfury', async ({ page }) => {
   await openApp(page)
-  const panel = page.getByRole('region', { name: 'Find items' })
+  const panel = page.getByRole('region', { name: 'Find' })
+  await panel.getByRole('radio', { name: 'items' }).click()
   await expect(panel.getByText('Type an item name or ID to search')).toBeVisible()
   await expect(panel.locator('.results li')).toHaveCount(0)
   await panel.getByRole('searchbox').fill(String(THUNDERFURY))

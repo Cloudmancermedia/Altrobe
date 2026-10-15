@@ -1,9 +1,10 @@
-// node scripts/watch-bundle.mjs --product <code> [--region us] [--live https://assets.altrobe.com] [--out output/watch]
+// node scripts/watch-bundle.mjs --product <code> [--region us] [--live https://assets.altrobe.com] [--out output/watch] [--force]
 // Asks Blizzard's version service for the product's current build and compares it with the live
 // {product}/current.json. Saves the version service answer to {out}/versions.txt, so the bake reads
 // the same build (--versions-file), and the live build's manifest to {out}/previous-manifest.json for
 // the bake's count check (--previous). Prints the result; in GitHub Actions also writes the step
-// outputs build, live and changed. Reads only; writes nothing to AWS.
+// outputs build, live and changed. --force reports a change even when the live build is current, to
+// republish it after an Altrobe change. Reads only; writes nothing to AWS.
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildFromVersions, fail, isNewBuild, root } from './lib.mjs'
@@ -13,6 +14,7 @@ const argv = process.argv.slice(2)
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]
   if (['--product', '--region', '--live', '--out'].includes(a) && argv[i + 1]) opts[a.slice(2)] = argv[++i]
+  else if (a === '--force') opts.force = true
   else fail(`Unknown or incomplete argument: ${a}`)
 }
 if (!opts.product) fail('--product is required, for example --product wow_classic_beta')
@@ -42,6 +44,6 @@ if (live) {
   if (manifest) writeFileSync(join(opts.out, 'previous-manifest.json'), manifest)
 }
 
-const changed = isNewBuild(live, build)
-console.log(`${opts.product}: version service has ${build}, live is ${live?.build ?? '(nothing published)'}. ${changed ? 'New build.' : 'Up to date.'}`)
+const changed = isNewBuild(live, build, { force: opts.force })
+console.log(`${opts.product}: version service has ${build}, live is ${live?.build ?? '(nothing published)'}. ${changed ? (opts.force && live?.build === build ? 'Forced republish.' : 'New build.') : 'Up to date.'}`)
 if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `build=${build}\nlive=${live?.build ?? ''}\nchanged=${changed}\n`)

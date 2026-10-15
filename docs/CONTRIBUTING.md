@@ -5,7 +5,7 @@ Thanks for helping. Bug reports, fixes and new features are all welcome.
 ## Before you start
 
 - For anything larger than a small fix, open an issue first so we can agree on the approach.
-- The [README](../README.md#developer-quick-start) covers setup. You need the .NET 10 SDK, Node.js 20
+- The [README](../README.md#development) covers setup. You need the .NET 10 SDK, Node.js 20
   or newer, and World of Warcraft: Forever installed.
 
 ## Making a change

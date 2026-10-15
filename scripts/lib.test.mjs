@@ -4,6 +4,8 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  foreverLaunchProducts,
+  publicProducts,
   buildFromVersions,
   buildsToPrune,
   isNewBuild,
@@ -180,6 +182,11 @@ test('buildFromVersions reads the region\'s VersionsName from the version servic
   assert.throws(() => buildFromVersions('', 'us'), /no header/)
 })
 
+test('isNewBuild is true for the live build when forced, to republish it after an Altrobe change', () => {
+  assert.equal(isNewBuild({ build: '1.60.1.70374' }, '1.60.1.70374', { force: true }), true)
+  assert.equal(isNewBuild({ build: '1.60.1.70374' }, '1.60.1.70374', { force: false }), false)
+})
+
 test('isNewBuild is true when nothing is live or the live build differs', () => {
   assert.equal(isNewBuild(null, '1.60.1.70338'), true)
   assert.equal(isNewBuild({ build: '1.60.1.70245' }, '1.60.1.70338'), true)
@@ -202,4 +209,30 @@ test('prunePlan removes each build folder recursively, with the profile when giv
   ])
   assert.deepEqual(prunePlan({ bucket: 'b', product: 'p', builds: ['1.2'], profile: 'x' })[0].args.slice(-2), ['--profile', 'x'])
   assert.throws(() => prunePlan({ bucket: 'b', product: 'p', builds: ['..'] }), /not a build/)
+})
+
+const SUMMARY = `Product!STRING:0|Seqn!DEC:4|Flags!STRING:0
+## seqn = 4078275
+wow|4019522|cdn
+wow|4078210|
+wow_anniversary|4075844|
+wow_classic|4075855|
+wow_classic_beta|4075842|
+wow_classic_era|4075854|
+wow_classic_era_ptr|4075847|
+wow_classic_titan|4075845|
+wow_cn_beta|4075858|
+wowdev2|4075269|
+wowf|4075843|`
+
+test('public products are the wow_ ones that are not a beta, PTR or China product', () => {
+  assert.deepEqual(publicProducts(SUMMARY), ['wow_anniversary', 'wow_classic', 'wow_classic_era', 'wow_classic_titan'])
+})
+
+test('a public product on a 1.60 build, other than the one we publish, is Forever going live', () => {
+  const today = [{ product: 'wow_classic', version: '5.5.4.70268' }, { product: 'wow_classic_era', version: '1.15.9.70003' }]
+  assert.deepEqual(foreverLaunchProducts(today, 'wow_classic_beta'), [])
+  const launch = [...today, { product: 'wow_classic_forever', version: '1.60.2.71000' }]
+  assert.deepEqual(foreverLaunchProducts(launch, 'wow_classic_beta'), ['wow_classic_forever'])
+  assert.deepEqual(foreverLaunchProducts(launch, 'wow_classic_forever'), [])
 })
