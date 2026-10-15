@@ -18,4 +18,4 @@ only when packaging changes. The browser checks (`web/e2e`, opt-in) keep convert
 
 ## AWS and CI/CD
 
-All AWS infrastructure is defined in `infra/` with the AWS CDK in TypeScript; no console changes. GitHub Actions runs the tests and `cdk diff` on pull requests, and deploys from `main` through an OIDC role (no stored keys), behind the `production` environment's approval. The only local deploy is the first, which creates that role. Game bundles are data, not infrastructure: `npm run publish:bundle` uploads them.
+All AWS infrastructure is defined in `infra/` with the AWS CDK in TypeScript; no console changes. GitHub Actions runs the tests and `cdk diff` on pull requests, and deploys from `main` through an OIDC role (no stored keys), in the `production` environment, which allows `main` only and needs no approval. The only local deploy is the first, which creates that role. Game bundles are data, not infrastructure: `npm run publish:bundle` uploads them.

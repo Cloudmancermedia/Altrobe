@@ -29,7 +29,7 @@ Thanks for helping. Bug reports, fixes and new features are all welcome.
 ## How CI treats pull requests
 
 Pull requests from forks run the tests with read-only permissions and no secrets. Nothing a pull
-request runs can deploy; deploys happen only from `main`, after the maintainer approves them. See
+request runs can deploy; deploys happen only from `main`, after the maintainer merges. See
 [deployment.md](deployment.md).
 
 ## Security issues

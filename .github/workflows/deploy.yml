@@ -1,7 +1,7 @@
 name: Deploy
 
-# cdk diff on pull requests and before each deploy; cdk deploy from main behind the production
-# environment's approval. AWS access is through GitHub's OIDC token and the roles in infra/src/ci-stack.ts;
+# cdk diff on pull requests and before each deploy; cdk deploy on every push to main, in the production
+# environment (main only, no approval while there are no outside contributors; docs/deployment.md). AWS access is through GitHub's OIDC token and the roles in infra/src/ci-stack.ts;
 # no keys are stored. Role ARNs come from repository variables (docs/deployment.md), and both jobs skip
 # until those exist. Never use pull_request_target here.
 
