@@ -39,10 +39,10 @@ export function setQuality(s: ItemSetResult): number {
   return s.quality ?? Math.max(...s.pieces.map((p) => p.quality))
 }
 
-/** The line under a set's name. A data-mined set shows its armor type, and says when its class was guessed from it. */
+/** The line under a set's name. A new-in-Forever set shows its armor type, and says when its class was guessed from it. */
 export function setDetails(s: ItemSetResult): string {
   const parts = [`${s.pieces.length} pieces`, `set ${s.setId}`]
-  if (s.dataMined) {
+  if (s.newInForever) {
     parts.push(s.armor ?? 'no armor')
     if (s.classSource === 'armor' && s.armor) parts.push('Class by armor type')
   } else if (s.unnamed) parts.push('pieces unnamed in this build')

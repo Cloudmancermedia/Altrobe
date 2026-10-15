@@ -22,7 +22,7 @@ public sealed record ItemSummary(int ItemId, string Name, string Slot, int Inven
     // Where the name came from when the game files have none: "cmangos" (ClassicItemNames).
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? NameSource { get; init; }
-    // The look (ItemDisplayInfo ID). In process only: data-mined sets compare looks with named items.
+    // The look (ItemDisplayInfo ID). In process only: new-in-Forever sets compare looks with named items.
     [System.Text.Json.Serialization.JsonIgnore]
     public int DisplayInfoId { get; init; }
 }

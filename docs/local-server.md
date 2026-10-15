@@ -53,7 +53,7 @@ matching HTTP status. Until an install is selected, every data endpoint answers 
 | `GET /characters/{race}/{sex}?models=hd\|sd&classId=` | the default look and every selectable customization choice |
 | `GET /items/search?q=&slot=&quality=&limit=&offset=&unnamed=` | item search. Items with no name are left out unless `unnamed=1`, though an exact item ID still finds one. Total in `X-Total-Count` |
 | `GET /sets/search?q=&limit=&offset=` | item set search by set name, piece name or set ID. Total in `X-Total-Count` |
-| `GET /sets/notable?race=&class=` | the race's notable PvP and tier sets, then its data-mined sets new in Forever, for one class or every class it can be |
+| `GET /sets/notable?race=&class=` | the race's notable PvP and tier sets, then the sets new in Forever, for one class or every class it can be |
 | `GET /weapons/popular?class=` | the Weapons tab: popular weapons for one class, grouped Two-hand, One-hand and Ranged, or a "Popular" list without `class` (`Catalog/popular-weapons.json`) |
 | `GET /sets/pieces` | every set piece's item ID, so equipping a set can take off the one worn before |
 | `GET /titles`, `GET /names` | the game's titles and random-name lists |

@@ -31,7 +31,7 @@ Under the output folder:
 | `{product}/{build}/manifest.json` | counts, and what failed to convert |
 | `{product}/{build}/characters.json` | races and every base look |
 | `{product}/{build}/catalog.json`, `sets.json` | the item catalog and sets, for search in the browser |
-| `{product}/{build}/notable.json` | notable sets per race and class, data-mined sets last |
+| `{product}/{build}/notable.json` | notable sets per race and class, new-in-Forever sets last |
 | `{product}/{build}/set-pieces.json` | every item that is a piece of some set |
 | `{product}/{build}/popular-weapons.json` | the Weapons tab: `all` (no class) and each class ID, from `Catalog/popular-weapons.json`; a bad ID fails the bake |
 | `{product}/{build}/titles.json`, `names.json` | titles and the random-name lists |
@@ -170,7 +170,7 @@ Items the game files leave unnamed get Classic names from cmangos classic-db (`C
 `catalog.json` marks them `nameSource: "cmangos"` and carries the GPL-3.0 credit. See
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
-## Data-mined sets
+## New-in-Forever sets
 
 Altrobe covers Classic and Forever. Season of Discovery's sets are left out everywhere: the set IDs in
 `importer/src/Altrobe.Core/Catalog/season-of-discovery-sets.json` are Classic Era sets none of whose
@@ -183,14 +183,18 @@ dotnet importer/src/Altrobe.Server/bin/Debug/net10.0/Altrobe.Server.dll set-ids 
   --season-of-discovery --out importer/src/Altrobe.Core/Catalog/season-of-discovery-sets.json
 ```
 
-Of the rest, a set is data-mined when every piece is unnamed and at least half its pieces use a look
-no named item has; unnamed copies of named sets stay out (`SetCatalog`). Those came with Forever, so
-the sets panel lists them as "New in Forever (data-mined)" after Tier 3. `sets.json` and
-`notable.json` give each one `dataMined`, its `armor` type and a class mask with its `classSource`:
+Of the rest, a set is new in Forever when it is on `importer/src/Altrobe.Core/Catalog/forever-sets.json`
+(Forever's 21 set IDs on 1.60.1.70374), or when every piece is unnamed and at least half its pieces use a
+look no named item has, which catches a set a later build adds. Unnamed copies of named sets stay out
+(`SetCatalog`). The list matters because Blizzard's hotfixes name items that share these sets' looks
+(Grovekeeper Boots, Gauntlets of Glory): with hotfixes applied, as in the local app or a later CDN
+build, the unnamed-looks test alone drops them. The sets panel lists them as "New in Forever" after
+Tier 3. `sets.json` and `notable.json` give each one `newInForever`, its `armor` type and a class mask
+with its `classSource`:
 
 - `name`: a tier set name, or a word or phrase only one class's tier sets use (`NotableSets`).
-- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs. It places
-  each Forever set family (Glory, Justice, Grovekeeper and the rest) in its one class.
+- `curated`: the class IDs `forever-sets.json` gives the set. It places each Forever set family (Glory,
+  Justice, Grovekeeper and the rest) in its one class; an empty list falls through to armor type.
 - `armor`: the classes that wear its armor type; every class when it has no armor piece.
 
 `node tools/suggest-data-mined-classes.mjs <bundle>/<product>/<build>` suggests curated classes from
