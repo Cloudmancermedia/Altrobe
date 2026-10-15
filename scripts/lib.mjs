@@ -307,8 +307,9 @@ export function publicProducts(summaryText) {
 export const foreverLaunchProducts = (rows, current) =>
   rows.filter((r) => r.product !== current && /^1\.60\./.test(r.version)).map((r) => r.product)
 
-// live is the published current.json, or null when nothing is published yet.
-export const isNewBuild = (live, build) => !live || live.build !== build
+// live is the published current.json, or null when nothing is published yet. force: republish the live
+// build anyway, after a change to Altrobe's own data or code (publish.yml's manual run).
+export const isNewBuild = (live, build, { force = false } = {}) => force || !live || live.build !== build
 
 const BUILD_FOLDER = /^\d+(\.\d+)+$/
 

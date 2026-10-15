@@ -182,6 +182,11 @@ test('buildFromVersions reads the region\'s VersionsName from the version servic
   assert.throws(() => buildFromVersions('', 'us'), /no header/)
 })
 
+test('isNewBuild is true for the live build when forced, to republish it after an Altrobe change', () => {
+  assert.equal(isNewBuild({ build: '1.60.1.70374' }, '1.60.1.70374', { force: true }), true)
+  assert.equal(isNewBuild({ build: '1.60.1.70374' }, '1.60.1.70374', { force: false }), false)
+})
+
 test('isNewBuild is true when nothing is live or the live build differs', () => {
   assert.equal(isNewBuild(null, '1.60.1.70338'), true)
   assert.equal(isNewBuild({ build: '1.60.1.70245' }, '1.60.1.70338'), true)
