@@ -30,12 +30,14 @@ describe('plateLayout', () => {
     expect(p.bottom).toBeCloseTo(600 - 400 * 0.208)
   })
 
-  test('big races (Orc, Tauren) get extra room above the head; others do not', () => {
-    expect(plateLayout({ x: 0, y: 400 }, { x: 0, y: 1000 }, 2).bottom).toBeCloseTo(400 - 600 * (0.208 + 0.064))
-    const at = (race: number) => plateLayout({ x: 500, y: 400 }, { x: 500, y: 1000 }, race).bottom
-    expect(at(2)).toBeLessThan(at(1))
-    expect(at(6)).toBeLessThan(at(5))
-    expect(at(5)).toBeCloseTo(400 - 600 * 0.208)
+  test('each race has its own gap, tuned by eye: Gnomes higher, the tall races lower', () => {
+    const gap = (race?: number) => (400 - plateLayout({ x: 0, y: 400 }, { x: 0, y: 1000 }, race).bottom) / 600
+    expect(gap()).toBeCloseTo(0.208)
+    expect(gap(7)).toBeCloseTo(0.208 * 1.5) // Gnome
+    for (const race of [1, 4, 8]) expect(gap(race)).toBeCloseTo(0.208 * 0.8) // Human, Night Elf, Troll
+    expect(gap(2)).toBeCloseTo(0.272 * 0.8) // Orc
+    expect(gap(6)).toBeCloseTo(0.272) // Tauren
+    for (const race of [3, 5, 95, 96]) expect(gap(race)).toBeCloseTo(0.208) // Dwarf, Undead, Skyborne
   })
 
   test('stays above the head even when that is off the view: the view clips it, nothing moves it', () => {

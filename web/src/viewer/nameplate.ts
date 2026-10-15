@@ -18,12 +18,18 @@ export function nameSize(zoom: number): number {
 }
 
 // The bottom of the guild line sits about a fifth of the character's height on screen above the head, so the
-// gap follows the zoom as in game (measured from a High Warlord nameplate at a quarter, then lowered 20% to
-// look right with the larger 32px names).
+// gap follows the zoom as in game. Each race's share is tuned by eye at the default framing: a Gnome's head
+// sits low in its box, the tall races' high, and Orcs and Tauren are broad and stooped.
 const GAP_SHARE = 0.208
-// Orcs (2) and Tauren (6) are so broad and stooped that the same gap looks cramped on them.
-const BIG_RACES = new Set([2, 6])
-const BIG_RACE_EXTRA = 0.064
+const RACE_GAP: Record<number, number> = {
+  1: GAP_SHARE * 0.8, // Human
+  2: 0.272 * 0.8, // Orc
+  4: GAP_SHARE * 0.8, // Night Elf
+  6: 0.272, // Tauren
+  7: GAP_SHARE * 1.5, // Gnome
+  8: GAP_SHARE * 0.8, // Troll
+}
+
 /**
  * Where the nameplate goes, from the top of the head and the feet on screen: centred on x, its bottom edge
  * at `bottom`, a fixed share of the character's height above the head. Nothing moves it to fit: when that
@@ -31,6 +37,6 @@ const BIG_RACE_EXTRA = 0.064
  */
 export function plateLayout(head: { x: number; y: number }, feet: { x: number; y: number }, race?: number): { x: number; bottom: number } {
   const height = Math.max(0, feet.y - head.y)
-  const gap = GAP_SHARE + (race !== undefined && BIG_RACES.has(race) ? BIG_RACE_EXTRA : 0)
+  const gap = (race !== undefined ? RACE_GAP[race] : undefined) ?? GAP_SHARE
   return { x: head.x, bottom: head.y - height * gap }
 }

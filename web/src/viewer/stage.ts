@@ -9,8 +9,10 @@ import type { View } from '../look/look'
 import type { Character } from './character'
 import { nameSize, plateLayout, screenPoint } from './nameplate'
 
-// How far the camera starts from a character, in character heights.
-const FRAME_DISTANCE = 2.2
+// How far the camera starts from a character, in character heights, and how far above the middle of the
+// character it aims: room above the head for the name, which sits there at a fixed height.
+const FRAME_DISTANCE = 2.5
+const FRAME_LIFT = 0.12
 
 // The page background (--bg in index.css), a touch lighter so the character stands out.
 const BACKGROUND = 0x0b2636
@@ -62,6 +64,7 @@ export class StageView {
     const aspect = r.width > 0 && r.height > 0 ? r.width / r.height : this.camera.aspect
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * aspect
     const d = Math.max(size.y * FRAME_DISTANCE, (size.z * 1.25 / 2) / tanH)
+    center.y += size.y * FRAME_LIFT
     this.controls.target.copy(center)
     // WoW models face +X, which stays +X after the Y-up conversion, so look from +X.
     if (view === 'side') this.camera.position.set(center.x, center.y, center.z + d)
@@ -90,7 +93,7 @@ export class StageView {
     if (!el) return
     let at: ReturnType<typeof plateLayout> | null = null
     if (c) {
-      // Zoom against the default framing (frame(): 2.2 character heights away), so the name keeps its size
+      // Zoom against the default framing (frame(): FRAME_DISTANCE character heights away), so the name keeps its size
       // relative to the character and every race starts at the same size.
       const zoom = (c.box.getSize(new THREE.Vector3()).y * FRAME_DISTANCE) / this.camera.position.distanceTo(this.controls.target)
       el.style.fontSize = `${nameSize(zoom)}px`
