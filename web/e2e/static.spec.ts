@@ -114,6 +114,26 @@ test('the footer is one short line, and About opens the details in a dialog that
   await expect(about).toBeHidden()
 })
 
+test('typing a guild or name with spaces keeps them, as you type', async ({ page }) => {
+  await openApp(page)
+  await page.getByLabel('First name').pressSequentially('Thrall')
+  const guild = page.getByLabel('Guild')
+  await guild.pressSequentially('The Guild of Many Words')
+  await expect(guild).toHaveValue('The Guild of Many Words')
+  await expect(page.locator('.nameplate')).toContainText('<The Guild of Many Words>')
+  // Spaces at the ends are left out of the look (and the share link), but not from the box while typing.
+  await guild.press('Space')
+  await expect(guild).toHaveValue('The Guild of Many Words ')
+  expect(await call(page, (h) => (h.commands.get_look() as { identity?: { guild?: string } }).identity?.guild)).toBe('The Guild of Many Words')
+
+  // A name set from elsewhere still replaces what the box holds.
+  const first = page.getByLabel('First name')
+  await page.getByRole('button', { name: 'Generate name' }).click()
+  await expect(first).not.toHaveValue('Thrall')
+  const generated = await call(page, (h) => (h.commands.get_look() as { identity?: { firstName?: string } }).identity?.firstName)
+  await expect(first).toHaveValue(generated!)
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 

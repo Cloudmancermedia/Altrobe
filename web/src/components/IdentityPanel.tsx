@@ -8,6 +8,21 @@ import { classChoices, titlesFor } from '../identity/identity'
 import { generateName } from '../identity/names'
 import { MAX_GUILD, MAX_LEVEL, MAX_NAME, type Look } from '../look/look'
 
+/**
+ * A text box over a look field. The look keeps the text trimmed (share links drop end spaces), so the box
+ * keeps its own copy of what was typed: a space typed at the end stays until the next letter arrives.
+ * A change from elsewhere (Generate name, opening a look) replaces the copy.
+ */
+function TextField({ id, maxLength, value, onChange }: { id: string; maxLength: number; value: string; onChange: (v: string) => void }) {
+  const [draft, setDraft] = useState(value)
+  const [seen, setSeen] = useState(value)
+  if (value !== seen) {
+    setSeen(value)
+    if (value !== draft.trim()) setDraft(value)
+  }
+  return <input id={id} maxLength={maxLength} value={draft} onChange={(e) => { setDraft(e.target.value); onChange(e.target.value) }} />
+}
+
 /** Name, title, guild, level, class and PvP flag: who the character is, shown over its head and in its tooltip. */
 export function IdentityPanel({ characters, look, pinTooltip, onPinTooltip }: {
   characters: CharactersResponse; look: Look; pinTooltip: boolean; onPinTooltip: (pin: boolean) => void
@@ -36,11 +51,11 @@ export function IdentityPanel({ characters, look, pinTooltip, onPinTooltip }: {
       <h2 id="identity-heading">Identity</h2>
       <div className="picker">
         <label htmlFor="id-first">First name</label>
-        <input id="id-first" maxLength={MAX_NAME} value={id.firstName ?? ''} onChange={(e) => commands.set_identity({ firstName: e.target.value })} />
+        <TextField id="id-first" maxLength={MAX_NAME} value={id.firstName ?? ''} onChange={(v) => commands.set_identity({ firstName: v })} />
       </div>
       <div className="picker">
         <label htmlFor="id-last">Last name</label>
-        <input id="id-last" maxLength={MAX_NAME} value={id.lastName ?? ''} onChange={(e) => commands.set_identity({ lastName: e.target.value })} />
+        <TextField id="id-last" maxLength={MAX_NAME} value={id.lastName ?? ''} onChange={(v) => commands.set_identity({ lastName: v })} />
       </div>
       {raceNames && (
         <div className="actions">
@@ -65,7 +80,7 @@ export function IdentityPanel({ characters, look, pinTooltip, onPinTooltip }: {
       </div>
       <div className="picker">
         <label htmlFor="id-guild">Guild</label>
-        <input id="id-guild" maxLength={MAX_GUILD} value={id.guild ?? ''} onChange={(e) => commands.set_identity({ guild: e.target.value })} />
+        <TextField id="id-guild" maxLength={MAX_GUILD} value={id.guild ?? ''} onChange={(v) => commands.set_identity({ guild: v })} />
       </div>
       <div className="picker">
         <label htmlFor="id-level">Level</label>
