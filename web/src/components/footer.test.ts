@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { footerLinks } from './footer'
+import { copyrightLine, footerLinks } from './footer'
+
+const LOCAL_APP = 'Download the local app (works on Apple silicon Macs; Windows needs beta testers)'
 
 describe('footerLinks', () => {
   test('every page links to a GitHub issue for problems and rights concerns, and to the source', () => {
@@ -10,8 +12,9 @@ describe('footerLinks', () => {
 
   test('the hosted site, which has no install picker, also offers the local app', () => {
     const links = footerLinks({ installs: false, session: false, assistant: false })
-    expect(links.map((l) => l.label)).toEqual(['Download the local app', 'Report a problem or rights concern', 'Source code', 'Licenses', 'Buy me a coffee', 'Item names: cmangos'])
-    expect(links[0].href).toBe('https://github.com/Cloudmancermedia/altrobe/releases/latest')
+    expect(links.map((l) => l.label)).toEqual([LOCAL_APP, 'Report a problem or rights concern', 'Source code', 'Licenses', 'Buy me a coffee', 'Item names: cmangos'])
+    // /releases/latest skips pre-releases, and the local app is in beta.
+    expect(links[0].href).toBe('https://github.com/Cloudmancermedia/altrobe/releases')
   })
 
   test('links the licence notices the build serves beside the app', () => {
@@ -22,5 +25,10 @@ describe('footerLinks', () => {
   test('every page links to Buy Me a Coffee to support the project', () => {
     const coffee = footerLinks({ installs: true, session: true, assistant: true }).find((l) => l.label === 'Buy me a coffee')
     expect(coffee?.href).toBe('https://buymeacoffee.com/cloudmancer')
+  })
+
+  test('the copyright line carries the current year, so it never needs a yearly edit', () => {
+    expect(copyrightLine(new Date('2026-10-14T12:00:00Z'))).toBe('© 2026 Ryan Williams')
+    expect(copyrightLine(new Date('2031-03-01T12:00:00Z'))).toBe('© 2026–2031 Ryan Williams')
   })
 })

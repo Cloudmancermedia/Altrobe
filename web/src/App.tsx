@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, clearCache, features, getCharacters, getStatus, selectInstall } from './api/client'
-import { footerLinks } from './components/footer'
+import { copyrightLine, footerLinks } from './components/footer'
 import type { CharactersResponse, ResolvedItem, Status } from './api/types'
 import { commands, store } from './app-state'
 import { CharacterPanel, CustomizationPanel } from './components/CharacterPanel'
@@ -198,7 +198,7 @@ export default function App() {
         </main>
       )}
       <footer className="footer small muted">
-        Altrobe is a fan project. Not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft is a trademark of Blizzard Entertainment, Inc.
+        {copyrightLine()}. Altrobe is a fan project. Not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft is a trademark of Blizzard Entertainment, Inc.
         {footerLinks(features).map((l) => (
           <span key={l.href}> · <a href={l.href} target="_blank" rel="noreferrer">{l.label}</a></span>
         ))}
