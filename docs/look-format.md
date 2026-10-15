@@ -54,7 +54,8 @@ A share link is the app URL plus `#look=` and the base64url encoding of the cano
 ## Sheathed weapons
 
 `sheathed: true` puts the weapons away, each by its sheath type: a one-hander or a two-hander on the
-back, a dagger or other hip weapon on the hip, a shield on the back. A pair crosses. A ranged weapon
+back, a dagger or other hip weapon on the hip, a shield on the back. As in game, the main-hand weapon
+goes on the left side and the off-hand one on the right, so each is drawn across the body. A ranged weapon
 isn't shown when sheathed, as in Classic. Left out of the link when false.
 
 ## Identity addition
