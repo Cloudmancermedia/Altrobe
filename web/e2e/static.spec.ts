@@ -47,13 +47,13 @@ test('the Weapons tab shows each class its own weapons, and a click equips one',
   const groups = panel.locator('h3.result-group')
   const names = panel.locator('.results .qname')
 
-  // No class picked: one "Popular" list.
+  // No class picked: the "Popular" list, then every weapon Forever added.
   await classSelect.selectOption({ label: 'All classes' })
-  await expect(groups).toHaveText(['Popular'])
+  await expect(groups).toHaveText(['Popular', 'New in Forever'])
 
   await call(page, (h) => h.commands.set_character(4, 0))
   await classSelect.selectOption({ label: 'Druid' })
-  await expect(groups).toHaveText(['Two-hand', 'One-hand'])
+  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'New in Forever'])
   await expect(names.filter({ hasText: 'Staff of Dominance' })).toHaveCount(1)
   await expect(names.filter({ hasText: 'Arcanite Reaper' })).toHaveCount(0)
 
@@ -64,7 +64,7 @@ test('the Weapons tab shows each class its own weapons, and a click equips one',
 
   await call(page, (h) => h.commands.set_character(2, 0))
   await classSelect.selectOption({ label: 'Hunter' })
-  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Ranged'])
+  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Ranged', 'New in Forever'])
 
   await panel.locator('.results li button.result', { hasText: "Rhok'delar" }).click()
   await settled(page, 1, (h: Hooks) => h.attached(0).some((a) => a.itemId === 18713))
