@@ -34,9 +34,40 @@ test('loads a character, equips an item and a set, with no install picker or pro
 test('the Find panel opens on Sets, the first tab', async ({ page }) => {
   await openApp(page)
   const tabs = page.getByRole('region', { name: 'Find' }).getByRole('radiogroup', { name: 'Find' }).getByRole('radio')
-  await expect(tabs).toHaveText(['sets', 'items'])
+  await expect(tabs).toHaveText(['sets', 'weapons', 'items'])
   await expect(tabs.first()).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByLabel('Search sets')).toBeVisible()
+})
+
+test('the Weapons tab shows each class its own weapons, and a click equips one', async ({ page }) => {
+  await openApp(page)
+  const panel = page.getByRole('region', { name: 'Find' })
+  await panel.getByRole('radio', { name: 'weapons' }).click()
+  const classSelect = panel.locator('.search-controls').getByLabel('Class')
+  const groups = panel.locator('h3.result-group')
+  const names = panel.locator('.results .qname')
+
+  // No class picked: one "Popular" list.
+  await classSelect.selectOption({ label: 'All classes' })
+  await expect(groups).toHaveText(['Popular'])
+
+  await call(page, (h) => h.commands.set_character(4, 0))
+  await classSelect.selectOption({ label: 'Druid' })
+  await expect(groups).toHaveText(['Two-hand', 'One-hand'])
+  await expect(names.filter({ hasText: 'Staff of Dominance' })).toHaveCount(1)
+  await expect(names.filter({ hasText: 'Arcanite Reaper' })).toHaveCount(0)
+
+  await call(page, (h) => h.commands.set_character(1, 0))
+  await classSelect.selectOption({ label: 'Warrior' })
+  await expect(names.filter({ hasText: 'Arcanite Reaper' })).toHaveCount(1)
+  await expect(names.filter({ hasText: "Perdition's Blade" })).toHaveCount(0)
+
+  await call(page, (h) => h.commands.set_character(2, 0))
+  await classSelect.selectOption({ label: 'Hunter' })
+  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Ranged'])
+
+  await panel.locator('.results li button.result', { hasText: "Rhok'delar" }).click()
+  await settled(page, 1, (h: Hooks) => h.attached(0).some((a) => a.itemId === 18713))
 })
 
 test.describe('on a phone', () => {
@@ -72,12 +103,12 @@ test('a Human Mage sees new-in-Forever sets after the classic groups, and one dr
   await page.locator('.search-controls').getByLabel('Class').selectOption({ label: 'Mage' })
 
   const headings = page.locator('h3.result-group')
-  await expect(headings.filter({ hasText: 'New in Forever (data-mined)' })).toHaveCount(1)
+  await expect(headings.filter({ hasText: 'New in Forever' })).toHaveCount(1)
   const names = await headings.allTextContents()
-  expect(names.indexOf('New in Forever (data-mined)')).toBe(names.indexOf('Tier 3') + 1)
+  expect(names.indexOf('New in Forever')).toBe(names.indexOf('Tier 3') + 1)
 
   const before = await call(page, (h) => JSON.stringify(h.commands.get_look()))
-  const first = page.locator('h3.result-group:text-is("New in Forever (data-mined)") + ul.results li button').first()
+  const first = page.locator('h3.result-group:text-is("New in Forever") + ul.results li button').first()
   await expect(first).toContainText(/cloth|no armor/)
   await first.click()
   await settled(page, 1, (h: Hooks, look: string) => JSON.stringify(h.commands.get_look()) !== look, before)

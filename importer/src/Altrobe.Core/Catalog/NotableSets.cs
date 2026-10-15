@@ -54,11 +54,11 @@ public static class NotableSets
         return null;
     }
 
-    // Data-mined sets (ItemSetInfo.DataMined), after the tiers. Season of Discovery's are left out
-    // (SetCatalog), so the rest came with Forever.
-    public const string NewInForever = "New in Forever (data-mined)";
+    // Sets Forever added (ItemSetInfo.NewInForever), after the tiers. Season of Discovery's are left out
+    // (SetCatalog).
+    public const string NewInForever = "New in Forever";
 
-    // Words that only one class's tier set names use, for data-mined sets such as "Arcanist Insight".
+    // Words that only one class's tier set names use, for new sets such as "Arcanist Insight".
     // Plain English words from those names (Valor, Might, Wrath, Faith, Elements, Genesis, Enigma,
     // Oracle, Redemption) are left out: other sets use them too.
     public static readonly IReadOnlyDictionary<string, int> ClassStems = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -83,7 +83,7 @@ public static class NotableSets
         ["plate"] = [1, 2], ["mail"] = [3, 7], ["leather"] = [4, 11], ["cloth"] = [5, 8, 9],
     };
 
-    // The class mask a data-mined set's name gives: a tier set name, else a class stem or phrase. Null
+    // The class mask a new-in-Forever set's name gives: a tier set name, else a class stem or phrase. Null
     // when the name names no class, or more than one.
     public static int? ClassByName(string setName)
     {

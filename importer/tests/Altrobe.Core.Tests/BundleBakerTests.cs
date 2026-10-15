@@ -65,6 +65,11 @@ public class BundleBakerTests : IDisposable
 
         public IReadOnlyList<int> SetPieceItemIds => [3];
 
+        // Item 1 for no class and for the Warrior's two-hand list.
+        public IReadOnlyList<WeaponGroup> PopularWeapons(int? classId) =>
+            classId is null ? [new WeaponGroup("Popular", [Items[0]])] : classId == 1 ? [new WeaponGroup("Two-hand", [Items[0]])] : [];
+        public IReadOnlyList<string> WeaponProblems { get; init; } = [];
+
         public IReadOnlyList<TitleInfo> Titles => [new(1017, "%s of the Magram", "%s of the Magram")];
 
         public IReadOnlyDictionary<int, RaceNames> Names => new Dictionary<int, RaceNames> { [2] = new(["Grok"], ["Moga"], ["Bloodrage"]) };
@@ -198,6 +203,26 @@ public class BundleBakerTests : IDisposable
         Assert.Equal([3], Read(Path.Combine(BuildDir, "set-pieces.json")).EnumerateArray().Select(e => e.GetInt32()));
         // Every class is baked for every race, so the site can show a Tauren in priest sets ("Any class").
         Assert.True(orc.TryGetProperty("5", out _));
+    }
+
+    [Fact]
+    public async Task PopularWeaponsAreBakedForNoClassAndEveryClass()
+    {
+        await BundleBaker.BakeAsync(Source(), new BakeOptions(Out));
+        // Mirrors /api/v1/weapons/popular?class=: "all" is no class picked; every class the races have.
+        var weapons = Read(Path.Combine(BuildDir, "popular-weapons.json"));
+        Assert.Equal("Popular", weapons.GetProperty("all")[0].GetProperty("group").GetString());
+        Assert.Equal(1, weapons.GetProperty("1")[0].GetProperty("items")[0].GetProperty("itemId").GetInt32());
+        Assert.Equal(0, weapons.GetProperty("5").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AProblemInThePopularWeaponsListFailsTheBake()
+    {
+        var r = await BundleBaker.BakeAsync(new FakeSource(Path.Combine(_root, "converted")) { WeaponProblems = ["class 11 two-hand: 12784 (Arcanite Reaper) is a two-hand axe, which class 11 can't use"] }, new BakeOptions(Out));
+        Assert.False(r.Ok);
+        Assert.Contains(r.Failures, f => f.Contains("popular-weapons.json") && f.Contains("Arcanite Reaper"));
+        Assert.False(File.Exists(Path.Combine(Out, "wow_classic_beta", "current.json")));
     }
 
     [Fact]

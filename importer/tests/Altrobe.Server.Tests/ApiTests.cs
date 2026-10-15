@@ -159,6 +159,17 @@ public class ApiTests : IClassFixture<ApiTests.Fixture>
     }
 
     [Fact]
+    public async Task PopularWeaponsAnswerForNoClassOrOneClass()
+    {
+        // The fake install has none of the shipped list's items, so every group is empty and left out;
+        // PopularWeaponsTests covers the grouping.
+        var client = await _app.Installed();
+        Assert.Empty((await Body(await client.GetAsync("/api/v1/weapons/popular"))).EnumerateArray());
+        Assert.Empty((await Body(await client.GetAsync("/api/v1/weapons/popular?class=11"))).EnumerateArray());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/v1/weapons/popular?class=druid")).StatusCode);
+    }
+
+    [Fact]
     public async Task SetPiecesListsEveryItemThatBelongsToASet()
     {
         var client = await _app.Installed();

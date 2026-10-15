@@ -17,6 +17,7 @@ public sealed class BuildSession
     readonly AssetCache _assets;
     readonly Memo<ItemCatalog> _items;
     readonly Memo<SetCatalog> _sets;
+    readonly Memo<PopularWeapons> _weapons;
     readonly Memo<IdentityCatalog> _identity;
     readonly Memo<CharacterCatalog> _characters;
     readonly Memo<ItemResolver> _itemResolver;
@@ -34,6 +35,7 @@ public sealed class BuildSession
         _assets = new AssetCache(ConvertedCache.Prepare(cacheDir));
         _items = new(() => new ItemCatalog(tables, classicItems));
         _sets = new(() => new SetCatalog(tables, _items.Value));
+        _weapons = new(() => new PopularWeapons(_items.Value));
         _identity = new(() => new IdentityCatalog(tables));
         _characters = new(() => new CharacterCatalog(tables));
         _itemResolver = new(() => new ItemResolver(tables));
@@ -47,6 +49,7 @@ public sealed class BuildSession
 
     public ItemCatalog Items => _items.Value;
     public SetCatalog Sets => _sets.Value;
+    public PopularWeapons Weapons => _weapons.Value;
     public IdentityCatalog Identity => _identity.Value;
     public CharacterCatalog Characters => _characters.Value;
     public ItemResolver ItemResolver => _itemResolver.Value;

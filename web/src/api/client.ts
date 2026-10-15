@@ -49,6 +49,10 @@ export const searchItems = (query: ItemSearchQuery, signal?: AbortSignal) => bac
 export const getNotableSets = (race: number, classId?: number) =>
   cached(`notable:${race}:${classId ?? ''}`, () => backend.getNotableSets(race, classId))
 
+/** Popular weapons for one class, or (no classId) the "Popular" list across classes. */
+export const getPopularWeapons = (classId?: number) =>
+  cached(`weapons:${classId ?? ''}`, () => backend.getPopularWeapons(classId))
+
 /** Item IDs of every set piece, so equipping a set can replace the last one (replacedSetSlots). */
 export const getSetPieces = () => cached('set-pieces', () => backend.getSetPieces())
 export const getTitles = () => cached('titles', () => backend.getTitles())

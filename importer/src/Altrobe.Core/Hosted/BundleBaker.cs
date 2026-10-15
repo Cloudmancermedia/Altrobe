@@ -26,6 +26,9 @@ public interface IBundleSource
     // What /api/v1/sets/notable and /api/v1/sets/pieces serve.
     IReadOnlyList<SetGroup> Notable(string? faction, IReadOnlyCollection<int> classIds);
     IReadOnlyList<int> SetPieceItemIds { get; }
+    // What /api/v1/weapons/popular serves (PopularWeapons), and what is wrong with its list in this build.
+    IReadOnlyList<WeaponGroup> PopularWeapons(int? classId);
+    IReadOnlyList<string> WeaponProblems { get; }
     // What /api/v1/titles and /api/v1/names serve.
     IReadOnlyList<TitleInfo> Titles { get; }
     IReadOnlyDictionary<int, RaceNames> Names { get; }
@@ -46,6 +49,8 @@ public sealed class BuildSessionSource(BuildSession session) : IBundleSource
     public Task<string> AnimationAsync(uint fdid, int animId) => session.AnimationAsync(fdid, animId);
     public IReadOnlyList<SetGroup> Notable(string? faction, IReadOnlyCollection<int> classIds) => session.Sets.Notable(faction, classIds);
     public IReadOnlyList<int> SetPieceItemIds => session.Sets.PieceItemIds();
+    public IReadOnlyList<WeaponGroup> PopularWeapons(int? classId) => session.Weapons.For(classId);
+    public IReadOnlyList<string> WeaponProblems => session.Weapons.Problems();
     public IReadOnlyList<TitleInfo> Titles => session.Identity.Titles;
     public IReadOnlyDictionary<int, RaceNames> Names => session.Identity.Names;
 }
@@ -74,6 +79,7 @@ public sealed record BakeResult(BundleManifest Manifest, IReadOnlyList<string> F
 //   {product}/{build}/catalog.json, sets.json    for search in the browser
 //   {product}/{build}/notable.json               notable sets per race: "all" and each class ID
 //   {product}/{build}/set-pieces.json            every item that is a piece of some set
+//   {product}/{build}/popular-weapons.json       the Weapons tab: "all" (no class) and each class ID
 //   {product}/{build}/items/{itemId}.json        the item resolved for every race, sex and body kind
 //   {product}/{build}/v{N}/models/{fdid}.glb|.json, v{N}/textures/{fdid}.png, v{N}/anims/{model}/{id}.glb
 // Converted assets sit under the converter version (AssetConverter.OutputVersion), as in the local
@@ -163,6 +169,9 @@ public static class BundleBaker
         });
         Write(Path.Combine(buildDir, "notable.json"), notable);
         Write(Path.Combine(buildDir, "set-pieces.json"), source.SetPieceItemIds);
+        var weapons = new Dictionary<string, IReadOnlyList<WeaponGroup>> { ["all"] = source.PopularWeapons(null) };
+        foreach (var c in everyClass) weapons[c.ToString()] = source.PopularWeapons(c);
+        Write(Path.Combine(buildDir, "popular-weapons.json"), weapons);
         Write(Path.Combine(buildDir, "titles.json"), source.Titles);
         Write(Path.Combine(buildDir, "names.json"), source.Names);
         foreach (var i in items) if (i.IconFileDataId > 0) textures.Add(i.IconFileDataId);
@@ -254,6 +263,8 @@ public static class BundleBaker
         Write(Path.Combine(buildDir, "manifest.json"), manifest);
 
         var failures = options.PreviousManifest is { } prev ? CompareCounts(ReadCounts(prev), counts, options.MaxDrop) : [];
+        // A popular weapon that is missing or one its class can't use fails the run (Catalog/popular-weapons.json).
+        failures = [.. failures, .. source.WeaponProblems.Select(p => $"popular-weapons.json: {p}")];
         if (failures.Count == 0)
             Write(Path.Combine(productDir, "current.json"), new
             {

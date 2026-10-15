@@ -1,6 +1,6 @@
 // node tools/suggest-data-mined-classes.mjs <bundle>/<product>/<build>
-// Suggests classes for data-mined sets the name doesn't place, for a maintainer to check before adding
-// them to importer/src/Altrobe.Core/Catalog/data-mined-classes.json (Phase 4 — Data-Mined Sets Spec,
+// Suggests classes for new-in-Forever sets the name doesn't place, for a maintainer to check before adding
+// them to importer/src/Altrobe.Core/Catalog/forever-sets.json (Phase 4 — Data-Mined Sets Spec,
 // Step 2). A suggestion means the set's helm or shoulder model is worn only by one class's own sets.
 // Shared models mislead (Blue Dragon Mail came out as Rogue), so never copy the output in unchecked.
 // Reads a baked build; writes nothing. Never run during a bake.
@@ -30,16 +30,16 @@ const headModels = (set) => set.pieces.filter((p) => p.slot === 'head' || p.slot
   return models.get(p.item.itemId)
 })
 
-// Model resource -> classes whose own (single-class, not data-mined) sets wear it.
+// Model resource -> classes whose own (single-class, not new-in-Forever) sets wear it.
 const wornBy = new Map()
 for (const set of sets) {
-  const cls = !set.dataMined && !set.internal ? oneClass(set.classMask) : undefined
+  const cls = !set.newInForever && !set.internal ? oneClass(set.classMask) : undefined
   if (!cls) continue
   for (const m of headModels(set)) wornBy.set(m, (wornBy.get(m) ?? new Set()).add(cls))
 }
 
 const suggestions = {}
-for (const set of sets.filter((s) => s.dataMined && s.classSource !== 'name')) {
+for (const set of sets.filter((s) => s.newInForever && s.classSource !== 'name')) {
   const classes = new Set(headModels(set).flatMap((m) => [...(wornBy.get(m) ?? [])]))
   if (classes.size !== 1) continue
   const [cls] = classes

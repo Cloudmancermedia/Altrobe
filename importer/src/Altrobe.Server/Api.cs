@@ -12,7 +12,7 @@ public static class Api
     // A set as the web app and MCP clients see it: pieces flattened to item fields plus the slot.
     public static object SetJson(ItemSetInfo s) => new
     {
-        s.SetId, s.Name, s.Internal, s.Unnamed, s.Quality, s.DataMined, s.Armor, s.ClassSource,
+        s.SetId, s.Name, s.Internal, s.Unnamed, s.Quality, s.NewInForever, s.Armor, s.ClassSource,
         pieces = s.Pieces.Select(p => new { p.Slot, p.Item.ItemId, p.Item.Name, p.Item.Quality, p.Item.IconFileDataId, p.Item.Unnamed }),
         skipped = s.Skipped,
     };
@@ -122,6 +122,19 @@ public static class Api
                 return ApiErrors.BadRequest("race must be a playable race ID from /characters.");
             int[] classes = int.TryParse(req.Query["class"], out var classId) ? [classId] : [.. race.Classes.Select(c => c.ClassId)];
             return Results.Json(sel.Session.Sets.Notable(race.Faction, classes).Select(g => new { g.Group, sets = g.Sets.Select(SetJson) }));
+        });
+
+        // The Weapons tab: popular weapons for one class, or "Popular" without class (PopularWeapons).
+        api.MapGet("/weapons/popular", (HttpRequest req, AppState state) =>
+        {
+            if (state.Current is not { } sel) return ApiErrors.NoInstall();
+            int? classId = null;
+            if (req.Query["class"] is { Count: > 0 } c)
+            {
+                if (!int.TryParse(c[0], out var id)) return ApiErrors.BadRequest("class must be a class ID from /characters.");
+                classId = id;
+            }
+            return Results.Json(sel.Session.Weapons.For(classId));
         });
 
         // Every item that is a piece of some set, so equipping a set can replace the last one.
