@@ -83,6 +83,14 @@ test('names over heads and the logo use the bundled Quattrocento Bold, the close
   expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 16px Quattrocento') })).toBe(true)
 })
 
+test('the name over the head is clipped by its view, never drawn over the rest of the page', async ({ page }) => {
+  await openApp(page)
+  await page.getByLabel('First name').fill('Thrall')
+  await expect(page.locator('.nameplate')).toHaveText(/Thrall/)
+  const clip = await page.locator('.nameplate').evaluate((e) => getComputedStyle(e.closest('.stage-cell')!).overflow)
+  expect(clip).toBe('hidden')
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
