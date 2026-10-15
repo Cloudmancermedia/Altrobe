@@ -8,9 +8,14 @@ export function screenPoint(world: THREE.Vector3, camera: THREE.Camera, width: n
   return { x: (v.x + 1) / 2 * width, y: (1 - v.y) / 2 * height }
 }
 
-// The game draws names at one size on screen, whatever the race or the camera distance. Set in App.css
-// (.nameplate); kept here for the tests.
+// The name's size at the default framing, the same for every race: the camera starts at a fixed multiple
+// of the character's height (Stage.frame), so each race fills the view alike.
 export const NAME_PX = 16
+
+/** The name's size for a zoom (1 at the default framing, 2 twice as close): it keeps its size relative to the character. */
+export function nameSize(zoom: number): number {
+  return Math.min(48, Math.max(10, NAME_PX * zoom))
+}
 
 // Measured from an in-game screenshot (a High Warlord nameplate): the bottom of the guild line sits about
 // a quarter of the character's height on screen above the head, so the gap follows the zoom as in game.
