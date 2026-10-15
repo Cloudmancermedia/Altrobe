@@ -27,20 +27,21 @@ describe('plateLayout', () => {
   test('sits a fixed share of the character\'s height above the head', () => {
     const p = plateLayout({ x: 400, y: 600 }, { x: 400, y: 1000 })
     expect(p.x).toBe(400)
-    expect(p.bottom).toBeCloseTo(600 - 400 * 0.26)
+    expect(p.bottom).toBeCloseTo(600 - 400 * 0.208)
   })
 
   test('big races (Orc, Tauren) get extra room above the head; others do not', () => {
+    expect(plateLayout({ x: 0, y: 400 }, { x: 0, y: 1000 }, 2).bottom).toBeCloseTo(400 - 600 * (0.208 + 0.064))
     const at = (race: number) => plateLayout({ x: 500, y: 400 }, { x: 500, y: 1000 }, race).bottom
     expect(at(2)).toBeLessThan(at(1))
     expect(at(6)).toBeLessThan(at(5))
-    expect(at(5)).toBeCloseTo(400 - 600 * 0.26)
+    expect(at(5)).toBeCloseTo(400 - 600 * 0.208)
   })
 
   test('stays above the head even when that is off the view: the view clips it, nothing moves it', () => {
     // A close-up: the head near the top edge puts the plate above the view, and a character at the
     // left edge puts it partly past that edge.
-    expect(plateLayout({ x: 500, y: 30 }, { x: 500, y: 2000 }).bottom).toBeCloseTo(30 - 1970 * 0.26)
+    expect(plateLayout({ x: 500, y: 30 }, { x: 500, y: 2000 }).bottom).toBeCloseTo(30 - 1970 * 0.208)
     expect(plateLayout({ x: 5, y: 600 }, { x: 5, y: 1000 }).x).toBe(5)
   })
 })
