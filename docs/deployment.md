@@ -59,14 +59,15 @@ account for CDK first (`npx cdk bootstrap`), with the default qualifier.
    `dig +short NS altrobe.com` lists them (minutes to hours).
 
 3. **Set up GitHub** (repository settings):
-   - An environment named `production` with yourself as a required reviewer, and deployment branches
-     limited to `main`.
+   - An environment named `production` with deployment branches limited to `main`. It has no required
+     reviewer, so every merge to `main` deploys on its own. Add yourself as a reviewer again if outside
+     contributors start sending pull requests.
    - Repository variables `AWS_DIFF_ROLE_ARN`, `AWS_DEPLOY_ROLE_ARN` and `AWS_PUBLISH_ROLE_ARN`, from
      step 1's outputs. The scheduled publish skips until `AWS_PUBLISH_ROLE_ARN` is set.
    - Repository secret `BUDGET_EMAIL`, the address for budget alerts. It is a secret, not a variable,
      so GitHub masks it in this public repository's Actions logs.
 
-4. **Deploy the site.** Either merge to `main` and approve the `production` deployment, or run it
+4. **Deploy the site.** Either merge to `main`, which deploys on its own, or run it
    locally once. **WRITE OPERATION:**
 
    ```sh
@@ -95,7 +96,7 @@ environment: `ALTROBE_BUDGET_EMAIL=you@example.com npx cdk deploy AltrobeBudget 
   CDK assertion tests and synthesizes offline with a placeholder account. No AWS access.
 - **`.github/workflows/deploy.yml`**: on pull requests from this repository and on pushes to `main`,
   the `diff` job builds the static web app and runs `cdk diff --all` with the diff role. On `main`,
-  the `deploy` job then waits for approval in the `production` environment, builds the web app and runs
+  the `deploy` job then runs in the `production` environment (main only, no approval), builds the web app and runs
   `cdk deploy --all`. Both jobs skip until their role variable exists. Workflows never use
   `pull_request_target`; top-level permissions are empty and only the jobs that assume a role get
   `id-token: write`.
@@ -161,7 +162,7 @@ product". To switch:
    `gh variable set BUNDLE_PRODUCT --repo Cloudmancermedia/Altrobe --body <product>`.
 2. Run "Publish bundle" from the Actions tab and wait for it to finish. It bakes the new product
    into `{product}/` on the bundle bucket (about 25 minutes), and leaves the beta's folder alone.
-3. Run "Deploy" from the Actions tab on `main` and approve it. The web app then reads the new
+3. Run "Deploy" from the Actions tab on `main`. The web app then reads the new
    product.
 4. Open altrobe.com: the header shows the new product and build. Close the issue.
 

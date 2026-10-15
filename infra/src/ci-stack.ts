@@ -34,8 +34,8 @@ export interface CiStackProps extends StackProps {
 
 // GitHub Actions' way into AWS, with no stored keys: an OIDC provider and three roles.
 // - diff: any workflow in the repository, pull requests included; may only read (CDK lookup role).
-// - deploy: only jobs in the repository's `production` environment, which needs the maintainer's
-//   approval; may assume the CDK bootstrap roles. The site stack grants it the bundle bucket and
+// - deploy: only jobs in the repository's `production` environment, which allows main only (no
+//   approval while there are no outside contributors); may assume the CDK bootstrap roles. The site stack grants it the bundle bucket and
 //   invalidations by name.
 // - publish: workflows running on main (the scheduled bundle publish), with no approval; may assume
 //   nothing. The site stack grants it the bundle bucket and the asset distribution's invalidations.
