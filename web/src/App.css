@@ -96,7 +96,26 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
 .install form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .install { max-width: 460px; width: 100%; }
 
-.footer { padding: 6px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+.footer { display: flex; align-items: center; gap: 14px; padding: 5px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+.footer-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.footer button.link { font-size: inherit; }
+.support-link { color: var(--gold); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.support-link:hover { color: var(--cream); text-decoration: underline; }
+
+/* The About dialog: opened from the footer only. */
+.about { max-width: 520px; width: calc(100% - 32px); padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+.about::backdrop { background: rgba(0, 0, 0, 0.6); }
+.about-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; line-height: 1.45; }
+.about-body p { margin: 0; }
+.about-head { display: flex; align-items: center; justify-content: space-between; }
+.about-head h2 { margin: 0; font-size: 20px; text-transform: none; letter-spacing: 0.02em; }
+.about-close { padding: 0 8px; font-size: 20px; line-height: 1.2; }
+.about-support { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid var(--gold); border-radius: 6px; background: rgba(198, 175, 141, 0.08); }
+.support-button { display: inline-block; padding: 8px 18px; border-radius: 4px; background: linear-gradient(#f3d27a, #c99b3b); color: #1b1203; font-weight: 700; text-decoration: none; }
+.support-button:hover { filter: brightness(1.08); }
+.about-links a, .footer button.link { color: var(--forever); }
+.about-links a:hover { color: var(--cream); }
+.about-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 
 /* Narrow screens: one column that the page scrolls, the character first, then search, then the
    character options. The panels grow to their content instead of scrolling inside themselves. The
