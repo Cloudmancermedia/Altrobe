@@ -21,18 +21,18 @@ export function ItemIcon({ build, fileDataId, quality }: { build: string; fileDa
   return <img className={cls} src={textureUrl(build, fileDataId)} alt="" width={32} height={32} loading="lazy" onError={() => setFailed(true)} />
 }
 
-/** The Find panel: single items, or whole sets. */
+/** The Find panel: whole sets (shown first: most visitors start from a set), or single items. */
 export function ItemSearch({ build }: { build: string }) {
-  const [mode, setMode] = useState<'items' | 'sets'>('items')
+  const [mode, setMode] = useState<'items' | 'sets'>('sets')
   // A slot clicked on the character screen switches to item search for that slot.
   const findSlot = useStore(store, (s) => s.findSlot)
   const [seenFind, setSeenFind] = useState(findSlot?.n)
   if (findSlot && findSlot.n !== seenFind) { setSeenFind(findSlot.n); setMode('items') }
   return (
-    <section className="panel search" aria-labelledby="search-heading">
-      <h2 id="search-heading">Find {mode}</h2>
+    <section className="panel search" aria-label="Find">
+      <h2>Find {mode}</h2>
       <div className="segmented find-mode" role="radiogroup" aria-label="Find">
-        {(['items', 'sets'] as const).map((m) => (
+        {(['sets', 'items'] as const).map((m) => (
           <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>{m}</button>
         ))}
       </div>

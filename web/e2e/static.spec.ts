@@ -12,7 +12,8 @@ test('loads a character, equips an item and a set, with no install picker or pro
   await expect(page.getByRole('heading', { name: 'Choose a game install' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Ask' })).toHaveCount(0)
 
-  const panel = page.getByRole('region', { name: 'Find items' })
+  const panel = page.getByRole('region', { name: 'Find' })
+  await panel.getByRole('radio', { name: 'items' }).click()
   await panel.getByRole('searchbox').fill(String(THUNDERFURY))
   const result = panel.locator('.results li button').first()
   await expect(result).toContainText('Thunderfury')
@@ -28,6 +29,14 @@ test('loads a character, equips an item and a set, with no install picker or pro
   await expect(page.locator('.doll .doll-actions')).toHaveCount(7)
   await settled(page, 1)
   expect(await call(page, (h) => h.attached(0).length)).toBeGreaterThan(0)
+})
+
+test('the Find panel opens on Sets, the first tab', async ({ page }) => {
+  await openApp(page)
+  const tabs = page.getByRole('region', { name: 'Find' }).getByRole('radiogroup', { name: 'Find' }).getByRole('radio')
+  await expect(tabs).toHaveText(['sets', 'items'])
+  await expect(tabs.first()).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByLabel('Search sets')).toBeVisible()
 })
 
 test.describe('on a phone', () => {
@@ -59,7 +68,7 @@ test('a Human Mage sees new-in-Forever sets after the classic groups, and one dr
   await openApp(page)
   await call(page, (h) => h.commands.set_character(1, 0))
   await settled(page, 1)
-  await page.getByRole('region', { name: 'Find items' }).getByRole('radio', { name: 'sets' }).click()
+  await page.getByRole('region', { name: 'Find' }).getByRole('radio', { name: 'sets' }).click()
   await page.locator('.search-controls').getByLabel('Class').selectOption({ label: 'Mage' })
 
   const headings = page.locator('h3.result-group')
