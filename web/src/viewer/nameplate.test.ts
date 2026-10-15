@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, test } from 'vitest'
-import { NAME_PX, plateLayout, screenPoint } from './nameplate'
+import { NAME_PX, nameSize, plateLayout, screenPoint } from './nameplate'
 
 describe('screenPoint', () => {
   const camera = new THREE.PerspectiveCamera(35, 2, 0.01, 100)
@@ -53,10 +53,15 @@ describe('plateLayout', () => {
   })
 })
 
-describe('the name\'s size', () => {
-  test('is one size for every race and zoom, as in the game', () => {
-    expect(NAME_PX).toBeGreaterThanOrEqual(14)
-    expect(plateLayout({ x: 500, y: 500 }, { x: 500, y: 540 }, { width: 1000, height: 1200 }, { width: 80, height: 30 })).not.toHaveProperty('fontSize')
+describe('nameSize', () => {
+  test('every race gets the same size at the default framing, and it follows the zoom from there', () => {
+    expect(nameSize(1)).toBe(NAME_PX)
+    expect(nameSize(2)).toBe(NAME_PX * 2)
+    expect(nameSize(0.75)).toBe(NAME_PX * 0.75)
+  })
+
+  test('stays readable zoomed far out and never swamps a close-up', () => {
+    expect(nameSize(0.1)).toBe(10)
+    expect(nameSize(10)).toBe(48)
   })
 })
-
