@@ -82,7 +82,8 @@ npm --prefix web run test:e2e:static # one browser check against the bundle
 
 `ALTROBE_BUNDLE_DIR` points the dev server at another bundle folder. At build time,
 `VITE_ALTROBE_BUNDLE_URL` (default `/bundle`) says where the site fetches the bundle from, and
-`VITE_ALTROBE_PRODUCT` (default `wow_classic_beta`) which product folder it reads.
+`VITE_ALTROBE_PRODUCT` (default `wow_classic_beta`) which product folder it reads. CI sets it from the
+`BUNDLE_PRODUCT` repository variable ([deployment.md](deployment.md#switching-products)).
 
 ## The count check
 
@@ -136,6 +137,9 @@ A failed run changes nothing on the site and opens a "Bundle publish failed" iss
 the open one. A bake took 21 minutes and peaked at 8.3 GB of disk on 2026-10-13 (3.1 GB of bundle,
 5.2 GB of cache), under the 14 GB a standard GitHub-hosted Linux runner has. If builds outgrow it,
 move the bake to CodeBuild through CDK.
+
+The same workflow's `launch-watch` job opens an issue when Forever's builds reach a public product, so
+the site can move off the beta ([deployment.md](deployment.md#switching-products)).
 
 ## Run it from Blizzard's CDN
 

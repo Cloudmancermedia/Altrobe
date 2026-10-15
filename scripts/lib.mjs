@@ -294,6 +294,19 @@ export function buildFromVersions(text, region) {
   return row[v]
 }
 
+// The products a player can install, from the version service's summary: named wow_*, and not a beta,
+// a PTR or the China beta. Blizzard's internal products (wowdev2, wowf, ...) carry Forever builds too.
+export function publicProducts(summaryText) {
+  const names = summaryText.split('\n').map((l) => l.split('|')[0].trim())
+    .filter((p) => /^wow_[a-z_]+$/.test(p) && !/_(beta|ptr)$/.test(p) && !p.startsWith('wow_cn_'))
+  return [...new Set(names)].sort()
+}
+
+// Forever's beta is version 1.60. A public product on a 1.60 build, other than the one being published,
+// means Forever has gone live under that product (docs/deployment.md, switching products).
+export const foreverLaunchProducts = (rows, current) =>
+  rows.filter((r) => r.product !== current && /^1\.60\./.test(r.version)).map((r) => r.product)
+
 // live is the published current.json, or null when nothing is published yet.
 export const isNewBuild = (live, build) => !live || live.build !== build
 
