@@ -18,7 +18,8 @@
   --warn: #e6b35c;
   --error: #ef7d6d;
   --focus: var(--forever);
-  --display: 'Marcellus', Georgia, serif;
+  /* The closest free match to Friz Quadrata, the game's name and UI font (commercial, so not shipped). */
+  --display: 'Quattrocento', Georgia, serif;
   font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -53,7 +54,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 input[type='search'], input:not([type]) { min-width: 0; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 
-h1 { font: 22px var(--display); margin: 0; letter-spacing: 0.03em; color: var(--cream); }
+h1 { font: 700 22px var(--display); margin: 0; letter-spacing: 0.03em; color: var(--cream); }
 h2 { font: 14px var(--display); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cream); }
 
 .muted { color: var(--muted); }

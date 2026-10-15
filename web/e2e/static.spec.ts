@@ -70,6 +70,19 @@ test('the Weapons tab shows each class its own weapons, and a click equips one',
   await settled(page, 1, (h: Hooks) => h.attached(0).some((a) => a.itemId === 18713))
 })
 
+test('names over heads and the logo use the bundled Quattrocento Bold, the closest free match to the game\'s font', async ({ page }) => {
+  await openApp(page)
+  await page.getByLabel('First name').fill('Thrall')
+  const plate = page.locator('.nameplate')
+  await expect(plate).toHaveText(/Thrall/)
+  for (const el of [plate, page.getByRole('heading', { level: 1 })]) {
+    const style = await el.evaluate((e) => ({ family: getComputedStyle(e).fontFamily, weight: getComputedStyle(e).fontWeight }))
+    expect(style.family).toMatch(/^"?Quattrocento"?,/)
+    expect(style.weight).toBe('700')
+  }
+  expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 16px Quattrocento') })).toBe(true)
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
