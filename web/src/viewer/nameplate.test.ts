@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, test } from 'vitest'
-import { plateLayout, screenPoint } from './nameplate'
+import { NAME_PX, nameSize, plateLayout, screenPoint } from './nameplate'
 
 describe('screenPoint', () => {
   const camera = new THREE.PerspectiveCamera(35, 2, 0.01, 100)
@@ -24,22 +24,44 @@ describe('screenPoint', () => {
 })
 
 describe('plateLayout', () => {
-  // A character whose head is at y 200 and feet at y 1000 on screen: 800 px tall.
-  test('sits above the head by the game\'s share of the character height, with the game\'s text size', () => {
-    const p = plateLayout({ x: 400, y: 200 }, { x: 400, y: 1000 })
+  // A 1000 x 1200 view and a 120 x 40 px nameplate.
+  const view = { width: 1000, height: 1200 }
+  const plate = { width: 120, height: 40 }
+
+  test('sits above the head by the game\'s share of the character height', () => {
+    const p = plateLayout({ x: 400, y: 600 }, { x: 400, y: 1000 }, view, plate)
     expect(p.x).toBe(400)
-    expect(p.bottom).toBeCloseTo(200 - 800 * 0.26)
-    expect(p.fontSize).toBeCloseTo(800 * 0.075)
+    expect(p.bottom).toBeCloseTo(600 - 400 * 0.26)
   })
 
   test('big races (Orc, Tauren) get extra room above the head; others do not', () => {
-    expect(plateLayout({ x: 0, y: 200 }, { x: 0, y: 1000 }, 2).bottom).toBeLessThan(plateLayout({ x: 0, y: 200 }, { x: 0, y: 1000 }, 1).bottom)
-    expect(plateLayout({ x: 0, y: 200 }, { x: 0, y: 1000 }, 6).bottom).toBeLessThan(plateLayout({ x: 0, y: 200 }, { x: 0, y: 1000 }, 5).bottom)
-    expect(plateLayout({ x: 0, y: 200 }, { x: 0, y: 1000 }, 5).bottom).toBeCloseTo(200 - 800 * 0.26)
+    const at = (race: number) => plateLayout({ x: 500, y: 400 }, { x: 500, y: 1000 }, view, plate, race).bottom
+    expect(at(2)).toBeLessThan(at(1))
+    expect(at(6)).toBeLessThan(at(5))
+    expect(at(5)).toBeCloseTo(400 - 600 * 0.26)
   })
 
-  test('the text stays readable on a small character and does not swamp a close-up', () => {
-    expect(plateLayout({ x: 0, y: 100 }, { x: 0, y: 140 }).fontSize).toBe(12)
-    expect(plateLayout({ x: 0, y: 0 }, { x: 0, y: 3000 }).fontSize).toBe(64)
+  test('stays inside the view: never past the left, right or top edge', () => {
+    expect(plateLayout({ x: 10, y: 600 }, { x: 10, y: 1000 }, view, plate).x).toBe(60 + 4)
+    expect(plateLayout({ x: 990, y: 600 }, { x: 990, y: 1000 }, view, plate).x).toBe(1000 - 60 - 4)
+    // A close-up whose head is near the top would put the plate above the view.
+    expect(plateLayout({ x: 500, y: 30 }, { x: 500, y: 2000 }, view, plate).bottom).toBe(40 + 4)
+  })
+
+  test('a plate wider than the view is centred on it', () => {
+    expect(plateLayout({ x: 10, y: 600 }, { x: 10, y: 1000 }, { width: 100, height: 600 }, plate).x).toBe(50)
+  })
+})
+
+describe('nameSize', () => {
+  test('every race gets the same size at the default framing, and it follows the zoom from there', () => {
+    expect(nameSize(1)).toBe(NAME_PX)
+    expect(nameSize(2)).toBe(NAME_PX * 2)
+    expect(nameSize(0.75)).toBe(NAME_PX * 0.75)
+  })
+
+  test('stays readable zoomed far out and never swamps a close-up', () => {
+    expect(nameSize(0.1)).toBe(10)
+    expect(nameSize(10)).toBe(48)
   })
 })

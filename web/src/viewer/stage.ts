@@ -7,7 +7,10 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { View } from '../look/look'
 import type { Character } from './character'
-import { plateLayout, screenPoint } from './nameplate'
+import { nameSize, plateLayout, screenPoint } from './nameplate'
+
+// How far the camera starts from a character, in character heights.
+const FRAME_DISTANCE = 2.2
 
 // The page background (--bg in index.css), a touch lighter so the character stands out.
 const BACKGROUND = 0x0b2636
@@ -58,7 +61,7 @@ export class StageView {
     const r = this.element.getBoundingClientRect()
     const aspect = r.width > 0 && r.height > 0 ? r.width / r.height : this.camera.aspect
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * aspect
-    const d = Math.max(size.y * 2.2, (size.z * 1.25 / 2) / tanH)
+    const d = Math.max(size.y * FRAME_DISTANCE, (size.z * 1.25 / 2) / tanH)
     this.controls.target.copy(center)
     // WoW models face +X, which stays +X after the Y-up conversion, so look from +X.
     if (view === 'side') this.camera.position.set(center.x, center.y, center.z + d)
@@ -79,13 +82,17 @@ export class StageView {
   /**
    * Keeps the nameplate above the head: anchored where the head is in the first animated
    * frame and kept there, so it doesn't bob with the idle breathing. It moves only when the camera does,
-   * and its size follows the character's height on screen.
+   * keeps its size relative to the character as the camera zooms (nameSize), and stays inside the view.
    */
   placeNameplate(width: number, height: number) {
     const el = this.nameplate, c = this.character
     if (!el) return
     let at: ReturnType<typeof plateLayout> | null = null
     if (c) {
+      // Zoom against the default framing (frame(): 2.2 character heights away), so the name keeps its size
+      // relative to the character and every race starts at the same size. Set before measuring the plate.
+      const zoom = (c.box.getSize(new THREE.Vector3()).y * FRAME_DISTANCE) / this.camera.position.distanceTo(this.controls.target)
+      el.style.fontSize = `${nameSize(zoom)}px`
       const size = c.box.getSize(new THREE.Vector3()), center = c.box.getCenter(new THREE.Vector3())
       // The render loop has animated the character once before this runs, so the helm attachment (on
       // the head bone) is where the head really is in its pose, hunched or not. Taken once, then kept.
@@ -97,11 +104,10 @@ export class StageView {
       }
       const head = screenPoint(this.plateHead, this.camera, width, height)
       const feet = screenPoint(new THREE.Vector3(this.plateHead.x, c.box.min.y, this.plateHead.z), this.camera, width, height)
-      if (head && feet) at = plateLayout(head, feet, this.nameplateRace)
+      if (head && feet) at = plateLayout(head, feet, { width, height }, { width: el.offsetWidth, height: el.offsetHeight }, this.nameplateRace)
     }
     el.style.visibility = at ? 'visible' : 'hidden'
     if (at) {
-      el.style.fontSize = `${at.fontSize}px`
       el.style.transform = `translate(${at.x}px, ${at.bottom}px) translate(-50%, -100%)`
     }
   }
