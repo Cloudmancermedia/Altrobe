@@ -24,44 +24,38 @@ describe('screenPoint', () => {
 })
 
 describe('plateLayout', () => {
-  // A 1000 x 1200 view and a 120 x 40 px nameplate.
-  const view = { width: 1000, height: 1200 }
-  const plate = { width: 120, height: 40 }
-
-  test('sits above the head by the game\'s share of the character height', () => {
-    const p = plateLayout({ x: 400, y: 600 }, { x: 400, y: 1000 }, view, plate)
+  test('sits a fixed share of the character\'s height above the head', () => {
+    const p = plateLayout({ x: 400, y: 600 }, { x: 400, y: 1000 })
     expect(p.x).toBe(400)
-    expect(p.bottom).toBeCloseTo(600 - 400 * 0.26)
+    expect(p.bottom).toBeCloseTo(600 - 400 * 0.208)
   })
 
   test('big races (Orc, Tauren) get extra room above the head; others do not', () => {
-    const at = (race: number) => plateLayout({ x: 500, y: 400 }, { x: 500, y: 1000 }, view, plate, race).bottom
+    expect(plateLayout({ x: 0, y: 400 }, { x: 0, y: 1000 }, 2).bottom).toBeCloseTo(400 - 600 * (0.208 + 0.064))
+    const at = (race: number) => plateLayout({ x: 500, y: 400 }, { x: 500, y: 1000 }, race).bottom
     expect(at(2)).toBeLessThan(at(1))
     expect(at(6)).toBeLessThan(at(5))
-    expect(at(5)).toBeCloseTo(400 - 600 * 0.26)
+    expect(at(5)).toBeCloseTo(400 - 600 * 0.208)
   })
 
-  test('stays inside the view: never past the left, right or top edge', () => {
-    expect(plateLayout({ x: 10, y: 600 }, { x: 10, y: 1000 }, view, plate).x).toBe(60 + 4)
-    expect(plateLayout({ x: 990, y: 600 }, { x: 990, y: 1000 }, view, plate).x).toBe(1000 - 60 - 4)
-    // A close-up whose head is near the top would put the plate above the view.
-    expect(plateLayout({ x: 500, y: 30 }, { x: 500, y: 2000 }, view, plate).bottom).toBe(40 + 4)
-  })
-
-  test('a plate wider than the view is centred on it', () => {
-    expect(plateLayout({ x: 10, y: 600 }, { x: 10, y: 1000 }, { width: 100, height: 600 }, plate).x).toBe(50)
+  test('stays above the head even when that is off the view: the view clips it, nothing moves it', () => {
+    // A close-up: the head near the top edge puts the plate above the view, and a character at the
+    // left edge puts it partly past that edge.
+    expect(plateLayout({ x: 500, y: 30 }, { x: 500, y: 2000 }).bottom).toBeCloseTo(30 - 1970 * 0.208)
+    expect(plateLayout({ x: 5, y: 600 }, { x: 5, y: 1000 }).x).toBe(5)
   })
 })
 
 describe('nameSize', () => {
   test('every race gets the same size at the default framing, and it follows the zoom from there', () => {
+    expect(NAME_PX).toBe(32)
     expect(nameSize(1)).toBe(NAME_PX)
     expect(nameSize(2)).toBe(NAME_PX * 2)
     expect(nameSize(0.75)).toBe(NAME_PX * 0.75)
   })
 
   test('stays readable zoomed far out and never swamps a close-up', () => {
-    expect(nameSize(0.1)).toBe(10)
-    expect(nameSize(10)).toBe(48)
+    expect(nameSize(0.1)).toBe(14)
+    expect(nameSize(10)).toBe(96)
   })
 })
