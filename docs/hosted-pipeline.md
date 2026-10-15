@@ -125,7 +125,8 @@ Rolling back is uploading the previous build's `current.json` and invalidating i
 approval, using the publish role ([deployment.md](deployment.md#publishing-a-bundle)). In order:
 
 1. `scripts/watch-bundle.mjs` asks the version service for the product's build and reads the live
-   `current.json`. If they match, the run stops there. It saves the version service's answer, so the
+   `current.json`. If they match, the run stops there, unless the manual run's `force` input is set:
+   that rebakes and republishes the live build after a change to Altrobe's own data or code. It saves the version service's answer, so the
    bake reads the same build (`--versions-file`), and the live build's manifest for the count check.
 2. The bake runs from the CDN with `--previous` set to the live manifest, so a build that drops a
    count by more than 5% fails the run.
@@ -187,7 +188,8 @@ the sets panel lists them as "New in Forever (data-mined)" after Tier 3. `sets.j
 `notable.json` give each one `dataMined`, its `armor` type and a class mask with its `classSource`:
 
 - `name`: a tier set name, or a word or phrase only one class's tier sets use (`NotableSets`).
-- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs.
+- `curated`: `importer/src/Altrobe.Core/Catalog/data-mined-classes.json`, set ID to class IDs. It places
+  each Forever set family (Glory, Justice, Grovekeeper and the rest) in its one class.
 - `armor`: the classes that wear its armor type; every class when it has no armor piece.
 
 `node tools/suggest-data-mined-classes.mjs <bundle>/<product>/<build>` suggests curated classes from
