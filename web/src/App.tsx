@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, clearCache, features, getCharacters, getStatus, selectInstall } from './api/client'
-import { copyrightLine, footerLinks } from './components/footer'
+import { AboutDialog } from './components/AboutDialog'
+import { copyrightLine, SUPPORT } from './components/footer'
 import type { CharactersResponse, ResolvedItem, Status } from './api/types'
 import { commands, store } from './app-state'
 import { CharacterPanel, CustomizationPanel } from './components/CharacterPanel'
@@ -125,6 +126,7 @@ export default function App() {
   const allTitles = useTitles()
   const titles = useMemo(() => titlesFor(allTitles, characters?.races.find((r) => r.race === look.race)?.faction), [allTitles, characters, look.race])
   const [pinTooltip, setPinTooltip] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const cells: ViewerCell[] = useMemo(() => [
     {
       key: 'main', main: true, spec: { race: look.race, sex: look.sex, models: look.models }, label: characterLabel(characters, look.race, look.sex, look.models),
@@ -198,11 +200,11 @@ export default function App() {
         </main>
       )}
       <footer className="footer small muted">
-        {copyrightLine()}. Altrobe is a fan project. Not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft is a trademark of Blizzard Entertainment, Inc.
-        {footerLinks(features).map((l) => (
-          <span key={l.href}> · <a href={l.href} target="_blank" rel="noreferrer">{l.label}</a></span>
-        ))}
+        <span className="footer-note">{copyrightLine()} · A fan project, not affiliated with Blizzard Entertainment.</span>
+        <button type="button" className="link" onClick={() => setAboutOpen(true)}>About</button>
+        <a className="support-link" href={SUPPORT.href} target="_blank" rel="noreferrer">Support Altrobe</a>
       </footer>
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} features={features} />
     </div>
   )
 }

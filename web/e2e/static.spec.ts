@@ -83,6 +83,29 @@ test('names over heads and the logo use the bundled Quattrocento Bold, the close
   expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 16px Quattrocento') })).toBe(true)
 })
 
+test('the footer is one short line, and About opens the details in a dialog that closes again', async ({ page }) => {
+  await openApp(page)
+  const footer = page.locator('footer')
+  await expect(footer.getByRole('link', { name: 'Support Altrobe' })).toHaveAttribute('href', 'https://buymeacoffee.com/cloudmancer')
+  await expect(footer.getByRole('link')).toHaveCount(1)
+  expect((await footer.boundingBox())!.height, 'one line').toBeLessThan(40)
+
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await footer.getByRole('button', { name: 'About' }).click()
+  const about = page.getByRole('dialog', { name: 'About Altrobe' })
+  await expect(about).toBeVisible()
+  await expect(about.getByRole('link', { name: 'Buy me a coffee' })).toBeVisible()
+  for (const name of ['Download the local app', 'Source code', 'Report a problem or rights concern', 'Licenses', 'Item names: cmangos'])
+    await expect(about.getByRole('link', { name })).toBeVisible()
+  await expect(about).toContainText('Windows needs beta testers')
+  await expect(about).toContainText('World of Warcraft is a trademark of Blizzard Entertainment')
+  await page.keyboard.press('Escape')
+  await expect(about).toBeHidden()
+  await footer.getByRole('button', { name: 'About' }).click()
+  await about.getByRole('button', { name: 'Close' }).click()
+  await expect(about).toBeHidden()
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 

@@ -2,19 +2,23 @@ import type { Features } from '../api/backend'
 
 const REPO = 'https://github.com/Cloudmancermedia/altrobe'
 
+/** Support for the project: the footer and the About dialog both show it on its own. */
+export const SUPPORT = { label: 'Buy me a coffee', href: 'https://buymeacoffee.com/cloudmancer' }
+
+export interface AboutLink { label: string; href: string; note?: string }
+
 /**
- * The footer's links. Problems and rights concerns go to a public GitHub issue, never an email address.
+ * The About dialog's links. Problems and rights concerns go to a public GitHub issue, never an email address.
  * The hosted site (no install picker) also points to the local app's releases.
  */
-export function footerLinks(features: Features): { label: string; href: string }[] {
+export function aboutLinks(features: Features): AboutLink[] {
   return [
     // The releases page, not /releases/latest, which skips pre-releases and the local app is in beta.
-    ...(features.installs ? [] : [{ label: 'Download the local app (works on Apple silicon Macs; Windows needs beta testers)', href: `${REPO}/releases` }]),
-    { label: 'Report a problem or rights concern', href: `${REPO}/issues/new` },
+    ...(features.installs ? [] : [{ label: 'Download the local app', href: `${REPO}/releases`, note: 'Works on Apple silicon Macs; Windows needs beta testers.' }]),
     { label: 'Source code', href: REPO },
+    { label: 'Report a problem or rights concern', href: `${REPO}/issues/new` },
     // The licence and the notices for the code the site sends to browsers (dev/licence-files.ts).
     { label: 'Licenses', href: '/THIRD_PARTY_NOTICES.txt' },
-    { label: 'Buy me a coffee', href: 'https://buymeacoffee.com/cloudmancer' },
     // Credit for the Classic item names the game files leave out (ClassicItemNames, GPL-3.0).
     { label: 'Item names: cmangos', href: 'https://github.com/cmangos/classic-db' },
   ]
