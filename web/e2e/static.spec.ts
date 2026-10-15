@@ -70,6 +70,14 @@ test('the Weapons tab shows each class its own weapons, and a click equips one',
   await settled(page, 1, (h: Hooks) => h.attached(0).some((a) => a.itemId === 18713))
 })
 
+test('the name over the head is clipped by its view, never drawn over the rest of the page', async ({ page }) => {
+  await openApp(page)
+  await page.getByLabel('First name').fill('Thrall')
+  await expect(page.locator('.nameplate')).toHaveText(/Thrall/)
+  const clip = await page.locator('.nameplate').evaluate((e) => getComputedStyle(e.closest('.stage-cell')!).overflow)
+  expect(clip).toBe('hidden')
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 

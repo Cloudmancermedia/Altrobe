@@ -44,7 +44,7 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
 /* Five or six characters read left to right, as a leveling journey does. */
 .stage-grid.count-5 { grid-template-columns: repeat(5, 1fr); }
 .stage-grid.count-6 { grid-template-columns: repeat(6, 1fr); }
-.stage-cell { position: relative; outline-offset: -3px; touch-action: none; }
+.stage-cell { position: relative; overflow: hidden; outline-offset: -3px; touch-action: none; }
 .stage-cell + .stage-cell { box-shadow: -2px 0 0 var(--line); }
 .cell-label { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
 /* Over the character's head: titled name, then <Guild>, one color. The stage sets transform. */

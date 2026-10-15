@@ -82,7 +82,8 @@ export class StageView {
   /**
    * Keeps the nameplate above the head: anchored where the head is in the first animated
    * frame and kept there, so it doesn't bob with the idle breathing. It moves only when the camera does,
-   * keeps its size relative to the character as the camera zooms (nameSize), and stays inside the view.
+   * keeps its size relative to the character as the camera zooms (nameSize). Past the view's edge it is
+   * clipped, never moved.
    */
   placeNameplate(width: number, height: number) {
     const el = this.nameplate, c = this.character
@@ -90,7 +91,7 @@ export class StageView {
     let at: ReturnType<typeof plateLayout> | null = null
     if (c) {
       // Zoom against the default framing (frame(): 2.2 character heights away), so the name keeps its size
-      // relative to the character and every race starts at the same size. Set before measuring the plate.
+      // relative to the character and every race starts at the same size.
       const zoom = (c.box.getSize(new THREE.Vector3()).y * FRAME_DISTANCE) / this.camera.position.distanceTo(this.controls.target)
       el.style.fontSize = `${nameSize(zoom)}px`
       const size = c.box.getSize(new THREE.Vector3()), center = c.box.getCenter(new THREE.Vector3())
@@ -104,7 +105,7 @@ export class StageView {
       }
       const head = screenPoint(this.plateHead, this.camera, width, height)
       const feet = screenPoint(new THREE.Vector3(this.plateHead.x, c.box.min.y, this.plateHead.z), this.camera, width, height)
-      if (head && feet) at = plateLayout(head, feet, { width, height }, { width: el.offsetWidth, height: el.offsetHeight }, this.nameplateRace)
+      if (head && feet) at = plateLayout(head, feet, this.nameplateRace)
     }
     el.style.visibility = at ? 'visible' : 'hidden'
     if (at) {
