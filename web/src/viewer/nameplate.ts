@@ -10,33 +10,33 @@ export function screenPoint(world: THREE.Vector3, camera: THREE.Camera, width: n
 
 // The name's size at the default framing, the same for every race: the camera starts at a fixed multiple
 // of the character's height (Stage.frame), so each race fills the view alike.
-export const NAME_PX = 16
+export const NAME_PX = 32
 
 /** The name's size for a zoom (1 at the default framing, 2 twice as close): it keeps its size relative to the character. */
 export function nameSize(zoom: number): number {
-  return Math.min(48, Math.max(10, NAME_PX * zoom))
+  return Math.min(96, Math.max(14, NAME_PX * zoom))
 }
 
-// Measured from an in-game screenshot (a High Warlord nameplate): the bottom of the guild line sits about
-// a quarter of the character's height on screen above the head, so the gap follows the zoom as in game.
-const GAP_SHARE = 0.26
-// Orcs (2) and Tauren (6) are so broad and stooped that the same gap looks cramped on them.
-const BIG_RACES = new Set([2, 6])
-const BIG_RACE_EXTRA = 0.08
-// Space kept between the nameplate and the view's edges.
-const MARGIN = 4
+// The bottom of the guild line sits about a fifth of the character's height on screen above the head, so the
+// gap follows the zoom as in game. Each race's share is tuned by eye at the default framing: a Gnome's head
+// sits low in its box, the tall races' high, and Orcs and Tauren are broad and stooped.
+const GAP_SHARE = 0.208
+const RACE_GAP: Record<number, number> = {
+  1: GAP_SHARE * 0.8, // Human
+  2: 0.272 * 0.8, // Orc
+  4: GAP_SHARE * 0.8, // Night Elf
+  6: 0.272, // Tauren
+  7: GAP_SHARE * 1.5, // Gnome
+  8: GAP_SHARE * 0.8, // Troll
+}
 
 /**
  * Where the nameplate goes, from the top of the head and the feet on screen: centred on x, its bottom edge
- * at `bottom`, kept inside the `view` for a nameplate of `plate` size (centred when wider than the view).
+ * at `bottom`, a fixed share of the character's height above the head. Nothing moves it to fit: when that
+ * is past the view's edge, the view clips it (.stage-cell), as the game's camera would.
  */
-export function plateLayout(
-  head: { x: number; y: number }, feet: { x: number; y: number },
-  view: { width: number; height: number }, plate: { width: number; height: number }, race?: number,
-): { x: number; bottom: number } {
+export function plateLayout(head: { x: number; y: number }, feet: { x: number; y: number }, race?: number): { x: number; bottom: number } {
   const height = Math.max(0, feet.y - head.y)
-  const gap = GAP_SHARE + (race !== undefined && BIG_RACES.has(race) ? BIG_RACE_EXTRA : 0)
-  const half = plate.width / 2 + MARGIN
-  const x = plate.width + 2 * MARGIN >= view.width ? view.width / 2 : Math.min(view.width - half, Math.max(half, head.x))
-  return { x, bottom: Math.max(plate.height + MARGIN, head.y - height * gap) }
+  const gap = (race !== undefined ? RACE_GAP[race] : undefined) ?? GAP_SHARE
+  return { x: head.x, bottom: head.y - height * gap }
 }

@@ -9,8 +9,10 @@ import type { View } from '../look/look'
 import type { Character } from './character'
 import { nameSize, plateLayout, screenPoint } from './nameplate'
 
-// How far the camera starts from a character, in character heights.
-const FRAME_DISTANCE = 2.2
+// How far the camera starts from a character, in character heights, and how far above the middle of the
+// character it aims: room above the head for the name, which sits there at a fixed height.
+const FRAME_DISTANCE = 2.5
+const FRAME_LIFT = 0.12
 
 // The page background (--bg in index.css), a touch lighter so the character stands out.
 const BACKGROUND = 0x0b2636
@@ -62,6 +64,7 @@ export class StageView {
     const aspect = r.width > 0 && r.height > 0 ? r.width / r.height : this.camera.aspect
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * aspect
     const d = Math.max(size.y * FRAME_DISTANCE, (size.z * 1.25 / 2) / tanH)
+    center.y += size.y * FRAME_LIFT
     this.controls.target.copy(center)
     // WoW models face +X, which stays +X after the Y-up conversion, so look from +X.
     if (view === 'side') this.camera.position.set(center.x, center.y, center.z + d)
@@ -82,15 +85,16 @@ export class StageView {
   /**
    * Keeps the nameplate above the head: anchored where the head is in the first animated
    * frame and kept there, so it doesn't bob with the idle breathing. It moves only when the camera does,
-   * keeps its size relative to the character as the camera zooms (nameSize), and stays inside the view.
+   * keeps its size relative to the character as the camera zooms (nameSize). Past the view's edge it is
+   * clipped, never moved.
    */
   placeNameplate(width: number, height: number) {
     const el = this.nameplate, c = this.character
     if (!el) return
     let at: ReturnType<typeof plateLayout> | null = null
     if (c) {
-      // Zoom against the default framing (frame(): 2.2 character heights away), so the name keeps its size
-      // relative to the character and every race starts at the same size. Set before measuring the plate.
+      // Zoom against the default framing (frame(): FRAME_DISTANCE character heights away), so the name keeps its size
+      // relative to the character and every race starts at the same size.
       const zoom = (c.box.getSize(new THREE.Vector3()).y * FRAME_DISTANCE) / this.camera.position.distanceTo(this.controls.target)
       el.style.fontSize = `${nameSize(zoom)}px`
       const size = c.box.getSize(new THREE.Vector3()), center = c.box.getCenter(new THREE.Vector3())
@@ -104,7 +108,7 @@ export class StageView {
       }
       const head = screenPoint(this.plateHead, this.camera, width, height)
       const feet = screenPoint(new THREE.Vector3(this.plateHead.x, c.box.min.y, this.plateHead.z), this.camera, width, height)
-      if (head && feet) at = plateLayout(head, feet, { width, height }, { width: el.offsetWidth, height: el.offsetHeight }, this.nameplateRace)
+      if (head && feet) at = plateLayout(head, feet, this.nameplateRace)
     }
     el.style.visibility = at ? 'visible' : 'hidden'
     if (at) {
