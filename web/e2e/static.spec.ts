@@ -137,7 +137,7 @@ test('typing a guild or name with spaces keeps them, as you type', async ({ page
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-  test('the page scrolls as one column: character first, then search, with the share buttons on screen', async ({ page }) => {
+  test('the page scrolls as one column: character first, then the panel tabs and Find, with the share buttons on screen', async ({ page }) => {
     await openApp(page)
     await expect(page.locator('[data-cell="main"] .cell-label')).not.toBeEmpty()
     const box = await page.evaluate(() => {
@@ -146,17 +146,43 @@ test.describe('on a phone', () => {
       const buttons = [...document.querySelectorAll('.share button')].map((b) => b.getBoundingClientRect().right)
       return {
         pageWidth: document.documentElement.scrollWidth,
-        doll: rect('.doll').top, find: rect('.side.right').top, character: rect('.side.left').top,
-        left: panel('.side.left'), right: panel('.side.right'), buttonsRight: Math.max(...buttons),
+        doll: rect('.doll').top, tabs: rect('.panel-tabs').top, find: rect('.side.right').top,
+        right: panel('.side.right'), buttonsRight: Math.max(...buttons),
       }
     })
     expect(box.pageWidth, 'no sideways scrolling').toBeLessThanOrEqual(390)
     expect(box.buttonsRight, 'share buttons fit').toBeLessThanOrEqual(390)
-    expect(box.left.scroll, 'Character panel shows in full').toBeLessThanOrEqual(box.left.client + 1)
     expect(box.right.scroll, 'Find panel shows in full').toBeLessThanOrEqual(box.right.client + 1)
-    expect(box.doll).toBeLessThan(box.find)
-    expect(box.find).toBeLessThan(box.character)
+    expect(box.doll).toBeLessThan(box.tabs)
+    expect(box.tabs).toBeLessThan(box.find)
   })
+
+  test('Find and Character are tabs under the character, one shown at a time, each keeping what you typed', async ({ page }) => {
+    await openApp(page)
+    const tabs = page.getByRole('radiogroup', { name: 'Panels' }).getByRole('radio')
+    await expect(tabs).toHaveText(['Find', 'Character'])
+    await expect(tabs.first()).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('complementary', { name: 'Find' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Character' })).toBeHidden()
+
+    await page.getByLabel('Search sets').fill('warlord')
+    await tabs.nth(1).click()
+    await expect(page.getByRole('complementary', { name: 'Character' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Find' })).toBeHidden()
+    await page.fill('#id-first', 'Thrall')
+
+    await tabs.first().click()
+    await expect(page.getByLabel('Search sets')).toHaveValue('warlord')
+    await tabs.nth(1).click()
+    await expect(page.locator('#id-first')).toHaveValue('Thrall')
+  })
+})
+
+test('on a wide screen both side panels show and the panel tabs do not', async ({ page }) => {
+  await openApp(page)
+  await expect(page.getByRole('complementary', { name: 'Find' })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Character' })).toBeVisible()
+  await expect(page.getByRole('radiogroup', { name: 'Panels' })).toBeHidden()
 })
 
 test('a Human Mage sees new-in-Forever sets after the classic groups, and one dresses the character', async ({ page }) => {

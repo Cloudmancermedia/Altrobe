@@ -117,8 +117,10 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
 .about-links a:hover { color: var(--cream); }
 .about-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 
-/* Narrow screens: one column that the page scrolls, the character first, then search, then the
-   character options. The panels grow to their content instead of scrolling inside themselves. The
+/* The Find and Character tabs, shown on narrow screens only. */
+.panel-tabs { display: none; }
+/* Narrow screens: one column that the page scrolls, the character first, then tabs that show either
+   search or the character options. Both panels stay mounted, so each keeps what you typed. The panels grow to their content instead of scrolling inside themselves. The
    view takes touch to turn the character, so it stops short of the screen height to leave room to scroll. */
 @media (max-width: 900px) {
   .app { height: auto; min-height: 100%; }
@@ -128,9 +130,10 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
   .layout > .doll { order: 1; height: 60vh; min-height: 400px; }
   .side { overflow: visible; }
-  .side.right { order: 2; }
-  .side.left { order: 3; }
-  .side.left, .side.right { border: none; border-top: 1px solid var(--line); }
+  .layout > .panel-tabs { display: flex; order: 2; margin: 10px 12px 0; }
+  .side.right, .side.left { order: 3; }
+  .side.narrow-hidden { display: none; }
+  .side.left, .side.right { border: none; }
 }
 
 .actions { display: flex; gap: 6px; margin-bottom: 10px; }
