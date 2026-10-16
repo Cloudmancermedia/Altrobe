@@ -180,14 +180,15 @@ describe('models', () => {
     expect(dress(base, { character: 'x', items: { 18: 2 } }, byId(gun)).attachments[0].attachmentId).toBe(1)
   })
 
-  test('sheathed, weapons go to their sheath (the main hand on the other side, so a pair crosses); ranged ones are put away', () => {
+  test('sheathed, the main-hand weapon goes on the left (27, 30, 32) and the off hand on the right (26, 31, 33), as in game; ranged ones are put away', () => {
     const w = (id: number, inv: number, sheatheType: number) => item(id, inv, { sheatheType, models: [{ slot: 0, models: [{ fileDataId: 100 + id }], textures: [] }] })
     const sword = w(1, 13, 1), offSword = w(2, 13, 1), staff = w(3, 17, 2), dagger = w(4, 13, 3), shield = w(5, 14, 4), orb = w(6, 23, 0), bow = w(7, 15, 0)
     const at = (items: Record<number, number>, ...it: ResolvedItem[]) =>
       dress(base, { character: 'x', items, sheathed: true }, byId(...it)).attachments.map((a) => [a.slot, a.attachmentId])
-    expect(at({ 16: 1, 17: 2 }, sword, offSword)).toEqual([[16, 26], [17, 27]])
-    expect(at({ 16: 3 }, staff)).toEqual([[16, 31]])
-    expect(at({ 16: 4 }, dagger)).toEqual([[16, 33]])
+    expect(at({ 16: 1, 17: 2 }, sword, offSword)).toEqual([[16, 27], [17, 26]])
+    expect(at({ 16: 3 }, staff)).toEqual([[16, 30]])
+    expect(at({ 16: 4 }, dagger)).toEqual([[16, 32]])
+    expect(at({ 17: 4 }, dagger)).toEqual([[17, 33]])
     expect(at({ 17: 5 }, shield)).toEqual([[17, 28]])
     expect(at({ 17: 6 }, orb)).toEqual([[17, 2]]) // no sheath: stays in hand
     expect(at({ 18: 7 }, bow)).toEqual([])
@@ -201,7 +202,7 @@ describe('models', () => {
       dress(base, { character: 'x', items, sheathed: true }, byId(...it)).attachments.map((a) => [a.slot, a.attachmentId])
     expect(at({ 17: 1 }, tome)).toEqual([[17, 2]])
     expect(at({ 16: 2 }, fist)).toEqual([[16, 1]])
-    expect(at({ 17: 3 }, sword)).toEqual([[17, 27]])
+    expect(at({ 17: 3 }, sword)).toEqual([[17, 26]]) // the off hand sheathes on the right
   })
 
   test('a weapon attaches to the right hand; items without data are noted and skipped', () => {

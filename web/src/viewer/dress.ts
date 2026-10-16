@@ -62,11 +62,12 @@ const WEAPON_SLOTS = new Set([MAIN_HAND_SLOT, 17, RANGED_SLOT])
 const HELD_IN_OFF_HAND = 23
 const FIST_WEAPON = 13 // Item.SubclassID of fist weapons
 
-// Where a sheathed weapon goes, by Item.SheatheType: the attachment for the off hand, and for the main
-// hand the mirror on the other side, so a pair crosses (WoW Model Viewer, database.cpp and WoWItem.cpp:
-// 1 one-hand on the back 27/26, 2 large weapon 30/31, 3 hip 32/33, 4 shield on the back 28).
+// Where a sheathed weapon goes, by Item.SheatheType. As in game, the main-hand weapon goes on the
+// character's left and the off-hand one on the right, so each is drawn across the body: 1 one-hand on the
+// back (27 left, 26 right), 2 large weapon (30 left, 31 right), 3 hip (32 left, 33 right), 4 shield on the
+// back (28). Sides measured on the HD bodies: the left points sit at +Y in M2 space, like ShoulderLeft (6).
 const SHEATH: Record<number, { main: number; off: number }> = {
-  1: { main: 26, off: 27 }, 2: { main: 31, off: 30 }, 3: { main: 33, off: 32 }, 4: { main: 28, off: 28 },
+  1: { main: 27, off: 26 }, 2: { main: 30, off: 31 }, 3: { main: 32, off: 33 }, 4: { main: 28, off: 28 },
 }
 
 // M2 attachment IDs (EquipmentSlots.js ATTACHMENT_ID) per slot, in ItemDisplayInfo model order.
