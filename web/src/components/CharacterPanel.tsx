@@ -1,4 +1,6 @@
-import type { CharactersResponse, ModelSet } from '../api/types'
+import { useEffect, useState } from 'react'
+import { getSpells } from '../api/client'
+import type { CharactersResponse, ModelSet, SpellInfo } from '../api/types'
 import { commands, store } from '../app-state'
 import { useStore } from '../store'
 import { useBaseLook } from '../hooks'
@@ -89,7 +91,34 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
           </select>
         </div>
       )}
+      <SpellPicker characters={characters} look={look} />
     </section>
+  )
+}
+
+/**
+ * Cast a spell: the five for the character's class (Identity panel), or every class's, grouped, when no
+ * class is picked. Casting replaces the animation (Phase 3 — Spell Casts Spec).
+ */
+function SpellPicker({ characters, look }: { characters: CharactersResponse; look: Look }) {
+  const [spells, setSpells] = useState<SpellInfo[]>([])
+  useEffect(() => { getSpells().then(setSpells, () => setSpells([])) }, [])
+  if (spells.length === 0) return null
+  const classId = look.identity?.classId
+  const classNames = new Map(characters.races.flatMap((r) => r.classes).map((c) => [c.classId, c.name]))
+  const groups = [...new Set(spells.map((s) => s.classId))].filter((c) => !classId || c === classId)
+  return (
+    <div className="picker">
+      <label htmlFor="spell">Spell</label>
+      <select id="spell" value={look.spell ?? 0} onChange={(e) => commands.set_spell(Number(e.target.value) || null)}>
+        <option value={0}>No spell</option>
+        {groups.map((c) => (
+          <optgroup key={c} label={classNames.get(c) ?? `Class ${c}`}>
+            {spells.filter((s) => s.classId === c).map((s) => <option key={s.spellId} value={s.spellId}>{s.name}</option>)}
+          </optgroup>
+        ))}
+      </select>
+    </div>
   )
 }
 

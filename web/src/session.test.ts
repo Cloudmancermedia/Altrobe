@@ -93,6 +93,14 @@ describe('runRemoteCommand', () => {
     expect((await run('get_look')).result).toMatchObject({ animation: 'Run' })
   })
 
+  test('set_spell casts a spell by ID, and null stops', async () => {
+    const { run } = setup()
+    expect((await run('set_spell', { spellId: 133 })).ok).toBe(true)
+    expect((await run('get_look')).result).toMatchObject({ spell: 133 })
+    expect((await run('set_spell', { spellId: null })).ok).toBe(true)
+    expect((await run('get_look')).result).not.toHaveProperty('spell')
+  })
+
   test('share_link returns a link', async () => {
     const { run } = setup()
     const r = await run('share_link')

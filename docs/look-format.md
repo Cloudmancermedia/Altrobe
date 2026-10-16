@@ -30,6 +30,7 @@ A look is a small JSON object that names a character and what it wears, by game 
 | `hide` | Slots whose item is equipped but not drawn. |
 | `cam.view` | `front`, `side`, `back` or `head`. |
 | `anim` | Optional animation name every character plays, such as `"Run"`; absent means `"Stand"`. A character whose body model lacks it stands, with a notice. |
+| `spell` | Optional spell ID (any rank) every character casts, in place of `anim`: its cast pose held on a loop with its effect models on the body. An ID that isn't a positive integer is dropped with a notice. |
 | `compare` | Up to five more characters shown side by side, in screen order. Each wears the main outfit unless it has its own `items`; see below. |
 
 ### Side-by-side characters
@@ -87,6 +88,6 @@ Against the loaded game data, the app also drops items it has no data for, items
 ## Compatibility
 
 Every field added after the first version (`compare` and its entries' `label`, `items`, `hide` and
-`custom`, `anim`, `sheathed`, `identity`) is optional, so older links read the same and the version
+`custom`, `anim`, `spell`, `sheathed`, `identity`) is optional, so older links read the same and the version
 stays 1. A viewer that predates a field ignores it, and one that predates the five-character limit
 drops `compare` entries past the third.

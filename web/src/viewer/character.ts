@@ -7,7 +7,7 @@
 
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import type { BaseLook, ModelMeta } from '../api/types'
+import type { BaseLook, ModelMeta, SpellModel } from '../api/types'
 import { compositeLook } from './compositor'
 import { faceCamera, SPHERICAL_BILLBOARD } from './billboard'
 import type { Attachment, Dressed } from './dress'
@@ -35,6 +35,8 @@ export interface CharacterInput {
   itemSpeed?: number
   /** Animation ID to play instead of Stand (0). */
   animId?: number
+  /** A spell's effect models to hang on the body while it casts (spells.ts castPose). */
+  spellModels?: SpellModel[]
 }
 
 export interface AttachedItem extends Attachment {
@@ -111,7 +113,7 @@ const meshesOf = (root: THREE.Object3D) => {
 }
 const userData = (o: THREE.Object3D) => ({ ...o.parent?.userData, ...o.userData }) as { geosetId?: number; submeshIndex?: number }
 
-export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.5, animId = 0 }: CharacterInput): Promise<Character> {
+export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.5, animId = 0, spellModels = [] }: CharacterInput): Promise<Character> {
   const notices: string[] = []
   const look = { ...baseLook, layers: [...baseLook.layers, ...dressed.layers], geosets: dressed.geosets }
   const show = new Set(look.geosets)
@@ -240,6 +242,21 @@ export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.
     node.add(item.gltf.scene)
     itemRoots.push(item.gltf.scene)
     attached.push({ ...a, rootName, submeshes: list.length })
+  }))
+
+  // A spell's effect models hang on the body's attachment points (-1: at the feet), offset and scaled as its
+  // kit says. Offsets are in WoW's axes; the body's glTF is Y-up, so (x, y, z) becomes (x, z, -y).
+  await Promise.all(spellModels.map(async (m, i) => {
+    const node = m.attachment < 0 ? root : root.getObjectByName(`attachment_${m.attachment}`)
+    if (!node) { notices.push(`no attachment ${m.attachment} on the body model for spell model ${m.fileDataId}`); return }
+    let effect
+    try { effect = await loadModel(assets, m.fileDataId) } catch { notices.push(`spell model ${m.fileDataId} is missing`); return }
+    await mount(effect, `spell${i}_${m.fileDataId}`, {}, 5000 + i * 7)
+    const scene = effect.gltf.scene
+    scene.scale.setScalar(m.scale || 1)
+    scene.position.set(m.offset[0] ?? 0, m.offset[2] ?? 0, -(m.offset[1] ?? 0))
+    node.add(scene)
+    itemRoots.push(scene)
   }))
 
   // The chosen animation on loop: Stand (ID 0, first variation) comes with the model; any other is its
