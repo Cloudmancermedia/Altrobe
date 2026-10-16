@@ -127,6 +127,8 @@ export default function App() {
   const titles = useMemo(() => titlesFor(allTitles, characters?.races.find((r) => r.race === look.race)?.faction), [allTitles, characters, look.race])
   const [pinTooltip, setPinTooltip] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
+  // Narrow screens show one side panel at a time, picked by the tabs under the character screen.
+  const [panelTab, setPanelTab] = useState<'find' | 'character'>('find')
   const cells: ViewerCell[] = useMemo(() => [
     {
       key: 'main', main: true, spec: { race: look.race, sex: look.sex, models: look.models }, label: characterLabel(characters, look.race, look.sex, look.models),
@@ -183,7 +185,7 @@ export default function App() {
       )}
       {phase === 'ready' && characters && (
         <main className="layout">
-          <aside className="side left" aria-label="Character">
+          <aside className={`side left${panelTab === 'character' ? '' : ' narrow-hidden'}`} aria-label="Character">
             <CharacterPanel characters={characters} look={look} />
             <IdentityPanel characters={characters} look={look} pinTooltip={pinTooltip} onPinTooltip={setPinTooltip} />
             {features.assistant && <PromptPanel />}
@@ -194,7 +196,12 @@ export default function App() {
             <Viewer cells={cells} look={look} itemSpeed={itemSpeedParam > 0 ? itemSpeedParam : undefined}
               onNotices={onNotices} onResolved={onResolved} onStage={(s) => { stageRef.current = s }} />
           </PaperDoll>
-          <aside className="side right" aria-label="Find">
+          <div className="segmented panel-tabs" role="radiogroup" aria-label="Panels">
+            {([['find', 'Find'], ['character', 'Character']] as const).map(([tab, label]) => (
+              <button key={tab} type="button" role="radio" aria-checked={panelTab === tab} onClick={() => setPanelTab(tab)}>{label}</button>
+            ))}
+          </div>
+          <aside className={`side right${panelTab === 'find' ? '' : ' narrow-hidden'}`} aria-label="Find">
             <ItemSearch build={build} />
           </aside>
         </main>
