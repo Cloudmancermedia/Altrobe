@@ -85,7 +85,7 @@ export class StageView {
   /**
    * Keeps the nameplate above the head: anchored where the head is in the first animated
    * frame and kept there, so it doesn't bob with the idle breathing. It moves only when the camera does,
-   * keeps its size relative to the character as the camera zooms (nameSize). Past the view's edge it is
+   * keeps its size relative to the character on screen (nameSize). Past the view's edge it is
    * clipped, never moved.
    */
   placeNameplate(width: number, height: number) {
@@ -93,10 +93,6 @@ export class StageView {
     if (!el) return
     let at: ReturnType<typeof plateLayout> | null = null
     if (c) {
-      // Zoom against the default framing (frame(): FRAME_DISTANCE character heights away), so the name keeps its size
-      // relative to the character and every race starts at the same size.
-      const zoom = (c.box.getSize(new THREE.Vector3()).y * FRAME_DISTANCE) / this.camera.position.distanceTo(this.controls.target)
-      el.style.fontSize = `${nameSize(zoom)}px`
       const size = c.box.getSize(new THREE.Vector3()), center = c.box.getCenter(new THREE.Vector3())
       // The render loop has animated the character once before this runs, so the helm attachment (on
       // the head bone) is where the head really is in its pose, hunched or not. Taken once, then kept.
@@ -108,7 +104,13 @@ export class StageView {
       }
       const head = screenPoint(this.plateHead, this.camera, width, height)
       const feet = screenPoint(new THREE.Vector3(this.plateHead.x, c.box.min.y, this.plateHead.z), this.camera, width, height)
-      if (head && feet) at = plateLayout(head, feet, this.nameplateRace)
+      // Sized from the height of the character's box on screen, the same for every race at the default
+      // framing (frame() fits the box), following the zoom and the view's size.
+      const top = screenPoint(new THREE.Vector3(this.plateHead.x, c.box.max.y, this.plateHead.z), this.camera, width, height)
+      if (head && feet && top) {
+        el.style.fontSize = `${nameSize(feet.y - top.y, height)}px`
+        at = plateLayout(head, feet, this.nameplateRace)
+      }
     }
     el.style.visibility = at ? 'visible' : 'hidden'
     if (at) {
