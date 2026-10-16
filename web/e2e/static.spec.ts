@@ -148,6 +148,15 @@ test('casting a spell holds its pose with its effect models on the hands, and th
   expect(await call(page, (h) => (h.commands.get_look() as { spell?: number }).spell)).toBeUndefined()
 })
 
+test('the Animation list reads in plain words, grouped, and picking one plays the game\'s animation', async ({ page }) => {
+  await openApp(page)
+  const anim = page.getByLabel('Animation', { exact: true })
+  await expect(anim.locator('optgroup[label="Casting"] option', { hasText: /^Cast \(aimed\)$/ })).toHaveCount(1)
+  await expect(anim.locator('optgroup[label="Stealth"] option')).toHaveText(['Stealth', 'Stealth (walk)'])
+  await anim.selectOption({ label: 'Cast (aimed)' })
+  expect(await call(page, (h) => (h.commands.get_look() as { anim?: string }).anim)).toBe('SpellCastDirected')
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
