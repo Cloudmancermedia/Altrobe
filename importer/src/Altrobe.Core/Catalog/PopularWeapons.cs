@@ -7,18 +7,19 @@ public sealed record WeaponGroup(string Group, IReadOnlyList<ItemSummary> Items)
 // One class's lists, in display order. Ranged is for hunters: no class gets wands (no wand attack yet).
 public sealed record ClassWeapons(IReadOnlyList<int> TwoHand, IReadOnlyList<int> OneHand, IReadOnlyList<int> Ranged);
 
-// All: shown when no class is picked. Classes: class ID to its lists.
-public sealed record PopularWeaponsList(IReadOnlyList<int> All, IReadOnlyDictionary<int, ClassWeapons> Classes)
+// All: shown when no class is picked. Classes: class ID to its lists. NewInForever: weapons Forever added
+// (not in Classic Era) with a look of their own, shown to each class that can use them.
+public sealed record PopularWeaponsList(IReadOnlyList<int> All, IReadOnlyDictionary<int, ClassWeapons> Classes, IReadOnlyList<int> NewInForever)
 {
     // popular-weapons.json, item IDs only (Phase 4 — Find Panel Spec, Step 3).
     public static PopularWeaponsList Shipped()
     {
         using var s = typeof(PopularWeaponsList).Assembly.GetManifestResourceStream("Catalog/popular-weapons.json")!;
         var file = JsonSerializer.Deserialize<FileShape>(s, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        return new(file.All, file.Classes.ToDictionary(c => int.Parse(c.Key), c => new ClassWeapons(c.Value.TwoHand ?? [], c.Value.OneHand ?? [], c.Value.Ranged ?? [])));
+        return new(file.All, file.Classes.ToDictionary(c => int.Parse(c.Key), c => new ClassWeapons(c.Value.TwoHand ?? [], c.Value.OneHand ?? [], c.Value.Ranged ?? [])), file.NewInForever ?? []);
     }
 
-    sealed record FileShape(int[] All, Dictionary<string, ClassShape> Classes);
+    sealed record FileShape(int[] All, Dictionary<string, ClassShape> Classes, int[]? NewInForever);
     sealed record ClassShape(int[]? TwoHand, int[]? OneHand, int[]? Ranged);
 }
 
@@ -26,7 +27,11 @@ public sealed record PopularWeaponsList(IReadOnlyList<int> All, IReadOnlyDiction
 // class. A class sees its own weapons, not everything it can wield (no daggers for warriors).
 public sealed class PopularWeapons(ItemCatalog items, PopularWeaponsList? list = null)
 {
-    public const string Popular = "Popular", TwoHand = "Two-hand", OneHand = "One-hand", Ranged = "Ranged";
+    public const string Popular = "Popular", TwoHand = "Two-hand", OneHand = "One-hand", Ranged = "Ranged", NewInForever = "New in Forever";
+
+    // The highest item ID in Classic Era 1.15.9.70003 (read from Blizzard's CDN on 2026-10-15): anything
+    // above it came with Forever.
+    public const int ClassicEraMaxItemId = 246062;
     readonly PopularWeaponsList _list = list ?? PopularWeaponsList.Shipped();
 
     // Classic's weapon proficiencies. A two-hand axe, mace or sword is its own skill; the rest are one
@@ -51,9 +56,15 @@ public sealed class PopularWeapons(ItemCatalog items, PopularWeaponsList? list =
 
     public IReadOnlyList<WeaponGroup> For(int? classId)
     {
-        if (classId is not { } c) return Groups((Popular, _list.All));
-        return _list.Classes.TryGetValue(c, out var w) ? Groups((TwoHand, w.TwoHand), (OneHand, w.OneHand), (Ranged, w.Ranged)) : [];
+        if (classId is not { } c) return Groups((Popular, _list.All), (NewInForever, _list.NewInForever));
+        // Forever's weapons for this class: the ones its proficiencies allow (ranged ones only for hunters,
+        // as in the class lists).
+        var forever = _list.NewInForever.Where(id => items.Get(id) is { Weapon: not null } i && CanUse(c, i) && (i.Hands != "ranged" || c == 3)).ToList();
+        var own = _list.Classes.TryGetValue(c, out var w) ? new[] { (TwoHand, w.TwoHand), (OneHand, w.OneHand), (Ranged, w.Ranged) } : [];
+        return Groups([.. own, (NewInForever, forever)]);
     }
+
+    static bool CanUse(int classId, ItemSummary i) => Usable.TryGetValue(classId, out var skills) && skills.Contains(Skill(i));
 
     IReadOnlyList<WeaponGroup> Groups(params (string Group, IReadOnlyList<int> Ids)[] lists) => lists
         .Select(l => new WeaponGroup(l.Group, l.Ids.Select(items.Get).OfType<ItemSummary>().ToList()))
@@ -72,6 +83,7 @@ public sealed class PopularWeapons(ItemCatalog items, PopularWeaponsList? list =
             else if (rule(i) is { } problem) problems.Add($"{where}: {id} ({i.Name}) {problem}");
         }
         foreach (var id in _list.All) Check("all", id, _ => null);
+        foreach (var id in _list.NewInForever) Check("new in Forever", id, _ => id <= ClassicEraMaxItemId ? $"is in Classic Era (IDs up to {ClassicEraMaxItemId})" : null);
         foreach (var (c, w) in _list.Classes)
         {
             string? Usable(ItemSummary i) => PopularWeapons.Usable.TryGetValue(c, out var skills) && skills.Contains(Skill(i)) ? null : $"is a {Skill(i)}, which class {c} can't use";

@@ -44,8 +44,8 @@ public class PopularWeaponsTests
         .Weapon(5, "Staff of Dominance", Staff, TwoHand).Weapon(6, "Ashkandi", Sword2H, TwoHand)
         .Weapon(7, "Aurastone Hammer", Mace1H, OneHand).Armor(8, "Helm of Wrath");
 
-    static PopularWeaponsList List(int[]? all = null, Dictionary<int, ClassWeapons>? classes = null) =>
-        new(all ?? [], classes ?? []);
+    static PopularWeaponsList List(int[]? all = null, Dictionary<int, ClassWeapons>? classes = null, int[]? newInForever = null) =>
+        new(all ?? [], classes ?? [], newInForever ?? []);
 
     [Fact]
     public void AClassSeesItsTwoHandOneHandAndRangedGroupsInListOrder()
@@ -100,6 +100,29 @@ public class PopularWeaponsTests
     }
 
     [Fact]
+    public void NewInForeverWeaponsFollowTheClassRulesAfterTheOtherGroups()
+    {
+        // 300001: a new two-hand axe; 300002: a new one-hand sword; 300003: a new bow.
+        var items = Arsenal().Weapon(300001, "Forest Defender's Axe", Axe2H, TwoHand).Weapon(300002, "Ironwood Blade", Sword1H, OneHand)
+            .Weapon(300003, "New Bow", Bow, Ranged).Items();
+        var weapons = new PopularWeapons(items, List(classes: new() { [8] = new([5], [], []), [1] = new([6], [], []) }, newInForever: [300001, 300002, 300003]));
+        Assert.Equal([(PopularWeapons.TwoHand, "Staff of Dominance"), (PopularWeapons.NewInForever, "Ironwood Blade")],
+            weapons.For(8).Select(g => (g.Group, string.Join(',', g.Items.Select(i => i.Name)))));
+        // Warriors get the axe and the sword; ranged weapons go to hunters only, as in the class lists.
+        Assert.Equal("Forest Defender's Axe,Ironwood Blade", string.Join(',', weapons.For(1)[^1].Items.Select(i => i.Name)));
+        Assert.Equal("Forest Defender's Axe,Ironwood Blade,New Bow", string.Join(',', weapons.For(3)[^1].Items.Select(i => i.Name)));
+        Assert.Equal(PopularWeapons.NewInForever, weapons.For(null)[^1].Group);
+        Assert.Equal(3, weapons.For(null)[^1].Items.Count);
+    }
+
+    [Fact]
+    public void ANewInForeverIdFromClassicEraIsAProblem()
+    {
+        var weapons = new PopularWeapons(Arsenal().Items(), List(newInForever: [2]));
+        Assert.Equal(["new in Forever: 2 (Thunderfury) is in Classic Era (IDs up to 246062)"], weapons.Problems());
+    }
+
+    [Fact]
     public void TheShippedListParsesAndCoversEveryClass()
     {
         var list = PopularWeaponsList.Shipped();
@@ -109,5 +132,9 @@ public class PopularWeaponsTests
         Assert.Empty(list.Classes[4].TwoHand);
         Assert.All(list.Classes, c => Assert.Equal(c.Value.TwoHand.Concat(c.Value.OneHand).Concat(c.Value.Ranged).Count(),
             c.Value.TwoHand.Concat(c.Value.OneHand).Concat(c.Value.Ranged).Distinct().Count()));
+        // Expanded on 2026-10-15: every class has at least 15 weapons, and Forever's own weapons are listed.
+        Assert.All(list.Classes, c => Assert.True(c.Value.TwoHand.Count + c.Value.OneHand.Count + c.Value.Ranged.Count >= 15, $"class {c.Key}"));
+        Assert.True(list.NewInForever.Count >= 10);
+        Assert.Equal(list.NewInForever.Count, list.NewInForever.Distinct().Count());
     }
 }
