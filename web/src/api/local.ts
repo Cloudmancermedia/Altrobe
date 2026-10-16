@@ -1,7 +1,7 @@
 // The local app's backend: the Altrobe server on this computer (/api/v1 and /assets).
 import type { Backend } from './backend'
 import { ApiError } from './errors'
-import type { ApiErrorBody, BaseLook, CharactersResponse, ItemSearchResult, ItemSetResult, RaceNames, ResolvedItem, SetGroup, SpellInfo, Status, TitleInfo, WeaponGroup } from './types'
+import type { ApiErrorBody, BaseLook, CharactersResponse, ItemSearchResult, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
 
 export const API = '/api/v1'
 
@@ -50,7 +50,6 @@ export const localBackend: Backend = {
   searchItems: (q, signal) => request<ItemSearchResult[]>(`/items/search?${query(q)}`, { signal }),
   searchSets: (q, signal) => request<ItemSetResult[]>(`/sets/search?${query(q)}`, { signal }),
   getNotableSets: (race, classId) => request<SetGroup[]>(`/sets/notable?race=${race}${classId ? `&class=${classId}` : ''}`),
-  getSpells: () => request<SpellInfo[]>('/spells'),
   getPopularWeapons: (classId) => request<WeaponGroup[]>(`/weapons/popular${classId ? `?class=${classId}` : ''}`),
   getSetPieces: () => request<number[]>('/sets/pieces'),
   getTitles: () => request<TitleInfo[]>('/titles'),

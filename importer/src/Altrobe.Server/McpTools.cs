@@ -33,8 +33,6 @@ public sealed class McpTools(AppState state, TabSession tab)
           (all of tier 1 and tier 2 in the beta). Show them when asked, and say the build has no name for the
           pieces rather than inventing one; the set name is real.
         - set_animation makes every character play an animation, such as Run; list_animations lists them.
-        - cast_spell makes every character hold a spell's cast pose with its effects, such as Fireball or Shadow Bolt.
-          Each class has five spells; casting replaces the animation.
         - Race IDs come from list_characters. Customization option and choice IDs come from get_look.
         - Weapons have a type (sword, axe, ...) and hands (one-hand, two-hand, ...). A two-hander in the main
           hand clears the off hand. build_outfit fills the main hand only when given weapon types, since
@@ -277,20 +275,6 @@ public sealed class McpTools(AppState state, TabSession tab)
     [Description("World of Warcraft: Forever dressing room (Altrobe). Every character plays this animation on loop, such as Run or Walk; Stand is the default. A character without it stands.")]
     public Task<string> SetAnimation([Description("Animation name from list_animations")] string name, CancellationToken ct) =>
         Tab("set_animation", new() { ["name"] = name }, ct);
-
-    [McpServerTool(Name = "cast_spell")]
-    [Description("World of Warcraft: Forever dressing room (Altrobe). Every character holds a spell's cast pose with its effects, such as Fireball, Shadow Bolt or Holy Light. Each class has five; an empty name stops casting.")]
-    public Task<string> CastSpell([Description("Spell name (any rank's name) or spell ID; empty to stop")] string spell, [Description("Class ID, when the name alone is not enough")] int? classId, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(spell)) return Tab("set_spell", new() { ["spellId"] = null }, ct);
-        var spells = Session.Spells.All;
-        var match = int.TryParse(spell.Trim(), out var id)
-            ? spells.FirstOrDefault(s => s.SpellId == id || s.Ranks.Contains(id))
-            : spells.FirstOrDefault(s => string.Equals(s.Name, spell.Trim(), StringComparison.OrdinalIgnoreCase) && (classId is null || s.ClassId == classId));
-        if (match == null)
-            throw new McpException($"No spell \"{spell}\" in the spell list. The spells: {string.Join(", ", spells.Select(s => s.Name))}.");
-        return Tab("set_spell", new() { ["spellId"] = match.SpellId }, ct);
-    }
 
     [McpServerTool(Name = "share_link", ReadOnly = true)]
     [Description("World of Warcraft: Forever dressing room (Altrobe). A link that opens the current look in Altrobe on any computer with Altrobe installed.")]

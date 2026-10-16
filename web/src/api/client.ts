@@ -49,9 +49,6 @@ export const searchItems = (query: ItemSearchQuery, signal?: AbortSignal) => bac
 export const getNotableSets = (race: number, classId?: number) =>
   cached(`notable:${race}:${classId ?? ''}`, () => backend.getNotableSets(race, classId))
 
-/** Every class's spells for the Spell picker, with their visuals. */
-export const getSpells = () => cached('spells', () => backend.getSpells())
-
 /** Popular weapons for one class, or (no classId) the "Popular" list across classes. */
 export const getPopularWeapons = (classId?: number) =>
   cached(`weapons:${classId ?? ''}`, () => backend.getPopularWeapons(classId))

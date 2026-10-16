@@ -1,17 +1,5 @@
 [
  {
-  "tableName": "AnimKit",
-  "tableHash": "B3AF6ECA",
-  "dbcFileDataID": 801555,
-  "db2FileDataID": 1304323
- },
- {
-  "tableName": "AnimKitSegment",
-  "tableHash": "3E988108",
-  "dbcFileDataID": 801561,
-  "db2FileDataID": 1304324
- },
- {
   "tableName": "CharBaseInfo",
   "tableHash": "3067A8F8",
   "dbcFileDataID": 801593,
@@ -183,86 +171,6 @@
   "tableHash": "F5FA849B",
   "dbcFileDataID": 801719,
   "db2FileDataID": 1122117
- },
- {
-  "tableName": "SkillLineAbility",
-  "tableHash": "FF4446F6",
-  "dbcFileDataID": 801759,
-  "db2FileDataID": 1266278
- },
- {
-  "tableName": "Spell",
-  "tableHash": "E111669E",
-  "dbcFileDataID": 841662,
-  "db2FileDataID": 1140089
- },
- {
-  "tableName": "SpellCastTimes",
-  "tableHash": "FDBA5A66",
-  "dbcFileDataID": 801780,
-  "db2FileDataID": 1134089
- },
- {
-  "tableName": "SpellDuration",
-  "tableHash": "B423FA7A",
-  "dbcFileDataID": 801786,
-  "db2FileDataID": 1137828
- },
- {
-  "tableName": "SpellMisc",
-  "tableHash": "C603EE28",
-  "dbcFileDataID": 801798,
-  "db2FileDataID": 1003144
- },
- {
-  "tableName": "SpellName",
-  "tableHash": "46C66698",
-  "db2FileDataID": 1990283
- },
- {
-  "tableName": "SpellVisual",
-  "tableHash": "F72496D9",
-  "db2FileDataID": 897952
- },
- {
-  "tableName": "SpellVisualAnim",
-  "tableHash": "3334A75E",
-  "db2FileDataID": 1140479
- },
- {
-  "tableName": "SpellVisualEffectName",
-  "tableHash": "02E18F32",
-  "db2FileDataID": 897948
- },
- {
-  "tableName": "SpellVisualEvent",
-  "tableHash": "CC284D0F",
-  "db2FileDataID": 1685317
- },
- {
-  "tableName": "SpellVisualKit",
-  "tableHash": "F483EADB",
-  "db2FileDataID": 897949
- },
- {
-  "tableName": "SpellVisualKitEffect",
-  "tableHash": "4666ED42",
-  "db2FileDataID": 1140480
- },
- {
-  "tableName": "SpellVisualKitModelAttach",
-  "tableHash": "F07194C3",
-  "db2FileDataID": 897953
- },
- {
-  "tableName": "SpellVisualMissile",
-  "tableHash": "51A28350",
-  "db2FileDataID": 897954
- },
- {
-  "tableName": "SpellXSpellVisual",
-  "tableHash": "27B7A01A",
-  "db2FileDataID": 1101657
  },
  {
   "tableName": "TextureFileData",

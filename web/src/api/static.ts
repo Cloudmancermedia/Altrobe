@@ -4,7 +4,7 @@
 import type { Backend } from './backend'
 import { ApiError } from './errors'
 import { searchItemsIn, searchSetsIn, toSetResult, type BundleItem, type BundleSet } from './search'
-import type { BaseLook, CharactersResponse, ItemSetResult, RaceNames, ResolvedItem, SetGroup, SpellInfo, Status, TitleInfo, WeaponGroup } from './types'
+import type { BaseLook, CharactersResponse, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
 
 export interface StaticConfig {
   /** Where the bundle is served, such as /bundle or https://assets.example.com. */
@@ -107,9 +107,6 @@ export function createStaticBackend(config: StaticConfig): Backend {
       return searchSetsIn(await sets(), query).sets.map(toSetResult)
     },
 
-    async getSpells(): Promise<SpellInfo[]> {
-      return (await build('spells.json') as { spells: SpellInfo[] }).spells
-    },
     async getPopularWeapons(classId): Promise<WeaponGroup[]> {
       return (await build('popular-weapons.json') as WeaponsFile)[classId ? String(classId) : 'all'] ?? []
     },

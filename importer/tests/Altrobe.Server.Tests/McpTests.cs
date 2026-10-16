@@ -63,7 +63,7 @@ public class McpTests : IAsyncLifetime
         var tools = await (await Client()).ListToolsAsync(cancellationToken: Ct);
         var names = tools.Select(t => t.Name).ToHashSet();
         foreach (var n in new[] { "search_items", "search_sets", "equip_set", "build_outfit", "list_characters", "get_look", "equip_item", "unequip", "set_character", "set_customization",
-                     "randomize_customization", "reset_customization", "compare", "wear_main_outfit", "list_animations", "set_animation", "cast_spell", "set_visibility", "set_view", "share_link" })
+                     "randomize_customization", "reset_customization", "compare", "wear_main_outfit", "list_animations", "set_animation", "set_visibility", "set_view", "share_link" })
             Assert.Contains(n, names);
     }
 
