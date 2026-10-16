@@ -9,12 +9,12 @@ export interface AboutLink { label: string; href: string; note?: string }
 
 /**
  * The About dialog's links. Problems and rights concerns go to a public GitHub issue, never an email address.
- * The hosted site (no install picker) also points to the local app's releases.
+ * The local app isn't offered on the website until it has had more testing (decided 2026-10-16); it stays
+ * in the repository, and its releases page is `${REPO}/releases` when it comes back.
  */
-export function aboutLinks(features: Features): AboutLink[] {
+// `_features` decides what the local app adds once it is offered again (the website has no install picker).
+export function aboutLinks(_features: Features): AboutLink[] {
   return [
-    // The releases page, not /releases/latest, which skips pre-releases and the local app is in beta.
-    ...(features.installs ? [] : [{ label: 'Download the local app', href: `${REPO}/releases`, note: 'Works on Apple silicon Macs; Windows needs beta testers.' }]),
     { label: 'Source code', href: REPO },
     { label: 'Report a problem or rights concern', href: `${REPO}/issues/new` },
     // The licence and the notices for the code the site sends to browsers (dev/licence-files.ts).

@@ -30,11 +30,11 @@ you want in plain language, and Claude or Codex can drive it directly over
 updates on its own when Blizzard ships a new build.
 
 **The local app** reads the World of Warcraft: Forever install on your own computer and converts
-models as you view them. It never downloads game data from Blizzard. It works on Macs with Apple
-silicon; Windows, Intel Macs and Linux have builds but need beta testers, so please
-[report](https://github.com/Cloudmancermedia/altrobe/issues/new) how it goes.
+models as you view them. It never downloads game data from Blizzard. It isn't released yet: it
+needs more testing first, so for now you run it from source (see [Development](#development)).
+It works on Macs with Apple silicon; Windows, Intel Macs and Linux are untested.
 
-To run it:
+Once a release is out, to run it:
 
 1. Download the zip for your computer from
    [Releases](https://github.com/Cloudmancermedia/altrobe/releases) and unzip it.

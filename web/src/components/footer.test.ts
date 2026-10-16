@@ -12,14 +12,11 @@ describe('aboutLinks', () => {
     expect(links.find((l) => l.label === 'Licenses')?.href).toBe('/THIRD_PARTY_NOTICES.txt')
   })
 
-  test('the hosted site, which has no install picker, also offers the local app, saying where it works', () => {
+  test('the website does not offer the local app until it is released', () => {
+    // Held back for more testing (decided 2026-10-16); the app stays in the repository.
     const links = aboutLinks({ installs: false, session: false, assistant: false })
-    expect(links[0]).toEqual({
-      label: LOCAL_APP,
-      // /releases/latest skips pre-releases, and the local app is in beta.
-      href: 'https://github.com/Cloudmancermedia/altrobe/releases',
-      note: 'Works on Apple silicon Macs; Windows needs beta testers.',
-    })
+    expect(links.map((l) => l.label)).not.toContain(LOCAL_APP)
+    expect(links.map((l) => l.href).join()).not.toContain('/releases')
   })
 
   test('support is its own link, not one among the rest', () => {
