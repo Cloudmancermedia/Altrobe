@@ -8,13 +8,14 @@ export function screenPoint(world: THREE.Vector3, camera: THREE.Camera, width: n
   return { x: (v.x + 1) / 2 * width, y: (1 - v.y) / 2 * height }
 }
 
-// The name's size at the default framing, the same for every race: the camera starts at a fixed multiple
-// of the character's height (Stage.frame), so each race fills the view alike.
-export const NAME_PX = 32
+// The name's size as a share of the character's height on screen (its box, which frame() fits): 32px for
+// the 487px-tall character a 1440x900 window shows at the default framing (measured). Tied to the
+// character, it follows the zoom and the view's size alike, so a phone's smaller view gets a smaller name.
+export const NAME_SHARE = 32 / 487
 
-/** The name's size for a zoom (1 at the default framing, 2 twice as close): it keeps its size relative to the character. */
-export function nameSize(zoom: number): number {
-  return Math.min(96, Math.max(14, NAME_PX * zoom))
+/** The name's size in pixels, from the character's height and the view's height on screen. */
+export function nameSize(characterPx: number, viewPx: number): number {
+  return Math.min(viewPx * 0.13, Math.max(10, characterPx * NAME_SHARE))
 }
 
 // The bottom of the guild line sits about a fifth of the character's height on screen above the head, so the

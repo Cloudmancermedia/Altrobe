@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, test } from 'vitest'
-import { NAME_PX, nameSize, plateLayout, screenPoint } from './nameplate'
+import { NAME_SHARE, nameSize, plateLayout, screenPoint } from './nameplate'
 
 describe('screenPoint', () => {
   const camera = new THREE.PerspectiveCamera(35, 2, 0.01, 100)
@@ -49,15 +49,19 @@ describe('plateLayout', () => {
 })
 
 describe('nameSize', () => {
-  test('every race gets the same size at the default framing, and it follows the zoom from there', () => {
-    expect(NAME_PX).toBe(32)
-    expect(nameSize(1)).toBe(NAME_PX)
-    expect(nameSize(2)).toBe(NAME_PX * 2)
-    expect(nameSize(0.75)).toBe(NAME_PX * 0.75)
+  test('is a fixed share of the character\'s height on screen, so it follows the zoom and the view\'s size', () => {
+    expect(nameSize(487, 725)).toBeCloseTo(487 * NAME_SHARE)
+    expect(nameSize(974, 725)).toBeCloseTo(nameSize(487, 725) * 2)
+  })
+
+  test('a phone\'s smaller view gets a smaller name, not the desktop\'s', () => {
+    // The default framing on a 1440x900 window and on a 390x844 phone (measured on altrobe.com).
+    expect(nameSize(487, 725)).toBeCloseTo(32, 0)
+    expect(nameSize(255, 379)).toBeLessThan(18)
   })
 
   test('stays readable zoomed far out and never swamps a close-up', () => {
-    expect(nameSize(0.1)).toBe(14)
-    expect(nameSize(10)).toBe(96)
+    expect(nameSize(20, 725)).toBe(10)
+    expect(nameSize(5000, 725)).toBeCloseTo(725 * 0.13)
   })
 })
