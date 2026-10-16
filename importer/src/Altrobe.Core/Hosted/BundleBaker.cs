@@ -4,7 +4,6 @@ using Altrobe.Core.Builds;
 using Altrobe.Core.Catalog;
 using Altrobe.Core.Convert;
 using Altrobe.Core.Resolve;
-using Altrobe.Core.Spells;
 
 namespace Altrobe.Core.Hosted;
 
@@ -30,10 +29,6 @@ public interface IBundleSource
     // What /api/v1/weapons/popular serves (PopularWeapons), and what is wrong with its list in this build.
     IReadOnlyList<WeaponGroup> PopularWeapons(int? classId);
     IReadOnlyList<string> WeaponProblems { get; }
-    // What /api/v1/spells serves (SpellCatalog), the effect models casting shows, and what is wrong with the picks.
-    IReadOnlyList<SpellInfo> Spells { get; }
-    IReadOnlyList<int> SpellModels { get; }
-    IReadOnlyList<string> SpellProblems { get; }
     // What /api/v1/titles and /api/v1/names serve.
     IReadOnlyList<TitleInfo> Titles { get; }
     IReadOnlyDictionary<int, RaceNames> Names { get; }
@@ -56,9 +51,6 @@ public sealed class BuildSessionSource(BuildSession session) : IBundleSource
     public IReadOnlyList<int> SetPieceItemIds => session.Sets.PieceItemIds();
     public IReadOnlyList<WeaponGroup> PopularWeapons(int? classId) => session.Weapons.For(classId);
     public IReadOnlyList<string> WeaponProblems => session.Weapons.Problems();
-    public IReadOnlyList<SpellInfo> Spells => session.Spells.All;
-    public IReadOnlyList<int> SpellModels => session.Spells.CasterModels();
-    public IReadOnlyList<string> SpellProblems => session.Spells.Problems();
     public IReadOnlyList<TitleInfo> Titles => session.Identity.Titles;
     public IReadOnlyDictionary<int, RaceNames> Names => session.Identity.Names;
 }
@@ -88,7 +80,6 @@ public sealed record BakeResult(BundleManifest Manifest, IReadOnlyList<string> F
 //   {product}/{build}/notable.json               notable sets per race: "all" and each class ID
 //   {product}/{build}/set-pieces.json            every item that is a piece of some set
 //   {product}/{build}/popular-weapons.json       the Weapons tab: "all" (no class) and each class ID
-//   {product}/{build}/spells.json                the Spell picker's spells, with their visuals (SpellCatalog)
 //   {product}/{build}/items/{itemId}.json        the item resolved for every race, sex and body kind
 //   {product}/{build}/v{N}/models/{fdid}.glb|.json, v{N}/textures/{fdid}.png, v{N}/anims/{model}/{id}.glb
 // Converted assets sit under the converter version (AssetConverter.OutputVersion), as in the local
@@ -120,9 +111,6 @@ public static class BundleBaker
         "Special1H", "Special2H", "SpecialUnarmed", "ShieldBash", "Kick", "Whirlwind", "BattleRoar",
         // Ranged (Classic crossbows use the rifle animations; AttackCrossbow came later)
         "ReadyBow", "AttackBow", "ReadyRifle", "AttackRifle", "ReadyThrown", "AttackThrown",
-        // Spells (Phase 3 — Spell Casts Spec): Thunder Clap's stomp and Recklessness's roar, and how a target
-        // takes a hit (Step 3).
-        "DragonStomp", "EmoteRoar", "CombatWound", "CombatCritical",
         // Mounted (the rider's pose; the mount's own animations come with mounts) and emotes
         "Mount", "MountSpecial", "EmoteWave", "EmoteCheer", "EmoteDance", "EmoteLaugh",
     ];
@@ -186,9 +174,6 @@ public static class BundleBaker
         var weapons = new Dictionary<string, IReadOnlyList<WeaponGroup>> { ["all"] = source.PopularWeapons(null) };
         foreach (var c in everyClass) weapons[c.ToString()] = source.PopularWeapons(c);
         Write(Path.Combine(buildDir, "popular-weapons.json"), weapons);
-        Write(Path.Combine(buildDir, "spells.json"), new { build = source.Build, spells = source.Spells });
-        // The effect models a spell's caster shows convert with the rest (Phase 3 — Spell Casts Spec, Step 1).
-        models.UnionWith(source.SpellModels);
         Write(Path.Combine(buildDir, "titles.json"), source.Titles);
         Write(Path.Combine(buildDir, "names.json"), source.Names);
         foreach (var i in items) if (i.IconFileDataId > 0) textures.Add(i.IconFileDataId);
@@ -281,7 +266,7 @@ public static class BundleBaker
 
         var failures = options.PreviousManifest is { } prev ? CompareCounts(ReadCounts(prev), counts, options.MaxDrop) : [];
         // A popular weapon that is missing or one its class can't use fails the run (Catalog/popular-weapons.json).
-        failures = [.. failures, .. source.WeaponProblems.Select(p => $"popular-weapons.json: {p}"), .. source.SpellProblems.Select(p => $"spells.json: {p}")];
+        failures = [.. failures, .. source.WeaponProblems.Select(p => $"popular-weapons.json: {p}")];
         if (failures.Count == 0)
             Write(Path.Combine(productDir, "current.json"), new
             {

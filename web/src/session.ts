@@ -26,7 +26,6 @@ export function describeLook(s: AppState, full = true) {
     hidden: look.hide,
     view: look.cam.view,
     animation: look.anim ?? 'Stand',
-    ...(look.spell ? { spell: look.spell } : {}),
     compare: look.compare.map((c) => ({
       character: characterLabel(s.characters, c.race, c.sex, c.models),
       ...(c.label ? { label: c.label } : {}),
@@ -81,7 +80,6 @@ export async function runRemoteCommand(cmd: Commands, store: Store<AppState>, co
     set_visibility: () => cmd.set_visibility(str(args, 'slot'), args.visible as boolean),
     set_view: () => cmd.set_view(str(args, 'view') as View),
     set_animation: () => cmd.set_animation(str(args, 'name')),
-    set_spell: () => cmd.set_spell(args.spellId === null || args.spellId === undefined ? null : num(args, 'spellId')),
   }
   if (command === 'get_look') {
     await settle?.()

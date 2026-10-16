@@ -244,16 +244,3 @@ describe('setPieceSlots', () => {
     expect(setPieceSlots({}, new Set([1]))).toEqual([])
   })
 })
-
-describe('spells', () => {
-  const base = emptyLook(1, 0, 'hd', '1.60.1.70425')
-  test('casting a spell clears the animation, and choosing an animation clears the spell', () => {
-    const casting = transitions.setSpell({ ...base, anim: 'Run' }, 133)
-    expect(casting).toEqual({ look: { ...base, spell: 133 } })
-    expect(transitions.setAnimation({ ...base, spell: 133 }, 'Run', [])).toEqual({ look: { ...base, anim: 'Run' } })
-  })
-  test('no spell stops casting; a spell must be a positive ID', () => {
-    expect(transitions.setSpell({ ...base, spell: 133 }, null)).toEqual({ look: base })
-    expect(transitions.setSpell(base, -4)).toHaveProperty('error')
-  })
-})

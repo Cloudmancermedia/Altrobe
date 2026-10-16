@@ -33,7 +33,6 @@ Under the output folder:
 | `{product}/{build}/catalog.json`, `sets.json` | the item catalog and sets, for search in the browser |
 | `{product}/{build}/notable.json` | notable sets per race and class, new-in-Forever sets last |
 | `{product}/{build}/set-pieces.json` | every item that is a piece of some set |
-| `{product}/{build}/spells.json` | the Spell picker: each class's five spells (`Catalog/spell-picks.json`) with their ranks, cast time and visual kits (animation and effect models per event), from `SpellCatalog`; a pick that's missing or whose ranks look different fails the bake |
 | `{product}/{build}/popular-weapons.json` | the Weapons tab: `all` (no class) and each class ID, ending with the weapons Forever added (IDs above Classic Era's 246062), from `Catalog/popular-weapons.json`; a bad ID fails the bake |
 | `{product}/{build}/titles.json`, `names.json` | titles and the random-name lists |
 | `{product}/{build}/items/{itemId}.json` | the item resolved for every race, sex and body kind |
