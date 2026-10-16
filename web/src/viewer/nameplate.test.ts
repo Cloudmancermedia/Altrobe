@@ -35,7 +35,7 @@ describe('plateLayout', () => {
     expect(gap()).toBeCloseTo(0.208)
     expect(gap(7)).toBeCloseTo(0.208 * 1.5) // Gnome
     for (const race of [1, 4, 8]) expect(gap(race)).toBeCloseTo(0.208 * 0.8) // Human, Night Elf, Troll
-    expect(gap(2)).toBeCloseTo(0.272 * 0.8) // Orc
+    expect(gap(2)).toBeCloseTo(0.272 * 0.8 * 1.452) // Orc: lowered 20%, then raised by eye in the preview (x1.2, x1.1, x1.1)
     expect(gap(6)).toBeCloseTo(0.272) // Tauren
     for (const race of [3, 5, 95, 96]) expect(gap(race)).toBeCloseTo(0.208) // Dwarf, Undead, Skyborne
   })
