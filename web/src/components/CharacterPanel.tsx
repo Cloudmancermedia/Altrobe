@@ -2,7 +2,7 @@ import type { CharactersResponse, ModelSet } from '../api/types'
 import { commands, store } from '../app-state'
 import { useStore } from '../store'
 import { useBaseLook } from '../hooks'
-import { pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
+import { ANIMATION_GROUPS, animationGroup, animationLabel, animationOrder, pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
 import { VIEWS, type Look } from '../look/look'
 import { panelOptions } from '../viewer/customize'
 
@@ -85,7 +85,15 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
         <div className="picker">
           <label htmlFor="anim">Animation</label>
           <select id="anim" value={look.anim ?? 'Stand'} onChange={(e) => commands.set_animation(e.target.value)}>
-            {animations.map((a) => <option key={a.id} value={a.name}>{a.name}</option>)}
+            {ANIMATION_GROUPS.map((group) => {
+              const inGroup = animations.filter((a) => animationGroup(a.name) === group)
+                .sort((x, y) => animationOrder(x.name) - animationOrder(y.name) || animationLabel(x.name).localeCompare(animationLabel(y.name)))
+              return inGroup.length > 0 && (
+                <optgroup key={group} label={group}>
+                  {inGroup.map((a) => <option key={a.id} value={a.name}>{animationLabel(a.name)}</option>)}
+                </optgroup>
+              )
+            })}
           </select>
         </div>
       )}
