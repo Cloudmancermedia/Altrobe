@@ -2,6 +2,7 @@ using System.Text.Json;
 using Altrobe.Core.Catalog;
 using Altrobe.Core.Convert;
 using Altrobe.Core.Hosted;
+using Altrobe.Core.Spells;
 using Altrobe.Core.Resolve;
 
 namespace Altrobe.Core.Tests;
@@ -69,6 +70,12 @@ public class BundleBakerTests : IDisposable
         public IReadOnlyList<WeaponGroup> PopularWeapons(int? classId) =>
             classId is null ? [new WeaponGroup("Popular", [Items[0]])] : classId == 1 ? [new WeaponGroup("Two-hand", [Items[0]])] : [];
         public IReadOnlyList<string> WeaponProblems { get; init; } = [];
+
+        // Fireball for the mage: its cast kit hangs model 7300 on both hands.
+        public IReadOnlyList<SpellInfo> Spells { get; } = [new(133, "Fireball", 8, [133], 1500, 0,
+            [new SpellKit(38, 3, 13, 1, 53, [new SpellModel(7300, 21, 1, [0, 0, 0], [0, 0, 0]), new SpellModel(7300, 22, 1, [0, 0, 0], [0, 0, 0])])], null)];
+        public IReadOnlyList<int> SpellModels => [7300];
+        public IReadOnlyList<string> SpellProblems { get; init; } = [];
 
         public IReadOnlyList<TitleInfo> Titles => [new(1017, "%s of the Magram", "%s of the Magram")];
 
@@ -172,7 +179,7 @@ public class BundleBakerTests : IDisposable
                      "Attack1H", "Attack2H", "AttackOff", "Parry1H", "Ready2H", "ShieldBlock",
                      "Special1H", "Special2H", "ShieldBash", "Kick", "Whirlwind",
                      "Walk", "Run", "Sprint", "JumpStart", "Jump", "JumpEnd", "Mount", "MountSpecial",
-                     "StealthStand", "StealthWalk" })
+                     "StealthStand", "StealthWalk", "DragonStomp", "EmoteRoar", "CombatWound", "CombatCritical" })
             Assert.Contains(n, names);
         Assert.Equal(BundleBaker.Animations.Count, BundleBaker.Animations.Distinct().Count());
     }
@@ -224,6 +231,25 @@ public class BundleBakerTests : IDisposable
         Assert.False(r.Ok);
         Assert.Contains(r.Failures, f => f.Contains("popular-weapons.json") && f.Contains("Arcanite Reaper"));
         Assert.False(File.Exists(Path.Combine(Out, "wow_classic_beta", "current.json")));
+    }
+
+    [Fact]
+    public async Task SpellsAndTheirCasterModelsAreBaked()
+    {
+        var source = Source();
+        await BundleBaker.BakeAsync(source, new BakeOptions(Out));
+        // Mirrors /api/v1/spells: each spell with its kits; the cast kit's model is converted with the rest.
+        var spell = Read(Path.Combine(BuildDir, "spells.json")).GetProperty("spells")[0];
+        Assert.Equal(("Fireball", 53), (spell.GetProperty("name").GetString(), spell.GetProperty("kits")[0].GetProperty("anim").GetInt32()));
+        Assert.Contains(7300u, source.ModelsAsked);
+    }
+
+    [Fact]
+    public async Task ASpellProblemFailsTheBake()
+    {
+        var r = await BundleBaker.BakeAsync(new FakeSource(Path.Combine(_root, "converted")) { SpellProblems = ["Fireball (133): rank 145 has visual 999, not 67"] }, new BakeOptions(Out));
+        Assert.False(r.Ok);
+        Assert.Contains(r.Failures, f => f.Contains("spells.json") && f.Contains("rank 145"));
     }
 
     [Fact]

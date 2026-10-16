@@ -244,3 +244,12 @@ describe('weapons addition', () => {
     expect(dressStateFor(look).sheathed).toBe(true)
   })
 })
+
+test('a spell is a positive spell ID, carried by the share link; anything else is dropped with a notice', () => {
+  const r = normalizeLook({ ...outfitA, spell: 133 })
+  expect(r.look!.spell).toBe(133)
+  expect(JSON.parse(canonicalJSON(r.look!)).spell).toBe(133)
+  const bad = normalizeLook({ ...outfitA, spell: 'Fireball' })
+  expect(bad.look!.spell).toBeUndefined()
+  expect(bad.notices.join()).toContain('dropped spell')
+})

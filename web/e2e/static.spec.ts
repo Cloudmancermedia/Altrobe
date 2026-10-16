@@ -134,6 +134,20 @@ test('typing a guild or name with spaces keeps them, as you type', async ({ page
   await expect(first).toHaveValue(generated!)
 })
 
+test('casting a spell holds its pose with its effect models on the hands, and the share link keeps it', async ({ page }) => {
+  await openApp(page)
+  const spell = page.getByLabel('Spell', { exact: true })
+  await expect(spell.locator('optgroup[label="Warlock"] option')).toHaveText(['Shadow Bolt', 'Immolate', 'Drain Life', 'Hellfire', 'Rain of Fire'])
+  await spell.selectOption({ label: 'Shadow Bolt' })
+  expect(await call(page, (h) => (h.commands.get_look() as { spell?: number }).spell)).toBe(686)
+  // Shadow Bolt's precast hangs model 166807 on both hands (attachments 21 and 22).
+  await settled(page, 1, (h: Hooks) => h.nodeWorld(0, 'spell0_166807') !== null && h.nodeWorld(0, 'spell1_166807') !== null)
+  await expect(page.locator('.notices')).not.toContainText('Shadow Bolt')
+  // Choosing an animation stops casting.
+  await page.getByLabel('Animation', { exact: true }).selectOption({ index: 1 })
+  expect(await call(page, (h) => (h.commands.get_look() as { spell?: number }).spell)).toBeUndefined()
+})
+
 test('the Animation list reads in plain words, grouped, and picking one plays the game\'s animation', async ({ page }) => {
   await openApp(page)
   const anim = page.getByLabel('Animation', { exact: true })

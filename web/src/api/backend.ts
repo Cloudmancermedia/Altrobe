@@ -1,6 +1,6 @@
 // Where the app's data comes from: the local server (local.ts) or a baked bundle on the hosted site
 // (static.ts). client.ts picks one at build time and adds the session cache in front of it.
-import type { BaseLook, CharactersResponse, InstallRequest, ItemSearchQuery, ItemSearchResult, ItemSetResult, ModelSet, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
+import type { BaseLook, CharactersResponse, InstallRequest, ItemSearchQuery, ItemSearchResult, ItemSetResult, ModelSet, RaceNames, ResolvedItem, SetGroup, SpellInfo, Status, TitleInfo, WeaponGroup } from './types'
 
 /** What only the local app has: picking an install, the MCP command channel, the prompt box. */
 export interface Features {
@@ -23,6 +23,8 @@ export interface Backend {
   getNotableSets(race: number, classId?: number): Promise<SetGroup[]>
   /** Popular weapons for one class, or (no classId) the "Popular" list across classes. */
   getPopularWeapons(classId?: number): Promise<WeaponGroup[]>
+  /** Every class's spells for the Spell picker, with their visuals (Phase 3 — Spell Casts Spec). */
+  getSpells(): Promise<SpellInfo[]>
   /** Item IDs of every set piece, so equipping a set can replace the last one (replacedSetSlots). */
   getSetPieces(): Promise<number[]>
   getTitles(): Promise<TitleInfo[]>

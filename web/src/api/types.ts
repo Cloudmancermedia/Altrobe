@@ -372,3 +372,14 @@ export interface RaceNames {
   female: string[]
   last: string[]
 }
+
+/** A model a spell's kit hangs on a body attachment (-1: the character's feet), scaled, offset and turned. */
+export interface SpellModel { fileDataId: number; attachment: number; scale: number; offset: number[]; rotation: number[] }
+/** One visual event: from event `start` to `end` on `target` (1 caster, 2 target), an animation and models. */
+export interface SpellKit { kit: number; start: number; end: number; target: number; anim: number | null; models: SpellModel[] }
+export interface SpellMissile { fileDataId: number; from: number; to: number; speed: number; launchDelay: number; minDuration: number; motionId: number; decayMs: number }
+/** A spell from /spells or spells.json (SpellCatalog): all ranks share its visual. */
+export interface SpellInfo {
+  spellId: number; name: string; classId: number; ranks: number[]; castMs: number; durationMs: number
+  kits: SpellKit[]; missile: SpellMissile | null
+}

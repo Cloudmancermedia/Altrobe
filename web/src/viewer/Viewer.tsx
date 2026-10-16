@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { animUrl, modelUrl, textureUrl } from '../api/client'
+import { animUrl, getSpells, modelUrl, textureUrl } from '../api/client'
 import type { ResolvedItem } from '../api/types'
 import type { Look, View } from '../look/look'
+import { castPose } from '../spells/spells'
 import { buildCharacter, type AssetUrls } from './character'
 import { prepareCharacter, type CharacterSpec } from './prepare'
 import { Stage, type StageView } from './stage'
@@ -94,7 +95,7 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved 
   // Only what changes the dressed result; camera moves do not rebuild the character.
   const worn = cell.outfit ?? look
   const custom = cell.main ? look.custom : cell.custom ?? {}
-  const outfitKey = JSON.stringify([worn.items, worn.hide, custom, cell.main ? look.build : null, look.anim ?? null, look.sheathed ?? false])
+  const outfitKey = JSON.stringify([worn.items, worn.hide, custom, cell.main ? look.build : null, look.anim ?? null, look.spell ?? null, look.sheathed ?? false])
   const loadKey = `${specKey}|${outfitKey}|${itemSpeed}`
   const state = done?.key === loadKey ? done.state : 'loading'
 
@@ -107,9 +108,25 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved 
       onResolved?.(prepared.resolved)
       // The look names an animation; each character plays it if its body model has it, else stands.
       const animNotices: string[] = []
-      const anim = look.anim ? prepared.baseLook.animations?.find((a) => a.name.toLowerCase() === look.anim!.toLowerCase()) : undefined
+      const animations = prepared.baseLook.animations ?? []
+      let anim = look.anim ? animations.find((a) => a.name.toLowerCase() === look.anim!.toLowerCase()) : undefined
       if (look.anim && !anim) animNotices.push(`${cell.label} has no ${look.anim} animation; it stands`)
-      const character = await buildCharacter({ baseLook: prepared.baseLook, dressed: prepared.dressed, assets: assets(prepared.baseLook.build), itemSpeed, animId: anim?.id })
+      // A spell holds its cast pose with its effect models (Phase 3 — Spell Casts Spec, Step 1).
+      let spellModels: Awaited<ReturnType<typeof getSpells>>[number]['kits'][number]['models'] = []
+      if (look.spell) {
+        const spell = (await getSpells().catch(() => [])).find((s) => s.spellId === look.spell || s.ranks.includes(look.spell!))
+        if (!spell) animNotices.push(`spell ${look.spell} is not in this build's spell list`)
+        else {
+          // A hunter shot plays the ranged attack for the weapon worn: a bow (subclass 2) or a gun or crossbow.
+          const ranged = prepared.resolved.find((r) => r.itemId === worn.items.ranged)
+          const pose = castPose(spell, ranged && ranged.itemSubclass !== 2 ? 'AttackRifle' : 'AttackBow')
+          anim = pose.animId !== undefined ? animations.find((a) => a.id === pose.animId) : animations.find((a) => a.name === pose.animName)
+          if (!anim) animNotices.push(`${cell.label} has no ${pose.animName ?? `animation ${pose.animId}`} for ${spell.name}; it stands`)
+          spellModels = pose.models
+        }
+      }
+      if (cancelled) return
+      const character = await buildCharacter({ baseLook: prepared.baseLook, dressed: prepared.dressed, assets: assets(prepared.baseLook.build), itemSpeed, animId: anim?.id, spellModels })
       if (cancelled) { character.dispose(); return }
       const reframe = framedSpec.current !== specKey
       framedSpec.current = specKey

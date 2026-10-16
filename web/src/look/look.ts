@@ -73,6 +73,8 @@ export interface Look {
   compare: CompareCharacter[]
   /** Animation name every character plays (from the base look's list); absent means Stand. */
   anim?: string
+  /** A spell (SpellName ID, any rank) every character casts, in place of `anim` (Phase 3 — Spell Casts Spec). */
+  spell?: number
   identity?: Identity
   /** Weapons put away. */
   sheathed?: boolean
@@ -124,6 +126,8 @@ export function normalizeLook(input: unknown, { characters }: { characters?: Kno
     const anim = input.anim.trim().slice(0, 40)
     if (anim && anim !== 'Stand') look.anim = anim
   } else if (input.anim !== undefined) notices.push(`dropped animation ${JSON.stringify(input.anim)}: not a name`)
+  if (Number.isInteger(input.spell) && (input.spell as number) > 0) look.spell = input.spell as number
+  else if (input.spell !== undefined) notices.push(`dropped spell ${JSON.stringify(input.spell)}: not a spell ID`)
   if (input.sheathed === true) look.sheathed = true
   else if (input.sheathed !== undefined && input.sheathed !== false) notices.push(`dropped sheathed ${JSON.stringify(input.sheathed)}: not true or false`)
   const identity = readIdentity(input.identity, notices)
@@ -232,6 +236,7 @@ export function canonicalLook(look: Look, { defaults = {} }: { defaults?: Record
   const hide = [...new Set(look.hide ?? [])].sort()
   if (look.cam?.view && look.cam.view !== 'front') out.cam = { view: look.cam.view }
   if (look.anim && look.anim !== 'Stand') out.anim = look.anim
+  if (look.spell) out.spell = look.spell
   if (Object.keys(custom).length) out.custom = custom
   if (hide.length) out.hide = hide
   if (Object.keys(items).length) out.items = items
