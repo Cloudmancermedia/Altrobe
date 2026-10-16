@@ -23,7 +23,7 @@ export function nameSize(zoom: number): number {
 const GAP_SHARE = 0.208
 const RACE_GAP: Record<number, number> = {
   1: GAP_SHARE * 0.8, // Human
-  2: 0.272 * 0.8 * 1.32, // Orc
+  2: 0.272 * 0.8 * 1.452, // Orc
   4: GAP_SHARE * 0.8, // Night Elf
   6: 0.272, // Tauren
   7: GAP_SHARE * 1.5, // Gnome
