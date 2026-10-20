@@ -237,8 +237,19 @@ export const transitions = {
     const found = animations.length ? animations.find((a) => a.name.toLowerCase() === wanted.toLowerCase()) : { id: -1, name: wanted }
     if (!found) return { error: `no animation "${wanted}" for this character; list_animations shows what it has` }
     const next = { ...look }
+    delete next.spell
     if (found.name.toLowerCase() === 'stand') delete next.anim
     else next.anim = found.name
+    return { look: next }
+  },
+
+  /** Every character casts this spell (a spell ID) in place of an animation; null stops casting. */
+  setSpell(look: Look, spellId: number | null): Result {
+    if (spellId !== null && !(Number.isInteger(spellId) && spellId > 0)) return { error: 'cast_spell needs a spell ID' }
+    const next = { ...look }
+    delete next.anim
+    delete next.spell
+    if (spellId !== null) next.spell = spellId
     return { look: next }
   },
 
@@ -299,6 +310,7 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
     set_sheathe_on_back: (onBack: boolean) => apply(transitions.setSheatheOnBack(look(), onBack)),
     set_identity: (change: Parameters<typeof transitions.setIdentity>[1]) => apply(transitions.setIdentity(look(), change)),
     set_animation: (name: string) => apply(transitions.setAnimation(look(), name, store.get().animations)),
+    set_spell: (spellId: number | null) => apply(transitions.setSpell(look(), spellId)),
     /** Replaces the whole look, e.g. from a saved file. Returns the notices from reading it. */
     open_look: (input: unknown): { look: Look | null; notices: string[] } => {
       const r = normalizeLook(input, { characters: characters()?.races.flatMap((x) => x.sexes.map((s) => ({ race: x.race, sex: s.sex }))) })

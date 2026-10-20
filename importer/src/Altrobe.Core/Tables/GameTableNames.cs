@@ -37,6 +37,25 @@ public static class GameTableNames
     public const string NameGen = nameof(NameGen);
     public const string TextureFileData = nameof(TextureFileData);
 
+    // Spells (Phase 3 — Spell Casts Spec).
+    public const string AnimKit = nameof(AnimKit);
+    public const string AnimKitSegment = nameof(AnimKitSegment);
+    public const string SkillLineAbility = nameof(SkillLineAbility);
+    public const string Spell = nameof(Spell);
+    public const string SpellCastTimes = nameof(SpellCastTimes);
+    public const string SpellDuration = nameof(SpellDuration);
+    public const string SpellMisc = nameof(SpellMisc);
+    public const string SpellName = nameof(SpellName);
+    public const string SpellVisual = nameof(SpellVisual);
+    public const string SpellVisualAnim = nameof(SpellVisualAnim);
+    public const string SpellVisualEffectName = nameof(SpellVisualEffectName);
+    public const string SpellVisualEvent = nameof(SpellVisualEvent);
+    public const string SpellVisualKit = nameof(SpellVisualKit);
+    public const string SpellVisualKitEffect = nameof(SpellVisualKitEffect);
+    public const string SpellVisualKitModelAttach = nameof(SpellVisualKitModelAttach);
+    public const string SpellVisualMissile = nameof(SpellVisualMissile);
+    public const string SpellXSpellVisual = nameof(SpellXSpellVisual);
+
     public static readonly IReadOnlyList<string> All =
     [
         CharBaseInfo, CharComponentTextureLayouts, CharComponentTextureSections, CharTitles, ChrClasses,
@@ -45,5 +64,6 @@ public static class GameTableNames
         ChrModelTextureLayer, ChrRaceXChrModel, ChrRaces, ComponentModelFileData, ComponentTextureFileData,
         CreatureDisplayInfo, CreatureModelData, HelmetGeosetData, Item, ItemAppearance, ItemDisplayInfo,
         ItemDisplayInfoMaterialRes, ItemModifiedAppearance, ItemSet, ItemSparse, ItemVisuals, ModelFileData, NameGen, TextureFileData,
+        AnimKit, AnimKitSegment, SkillLineAbility, Spell, SpellCastTimes, SpellDuration, SpellMisc, SpellName, SpellVisual, SpellVisualAnim, SpellVisualEffectName, SpellVisualEvent, SpellVisualKit, SpellVisualKitEffect, SpellVisualKitModelAttach, SpellVisualMissile, SpellXSpellVisual,
     ];
 }

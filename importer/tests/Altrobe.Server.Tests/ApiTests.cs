@@ -170,6 +170,16 @@ public class ApiTests : IClassFixture<ApiTests.Fixture>
     }
 
     [Fact]
+    public async Task SpellsAnswerAsAListForEveryClassOrOne()
+    {
+        // The fake install has no spell tables, so no pick resolves; SpellCatalogTests covers the resolving.
+        var client = await _app.Installed();
+        Assert.Empty((await Body(await client.GetAsync("/api/v1/spells"))).EnumerateArray());
+        Assert.Empty((await Body(await client.GetAsync("/api/v1/spells?class=8"))).EnumerateArray());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/v1/spells?class=mage")).StatusCode);
+    }
+
+    [Fact]
     public async Task SetPiecesListsEveryItemThatBelongsToASet()
     {
         var client = await _app.Installed();

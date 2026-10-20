@@ -137,6 +137,15 @@ public static class Api
             return Results.Json(sel.Session.Weapons.For(classId));
         });
 
+        // The Spell picker: each class's spells with their visuals (SpellCatalog), or one class's.
+        api.MapGet("/spells", (HttpRequest req, AppState state) =>
+        {
+            if (state.Current is not { } sel) return ApiErrors.NoInstall();
+            if (req.Query["class"] is { Count: > 0 } c)
+                return int.TryParse(c[0], out var id) ? Results.Json(sel.Session.Spells.ForClass(id)) : ApiErrors.BadRequest("class must be a class ID from /characters.");
+            return Results.Json(sel.Session.Spells.All);
+        });
+
         // Every item that is a piece of some set, so equipping a set can replace the last one.
         api.MapGet("/sets/pieces", (AppState state) =>
             state.Current is not { } sel ? ApiErrors.NoInstall() : Results.Json(sel.Session.Sets.PieceItemIds()));

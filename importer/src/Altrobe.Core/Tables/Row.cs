@@ -20,6 +20,25 @@ public sealed class Row
 
     public string Str(string column) => _get(column) as string ?? "";
 
+    public float Float(string column) => ToFloat(_get(column));
+
+    public float[] Floats(string column) => _get(column) switch
+    {
+        null => [],
+        string => [],
+        IEnumerable e => e.Cast<object?>().Select(ToFloat).ToArray(),
+        var v => [ToFloat(v)],
+    };
+
+    static float ToFloat(object? v) => v switch
+    {
+        null or string => 0,
+        float f => f,
+        double d => (float)d,
+        IConvertible c => System.Convert.ToSingle(c, System.Globalization.CultureInfo.InvariantCulture),
+        _ => 0,
+    };
+
     public int[] Ints(string column) => _get(column) switch
     {
         null => [],
