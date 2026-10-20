@@ -196,8 +196,8 @@ export function closedText(code: 'ip_limit' | 'daily_cap', resetAt: string, opts
 /** Commands per player per day: the prompt API's IP_LIMIT, which it doesn't send. */
 export const DAILY_COMMANDS = 20
 
-/** The top bar's AI counter: what's left today, or when a closed box reopens; nothing before the first command. */
+/** The top bar's AI counter: what's left today, or when a closed box reopens; the daily limit before the first answer brings a count. */
 export function quotaText(q: Quota | null, closed: { code: 'ip_limit' | 'daily_cap'; resetAt: string } | null, opts: { locale?: string; timeZone?: string } = {}): string {
   if (closed) return closedText(closed.code, closed.resetAt, opts)
-  return q ? `AI: ${q.remaining} of ${DAILY_COMMANDS} left today` : ''
+  return q ? `AI: ${q.remaining} of ${DAILY_COMMANDS} left today` : `AI: ${DAILY_COMMANDS} commands a day`
 }

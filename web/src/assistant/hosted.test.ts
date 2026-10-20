@@ -252,8 +252,8 @@ describe('box copy', () => {
     expect(quotaText(null, { code: 'daily_cap', resetAt: RESET }, utc)).toBe('The free daily budget is used up; it reopens at 1:00 PM.')
   })
 
-  test('says nothing before the first command, when the count is unknown', () => {
-    expect(quotaText(null, null)).toBe('')
+  test('gives the daily limit before the first command, when the count is unknown', () => {
+    expect(quotaText(null, null)).toBe('AI: 20 commands a day')
   })
 
   test('the daily limit matches the prompt API\'s', () => {

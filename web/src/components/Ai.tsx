@@ -24,7 +24,7 @@ export function AiStatus({ from }: { from: 'ask' | 'names' }) {
   return <p className="ai-status small" role="status"><span className="ai-pulse" aria-hidden="true" />{statusText(mine.phase, (now - mine.since) / 1000)}</p>
 }
 
-/** The top bar's daily count, shared by Ask and Suggest names; nothing until the first answer brings one. */
+/** The top bar's daily count, shared by Ask and Suggest names; the daily limit until the first answer brings a count. */
 export function AiCounter() {
   const quota = useStore(store, (s) => s.aiQuota)
   const closed = useStore(store, (s) => s.aiClosed)
@@ -36,6 +36,5 @@ export function AiCounter() {
     const t = setTimeout(() => store.set({ aiQuota: null }), Math.min(wait, 24 * 3600_000))
     return () => clearTimeout(t)
   }, [quota])
-  const text = quotaText(quota, closed)
-  return text ? <span className="small ai-counter">{text}</span> : null
+  return <span className="small ai-counter">{quotaText(quota, closed)}</span>
 }
