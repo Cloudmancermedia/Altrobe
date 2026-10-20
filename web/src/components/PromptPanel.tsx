@@ -3,14 +3,14 @@ import { ApiError, bundleData, getAssistantSettings, getSetPieces, getTitles, pr
 import type { AssistantSettingsView, AssistantTurn } from '../api/types'
 import { commands, store } from '../app-state'
 import { stepLabel, usageLabel } from '../assistant/events'
-import { closedText, commandsLeft, runHostedCommand, type HostedPhase, type HostedResult, type Quota } from '../assistant/hosted'
-import { statusText } from '../assistant/status'
+import { closedText, runHostedCommand, type HostedResult } from '../assistant/hosted'
 import { createHostedTools } from '../assistant/hosted-tools'
 import { PRESETS, presetFor, trimHistory } from '../assistant/presets'
 import { createTurnstile, siteKeyFrom } from '../assistant/turnstile'
 import { waitForDrawn } from '../session'
 import { useStore } from '../store'
 import { getKnownNames } from '../identity/more-names'
+import { AiStatus, AiTag } from './Ai'
 
 // One entry in this tab's prompt transcript. History for the model is only the user and reply texts.
 type Line =
@@ -197,18 +197,12 @@ const PLACEHOLDER = 'Put the Orc in Thunderfury and show it on an Undead female'
 export function HostedPromptPanel() {
   const [text, setText] = useState('')
   const [lines, setLines] = useState<Line[]>([])
-  const [running, setRunning] = useState(false)
-  const [quota, setQuota] = useState<Quota | null>(null)
-  const [closed, setClosed] = useState<{ code: 'ip_limit' | 'daily_cap'; resetAt: string } | null>(null)
+  // Which panel's command is running: the box's own, or Suggest names'.
+  const [running, setRunning] = useState<'ask' | 'names' | null>(null)
+  // In the store, so the top bar can say when the box reopens.
+  const closed = useStore(store, (s) => s.aiClosed)
+  const setClosed = (aiClosed: typeof closed) => store.set({ aiClosed })
   const [off, setOff] = useState(false)
-  // What the AI is doing now and since when, so a wait never looks like nothing is happening.
-  const [phase, setPhase] = useState<{ phase: HostedPhase; since: number }>({ phase: { kind: 'idle' }, since: 0 })
-  const [now, setNow] = useState(0)
-  useEffect(() => {
-    if (phase.phase.kind === 'idle') return
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [phase])
   const abort = useRef<AbortController | null>(null)
   const widget = useRef<HTMLDivElement>(null)
 
@@ -236,14 +230,15 @@ export function HostedPromptPanel() {
 
   const add = (line: Line) => setLines((ls) => [...ls, line].slice(-60))
 
-  const show = (r: HostedResult) => {
+  // `say` adds to the box's lines for its own commands only; Identity shows how a name request ended.
+  const show = (r: HostedResult, say: (line: Line) => void) => {
     switch (r.kind) {
-      case 'done': if (!r.text) add({ kind: 'reply', text: 'Done.' }); break
+      case 'done': if (!r.text) say({ kind: 'reply', text: 'Done.' }); break
       case 'closed': setClosed({ code: r.code, resetAt: r.resetAt }); break
-      case 'busy': add({ kind: 'error', text: 'Too many people are using the box right now. Try again in a moment.' }); break
+      case 'busy': say({ kind: 'error', text: 'Too many people are using the box right now. Try again in a moment.' }); break
       case 'disabled': setOff(true); break
-      case 'stopped': add({ kind: 'error', text: 'Stopped.' }); break
-      case 'failed': add({ kind: 'error', text: r.message }); break
+      case 'stopped': say({ kind: 'error', text: 'Stopped.' }); break
+      case 'failed': say({ kind: 'error', text: r.message }); break
     }
   }
 
@@ -251,29 +246,32 @@ export function HostedPromptPanel() {
   const send = async (asked?: string, creative = false): Promise<HostedResult | undefined> => {
     const prompt = asked ?? text.trim()
     if (!prompt || running || closed || off) return
-    if (asked === undefined) setText('')
-    setRunning(true)
+    const from = asked === undefined ? 'ask' : 'names'
+    const say = from === 'ask' ? add : () => {}
+    if (from === 'ask') setText('')
+    setRunning(from)
     // One command at a time: Suggest names waits while this runs.
     store.set({ aiBusy: true })
-    add({ kind: 'you', text: prompt })
+    say({ kind: 'you', text: prompt })
     const controller = new AbortController()
     abort.current = controller
     try {
       const r = await runHostedCommand(prompt, {
-        onPhase: (p) => { const t = Date.now(); setPhase({ phase: p, since: t }); setNow(t) },
+        // What the AI is doing now and since when, for the asking panel's status line.
+        onPhase: (p) => store.set({ aiStatus: p.kind === 'idle' ? null : { from, phase: p, since: Date.now() } }),
         getToken: () => turnstile.getToken(widget.current!, controller.signal),
         runTool,
-        onStep: (tool, args) => add({ kind: 'step', text: stepLabel({ type: 'step', tool, arguments: args }) }),
-        onText: (t) => add({ kind: 'reply', text: t }),
-        onQuota: (q) => { setQuota(q); store.set({ aiQuota: q }) },
+        onStep: (tool, args) => say({ kind: 'step', text: stepLabel({ type: 'step', tool, arguments: args }) }),
+        onText: (t) => say({ kind: 'reply', text: t }),
+        onQuota: (q) => store.set({ aiQuota: q }),
         signal: controller.signal,
         creative,
       })
-      show(r)
+      show(r, say)
       return r
     } finally {
-      setRunning(false)
-      store.set({ aiBusy: false })
+      setRunning(null)
+      store.set({ aiBusy: false, aiStatus: null })
       abort.current = null
     }
   }
@@ -301,26 +299,23 @@ export function HostedPromptPanel() {
         <>
           <p className="muted small">
             Type what you want and a model dresses the character. Suggest names in Identity uses the same daily commands.
-            {quota && !closed && <> {commandsLeft(quota.remaining)}.</>}
           </p>
           {lines.length > 0 && (
             <ol className="prompt-lines small" aria-live="polite">
               {lines.map((l, i) => <li key={i} className={`prompt-${l.kind}`}>{l.text}</li>)}
             </ol>
           )}
-          {running && phase.phase.kind !== 'idle' && (
-            <p className="ai-status small" role="status"><span className="ai-pulse" aria-hidden="true" />{statusText(phase.phase, (now - phase.since) / 1000)}</p>
-          )}
+          <AiStatus from="ask" />
           {closed && <p className="small" role="status">{closedText(closed.code, closed.resetAt)}</p>}
           <form onSubmit={(e) => { e.preventDefault(); void send() }} className="prompt-form">
             <label htmlFor="prompt-text" className="visually-hidden">What should the character wear?</label>
-            <textarea id="prompt-text" rows={2} value={text} disabled={running || !!closed} maxLength={500}
+            <textarea id="prompt-text" rows={2} value={text} disabled={!!running || !!closed} maxLength={500}
               placeholder={PLACEHOLDER}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }} />
-            {running
+            {running === 'ask'
               ? <button type="button" onClick={() => abort.current?.abort()}>Stop</button>
-              : <button type="submit" disabled={!text.trim() || !!closed}>Send</button>}
+              : <button type="submit" disabled={!text.trim() || !!closed || !!running}>Send<AiTag /></button>}
           </form>
           {/* Cloudflare Turnstile draws here only if it needs a click. */}
           <div ref={widget} className="prompt-turnstile" />

@@ -10,7 +10,7 @@ import { getMoreNames } from '../identity/more-names'
 import { addToShortlist, MAX_LETTERS, MAX_STYLE, nameProblems, removeFromShortlist, suggestPrompt, type FallbackReason, type NamePair } from '../identity/name-rules'
 import { TOOLTIP_MODES, type TooltipMode } from '../viewer/tooltip'
 import { MAX_GUILD, MAX_LEVEL, type Look } from '../look/look'
-import { aiCommandNote } from '../assistant/hosted'
+import { AiStatus, AiTag } from './Ai'
 
 /**
  * A text box over a look field. The look keeps the text trimmed (share links drop end spaces), so the box
@@ -40,13 +40,6 @@ function NameList({ label, pairs, actions }: { label: string; pairs: NamePair[];
       {pairs.map((p) => <li key={`${p.firstName} ${p.lastName}`}><span>{p.firstName} {p.lastName}</span> {actions(p)}</li>)}
     </ul>
   )
-}
-
-/** Under Suggest names: it spends the Ask box's daily commands, with the count once the box has one. */
-function AiNote() {
-  const quota = useStore(store, (s) => s.aiQuota)
-  const busy = useStore(store, (s) => s.aiBusy)
-  return <p className="muted small ai-note">{busy ? 'The AI is working on a request in Ask; this waits until it finishes.' : aiCommandNote(quota)}</p>
 }
 
 /** Name, title, guild, level, class and PvP flag: who the character is, shown over its head and in its tooltip. */
@@ -149,9 +142,12 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
       )}
       <div className="actions name-actions">
         <button type="button" disabled={!pair} title={pair ? undefined : 'Type a first and a last name first'} onClick={() => pair && save(pair)}>Add to shortlist</button>
-        <button type="button" disabled={!!waiting || (hostedPrompt && aiBusy)} onClick={suggest}>{waiting ? 'Suggesting…' : 'Suggest names'}</button>
+        <button type="button" disabled={!!waiting || (hostedPrompt && aiBusy)} onClick={suggest}>{waiting ? 'Suggesting…' : 'Suggest names'}{hostedPrompt && <AiTag />}</button>
       </div>
-      {hostedPrompt && <AiNote />}
+      {/* This request's progress shows here, not in Ask; the top bar counts the daily commands. */}
+      {hostedPrompt && (waiting
+        ? <AiStatus from="names" />
+        : aiBusy && <p className="muted small ai-note">The AI is working on a request in Ask; this waits until it finishes.</p>)}
       {ideas.length > 0 && (
         <NameList label="Suggested names" pairs={ideas} actions={(p) => <>
           <button type="button" onClick={() => use(p)}>Use</button>

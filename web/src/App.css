@@ -100,11 +100,13 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
 
 .footer { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 14px; border-top: 1px solid var(--line); background: var(--panel); text-align: center; }
 .footer-links { display: flex; gap: 14px; }
-/* The prompt box's status line, while the AI works. */
+/* An AI request's status line, in the panel that asked, while the AI works. */
 .ai-status { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: var(--cream); }
 .ai-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--forever); animation: ai-pulse 1s ease-in-out infinite; flex: none; }
 @keyframes ai-pulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .ai-pulse { animation: none; } }
+/* The top bar's count of daily AI commands, shared by Ask and Suggest names. */
+.ai-counter { color: var(--gold); }
 /* The launch banner under the top bar; dismissable. */
 .banner { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 5px 14px; background: var(--panel); border-bottom: 1px solid var(--line); color: var(--gold); text-align: center; }
 .banner button.link { color: var(--muted); font-size: 16px; line-height: 1; padding: 0 4px; }
