@@ -14,7 +14,7 @@ All in one AWS account, in us-east-1 (CloudFront needs its certificate there).
 | `AltrobeCi` | GitHub's OIDC provider and three roles: `altrobe-github-diff` (read only, any branch or pull request in the repository), `altrobe-github-deploy` (only jobs in the `production` environment) and `altrobe-github-publish` (workflows on `main`, no approval; the bundle bucket and the asset distribution only) |
 | `AltrobeSite` | the certificate for `altrobe.com`, `www.altrobe.com` and `assets.altrobe.com`; a private bucket and CloudFront distribution for the web app (www redirects to the apex; browsers keep the hashed files under `static/` for a year and recheck `index.html` on every visit); a private bucket and distribution for the game bundles at `assets.altrobe.com`; DNS records; the web app's files; the `/api/*` route to the prompt box's API |
 | `AltrobePrompt` | the hosted prompt box's API (below): the Lambda, API Gateway, the counters table, the kill switch, its secrets, and an SSM parameter with the API's hostname that `AltrobeSite` reads for its `/api/*` route. It deploys before `AltrobeSite`, and alone with `npx cdk deploy AltrobePrompt` |
-| `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. A second budget, $100 a month, counts the account's Bedrock spend; past it, a budget action denies the prompt API `bedrock:InvokeModel`. It exists only when an alert address is set; see below. |
+| `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. A second budget, $300 a month, counts the account's Bedrock spend; past it, a budget action denies the prompt API `bedrock:InvokeModel`. It exists only when an alert address is set; see below. |
 
 All three roles trust the repository's immutable OIDC subject (the token's `sub` claim, such as
 `repo:Cloudmancermedia@52295078/Altrobe@1426387099:environment:production`, plus `aud`). GitHub gives
@@ -127,7 +127,7 @@ CloudFormation only rewrites the parameter when its template value changes). **W
 aws ssm put-parameter --name /altrobe/prompt/switch --value off --overwrite --profile <profile>
 ```
 
-Set it back to `on` to reopen. The global $10 daily cap and the per-IP limit reset at 13:00 UTC on
+Set it back to `on` to reopen. The global $25 daily cap and the per-IP limit reset at 13:00 UTC on
 their own. If the Bedrock budget action has fired, the policy `altrobe-prompt-deny-bedrock` stays on
 the Lambda's role until the action is reversed, after the cause is understood. **WRITE OPERATION:**
 
