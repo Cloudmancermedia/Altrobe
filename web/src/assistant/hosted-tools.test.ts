@@ -93,6 +93,7 @@ describe('hosted tools', () => {
 
   test('equip_set replaces the set worn before, keeps loose items, and can keep the old pieces', async () => {
     const { run, store } = setup()
+    await run('search_sets', {})
     await run('equip_item', { slot: 'back', itemId: 5 })
     await run('equip_set', { setId: 218 })
     expect(store.get().look.items).toEqual({ back: 5, head: 3, legs: 4 })
@@ -150,6 +151,8 @@ describe('hosted tools', () => {
 
   test("compare dresses a character in a set by its ID, with its own items on top", async () => {
     const { run, store } = setup()
+    await run('search_sets', { query: 'judgement' })
+    await run('search_sets', { query: 'wrath' })
     expect((await run('compare', { characters: [{ race: 5, sex: 1, setId: 217 }, { race: 2, sex: 0, setId: 218, items: { head: 7 } }] })).status).toBe('success')
     expect(store.get().look.compare.map((c) => c.items)).toEqual([{ head: 1, chest: 2 }, { head: 7, legs: 4 }])
     expect(await run('compare', { characters: [{ race: 2, sex: 0, setId: 999 }] })).toMatchObject({ status: 'error', json: { error: expect.stringContaining('search_sets') } })
@@ -232,6 +235,36 @@ describe('hosted tools', () => {
     expect(await run('suggest_names', { names: [{ firstName: 'Orvak', lastName: 'Saltmere' }] })).toMatchObject({ status: 'error', json: { error: expect.stringContaining('reply') } })
     command.n = 2
     expect((await run('suggest_names', { names: [{ firstName: 'Orvak', lastName: 'Saltmere' }] })).status).toBe('success')
+  })
+
+  test('compare replaces the characters beside the main one and names the ones it removed; add keeps them', async () => {
+    const { run, store } = setup()
+    await run('compare', { characters: [{ race: 2, sex: 0 }] })
+    const added = await run('compare', { add: true, characters: [{ race: 5, sex: 1 }] })
+    expect(store.get().look.compare.map((c) => c.race)).toEqual([2, 5])
+    expect(added.json.removed).toBeUndefined()
+    const replaced = await run('compare', { characters: [{ race: 5, sex: 1 }] })
+    expect(store.get().look.compare.map((c) => c.race)).toEqual([5])
+    expect(replaced.json).toMatchObject({ removed: ['Orc male'], note: expect.stringMatching(/add true/) })
+  })
+
+  test('set_character names the characters still beside the main one', async () => {
+    const { run, command } = setup()
+    expect((await run('set_character', { race: 5, sex: 1 })).json.besideIt).toBeUndefined()
+    await run('compare', { characters: [{ race: 2, sex: 0 }] })
+    command.n = 2
+    expect((await run('set_character', { race: 2, sex: 0 })).json).toMatchObject({ besideIt: ['Orc male'], note: expect.stringMatching(/empty list/) })
+  })
+
+  test('equip_set and compare take only a set ID that search_sets returned in this command', async () => {
+    const { run, store, command } = setup()
+    expect(await run('equip_set', { setId: 217 })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/search_sets first/) } })
+    expect(await run('compare', { characters: [{ race: 5, sex: 1, setId: 217 }] })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/search_sets first/) } })
+    expect(store.get().look.items).toEqual({})
+    await run('search_sets', { query: 'judgement' })
+    expect((await run('equip_set', { setId: 217 })).status).toBe('success')
+    command.n = 2
+    expect((await run('equip_set', { setId: 217 })).status).toBe('error')
   })
 
   test('a second set_character in one command reminds the model to use compare for several races', async () => {
