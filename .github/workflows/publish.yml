@@ -1,0 +1,154 @@
+name: Publish bundle
+
+# Watches Blizzard's version service and publishes each new build to assets.altrobe.com with no
+# approval: bake from the CDN, the count check against the live build, the static browser check,
+# upload, switch current.json, then delete builds older than the previous one
+# (docs/hosted-pipeline.md). A failed run leaves the live build as it was and opens an issue.
+# AWS access is the publish role in infra/src/ci-stack.ts, which trusts only workflows on main and
+# may touch only the bundle bucket and the asset distribution. The job skips until
+# AWS_PUBLISH_ROLE_ARN exists.
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Rebake and republish the live build, after a change to Altrobe's own data or code
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: publish-bundle
+  cancel-in-progress: false
+
+# The product the site shows: the BUNDLE_PRODUCT repository variable, else Forever's beta. deploy.yml
+# builds the web app against the same variable (docs/deployment.md, switching products).
+env:
+  PRODUCT: ${{ vars.BUNDLE_PRODUCT || 'wow_classic_beta' }}
+
+jobs:
+  publish:
+    if: vars.AWS_PUBLISH_ROLE_ARN != '' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write # assumes the publish role
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Check for a new build
+        id: watch
+        run: node scripts/watch-bundle.mjs --product "$PRODUCT" --out output/watch ${{ inputs.force && '--force' || '' }}
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        if: steps.watch.outputs.changed == 'true'
+        with:
+          dotnet-version: 10.x
+
+      # About 21 minutes, 3 GB of bundle and 5 GB of download cache (measured 2026-10-13).
+      - name: Bake from Blizzard's CDN
+        if: steps.watch.outputs.changed == 'true'
+        run: |
+          dotnet build importer/src/Altrobe.Server -c Release
+          previous=()
+          [ -f output/watch/previous-manifest.json ] && previous=(--previous output/watch/previous-manifest.json)
+          dotnet importer/src/Altrobe.Server/bin/Release/net10.0/Altrobe.Server.dll bake \
+            --out output/bundle --cdn --product "$PRODUCT" --region us --cache output/bake-cache \
+            --versions-file output/watch/versions.txt "${previous[@]}"
+          df -h .
+
+      # The cache is only for the bake; free its space before the browser check and the upload.
+      - name: Free the bake cache
+        if: steps.watch.outputs.changed == 'true'
+        run: |
+          rm -rf output/bake-cache
+          df -h .
+
+      # static.spec.ts skips when there is no bundle, so check for one first.
+      - name: Browser check against the new bundle
+        if: steps.watch.outputs.changed == 'true'
+        run: |
+          test -f "output/bundle/$PRODUCT/current.json"
+          npm --prefix web ci
+          (cd web && npx playwright install --with-deps chromium)
+          npm --prefix web run test:e2e:static
+        env:
+          ALTROBE_BUNDLE_DIR: ${{ github.workspace }}/output/bundle
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        if: steps.watch.outputs.changed == 'true'
+        with:
+          role-to-assume: ${{ vars.AWS_PUBLISH_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Publish and prune
+        if: steps.watch.outputs.changed == 'true'
+        run: npm run publish:bundle -- --product "$PRODUCT" --prune
+        env:
+          BUNDLE_BUCKET: ${{ vars.BUNDLE_BUCKET }}
+          ASSET_DISTRIBUTION_ID: ${{ vars.ASSET_DISTRIBUTION_ID }}
+
+  report:
+    needs: publish
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      # One open issue at a time: later failures add a comment to it.
+      - name: Open or update the failure issue
+        run: |
+          title="Bundle publish failed"
+          body="The scheduled bundle publish failed: $RUN_URL. The live build is unchanged."
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  # Forever's beta closes at launch and the game moves to a public product. This opens an issue when a
+  # public product reaches Forever's 1.60 builds, so the site can switch (docs/deployment.md).
+  launch-watch:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Look for Forever on a public product
+        id: find
+        run: node scripts/find-forever-launch.mjs --product "$PRODUCT"
+
+      - name: Open or update the launch issue
+        if: steps.find.outputs.products != ''
+        run: |
+          title="Forever is live on a public product"
+          body="Blizzard's version service shows Forever's 1.60 builds on: $PRODUCTS. The site still publishes $PRODUCT. To switch, follow docs/deployment.md (switching products). Run: $RUN_URL"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCTS: ${{ steps.find.outputs.products }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

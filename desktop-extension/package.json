@@ -1,0 +1,17 @@
+{
+  "name": "altrobe-desktop-extension",
+  "private": true,
+  "description": "Claude Desktop extension: a stdio bridge to the MCP endpoint of Altrobe running on this computer.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-timeout=20000",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "esbuild": "0.28.2",
+    "zod": "^4.6.7"
+  }
+}
