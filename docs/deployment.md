@@ -140,6 +140,19 @@ aws budgets execute-budget-action --account-id <account> --budget-name altrobe-b
 The Lambda logs one JSON line per request (outcome, step, tool names, tokens, cost), never the IP
 address, the typed text or tool content.
 
+### Traffic
+
+Cloudflare Web Analytics counts visits and page views on altrobe.com (`web/src/analytics.ts`). It
+works without Cloudflare's proxy, through a script the site loads, and Cloudflare says it collects no
+personal data ([about](https://developers.cloudflare.com/web-analytics/about/)). Ad blockers stop the
+script, so it undercounts. The local app never loads it.
+
+To turn it on, add the site in the Cloudflare dashboard (Analytics & Logs, Web Analytics, "Add a
+site", hostname `altrobe.com`, manual JS snippet), copy the token from the snippet, set it as the
+repository variable `CF_ANALYTICS_TOKEN`, then merge or run "Deploy". The About dialog says visits are
+counted whenever the token is set. Unset the variable and deploy to stop. The numbers are in the
+same Web Analytics page.
+
 ## How CI deploys
 
 - **Every pull request and push** (`.github/workflows/ci.yml`): the `infra` job type-checks, runs the

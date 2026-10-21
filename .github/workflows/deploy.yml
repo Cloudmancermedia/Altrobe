@@ -46,6 +46,8 @@ jobs:
           # 1 to everyone (docs/hosted-prompt-box.md).
           VITE_PROMPT_API: ${{ vars.PROMPT_API }}
           VITE_TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          # Cloudflare Web Analytics counts visits; off unless CF_ANALYTICS_TOKEN is set (docs/deployment.md).
+          VITE_CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN }}
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
@@ -87,6 +89,8 @@ jobs:
           # 1 to everyone (docs/hosted-prompt-box.md).
           VITE_PROMPT_API: ${{ vars.PROMPT_API }}
           VITE_TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          # Cloudflare Web Analytics counts visits; off unless CF_ANALYTICS_TOKEN is set (docs/deployment.md).
+          VITE_CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN }}
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
