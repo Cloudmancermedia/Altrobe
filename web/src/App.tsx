@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, clearCache, features, getCharacters, getStatus, hostedPrompt, selectInstall } from './api/client'
 import { AboutDialog } from './components/AboutDialog'
 import { AiCounter } from './components/Ai'
-import { copyrightLine, SUPPORT, TAGLINE } from './components/footer'
+import { copyrightLine, gameDataLine, SUPPORT, TAGLINE } from './components/footer'
 import { launchBanner } from './identity/name-rules'
 import type { CharactersResponse, ResolvedItem, Status } from './api/types'
 import { commands, store } from './app-state'
@@ -44,6 +44,8 @@ if (startPath.startsWith('/l/')) history.replaceState(null, '', `/${location.sea
 
 // New with the times (2026-10-21), so a banner dismissed before shows once more.
 const BANNER_KEY = 'altrobe.bannerDismissed.foreverLaunchTimes'
+// Matches the fold's transition in App.css.
+const BANNER_FOLD_MS = 250
 
 /** The launch and reservation dates over the app, until launch day ends. Dismissing it is remembered in this browser. */
 function LaunchBanner() {
@@ -51,15 +53,20 @@ function LaunchBanner() {
   const [dismissed, setDismissed] = useState(() => {
     try { return globalThis.localStorage?.getItem(BANNER_KEY) === '1' } catch { return false }
   })
+  // Closing folds the banner away before it unmounts, so the view below grows smoothly instead of jumping.
+  const [closing, setClosing] = useState(false)
   if (!text || dismissed) return null
   const dismiss = () => {
-    setDismissed(true)
+    setClosing(true)
+    setTimeout(() => setDismissed(true), BANNER_FOLD_MS)
     try { globalThis.localStorage?.setItem(BANNER_KEY, '1') } catch { /* not kept */ }
   }
   return (
-    <section className="banner small" aria-label="WoW Forever launch">
-      <span>{text}</span>
-      <button type="button" className="link" aria-label="Dismiss" onClick={dismiss}>×</button>
+    <section className={`banner-fold${closing ? ' closing' : ''}`} aria-label="WoW Forever launch">
+      <div className="banner small">
+        <span>{text}</span>
+        <button type="button" className="link" aria-label="Dismiss" onClick={dismiss}>×</button>
+      </div>
     </section>
   )
 }
@@ -198,11 +205,10 @@ export default function App() {
           <h1>Altrobe</h1>
           <span className="muted small">{TAGLINE}</span>
         </div>
-        <span className="muted small">
-          {status?.active ? `${status.active.product} ${status.active.build}` : phase === 'starting' ? 'Connecting…' : 'No install'}
-        </span>
-        {hostedPrompt && <AiCounter />}
-        {phase === 'ready' && <SharePanel look={look} defaults={defaults} />}
+        <div className="topbar-end">
+          {hostedPrompt && <AiCounter />}
+          {phase === 'ready' && <SharePanel look={look} defaults={defaults} />}
+        </div>
       </header>
       <LaunchBanner />
       <Notices notices={notices} labels={noticeLabels} />
@@ -250,6 +256,7 @@ export default function App() {
         <div className="footer-links">
           <button type="button" className="link" onClick={() => setAboutOpen(true)}>About</button>
           <a className="support-link" href={SUPPORT.href} target="_blank" rel="noreferrer">Support Altrobe</a>
+          <span>{gameDataLine(status?.active, phase)}</span>
         </div>
         <span className="footer-note">{copyrightLine()} · A fan project, not affiliated with Blizzard Entertainment.</span>
       </footer>

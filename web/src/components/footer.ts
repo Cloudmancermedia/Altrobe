@@ -3,6 +3,12 @@ import type { Features } from '../api/backend'
 const REPO = 'https://github.com/Cloudmancermedia/altrobe'
 
 /** Support for the project: the footer and the About dialog both show it on its own. */
+/** The footer's note on the game build the app reads, or why there's none yet. */
+export function gameDataLine(active: { product: string; build: string } | null | undefined, phase: string): string {
+  if (active) return `Game data: ${active.product} ${active.build}`
+  return phase === 'starting' ? 'Connecting…' : 'No install'
+}
+
 /** Under the name in the top bar: what the site is, for a first-time visitor. */
 export const TAGLINE = 'WoW: Forever model viewer and character planner'
 
