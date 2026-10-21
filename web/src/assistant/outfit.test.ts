@@ -2,7 +2,7 @@
 // prompt box builds the same outfit as the local app's build_outfit tool.
 import { describe, expect, test } from 'vitest'
 import type { BundleItem } from '../api/search'
-import { buildOutfit } from './outfit'
+import { armorFor, buildOutfit } from './outfit'
 
 let next = 1
 const item = (slot: string, requiredLevel: number | null, extra: Partial<BundleItem> = {}): BundleItem =>
@@ -79,5 +79,16 @@ describe('buildOutfit', () => {
     const r = buildOutfit([item('head', 10), item('chest', 10)], { level: 10, slots: ['chest'] })
     expect(Object.keys(r.items)).toEqual(['chest'])
     expect(r.missing).toEqual(['mainhand'])
+  })
+})
+
+describe('armorFor', () => {
+  test("the armor a class wears at a level, as Classic trains it: plate for warriors and paladins and mail for hunters and shamans from 40", () => {
+    for (const cls of ['Warrior', 'Paladin']) { expect(armorFor(cls, 30)).toBe('mail'); expect(armorFor(cls, 39)).toBe('mail'); expect(armorFor(cls, 40)).toBe('plate') }
+    for (const cls of ['Hunter', 'Shaman']) { expect(armorFor(cls, 30)).toBe('leather'); expect(armorFor(cls, 40)).toBe('mail') }
+    for (const cls of ['Rogue', 'Druid']) { expect(armorFor(cls, 20)).toBe('leather'); expect(armorFor(cls, 60)).toBe('leather') }
+    for (const cls of ['Priest', 'Mage', 'Warlock']) { expect(armorFor(cls, 30)).toBe('cloth'); expect(armorFor(cls, 60)).toBe('cloth') }
+    expect(armorFor('warlock', 30)).toBe('cloth')
+    expect(armorFor('Bard', 30)).toBeUndefined()
   })
 })

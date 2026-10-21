@@ -6,7 +6,7 @@ import { replacedSetSlots, type Commands } from '../commands'
 import { runRemoteCommand } from '../session'
 import type { TitleInfo } from '../api/types'
 import type { AppState, Store } from '../store'
-import { ARMOR_TYPES, buildOutfit } from './outfit'
+import { ARMOR_TYPES, armorFor, buildOutfit, CLASS_NAMES } from './outfit'
 import { batchProblems, pairProblems } from '../identity/name-rules'
 import { FAMOUS_NAMES } from '../identity/famous-names'
 
@@ -90,10 +90,12 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
   // Set IDs search_sets returned in the running command: Nova guesses set IDs from the tier list
   // otherwise (benchmarked 2026-10-20).
   let foundSets = new Set<number>()
+  // Slots equip_item filled in the running command: build_outfit leaves them, so a named item survives it.
+  let namedSlots = new Set<string>()
   // The command of the tool call running now (runHostedCommand numbers them).
   let current: number | undefined
   const forCommand = () => {
-    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set() }
+    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set(); namedSlots = new Set() }
   }
   const callCount = (name: string) => {
     forCommand()
@@ -113,16 +115,30 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       const weapons = list(a.weapon, WEAPONS, 'weapon type')
       const hands = list(a.hands, HANDS, 'hands')
       const quality = int(a.quality)
-      const page = searchItemsIn(await deps.catalog(), {
-        q: typeof a.query === 'string' ? a.query : a.query === undefined || a.query === null ? undefined : String(a.query),
+      const q = typeof a.query === 'string' ? a.query : a.query === undefined || a.query === null ? undefined : String(a.query)
+      const limit = clamp(int(a.limit) ?? 20, 1, 50)
+      const catalog = await deps.catalog()
+      const filters = {
         slots: typeof a.slot === 'string' && a.slot ? [a.slot.toLowerCase()] : undefined,
         qualities: quality === undefined ? undefined : [quality],
         minLevel: int(a.min_level), maxLevel: int(a.max_level), armor, weapons, hands,
         newInForever: a.new_in_forever === true || a.new_in_forever === 'true',
-        limit: clamp(int(a.limit) ?? 20, 1, 50),
-        includeInternal: false,
-      })
-      return { total: page.total, items: page.items.map(summary) }
+      }
+      const search = (loose: boolean, filtered: boolean) => searchItemsIn(catalog, { q, limit, includeInternal: false, loose, ...(filtered ? filters : {}) })
+      const page = search(false, true)
+      if (page.total || !q?.trim()) return { total: page.total, items: page.items.map(summary) }
+      // The user's wording ("green iron helmet" for Green Iron Helm) or a wrong filter (leather for a mail
+      // helm) hid an item they named (2026-10-21), so each gets a second try, saying what was relaxed.
+      const tries: [boolean, boolean, string][] = [
+        [true, true, 'Nothing matched the exact name, so these are close names with those filters.'],
+        [false, false, 'Nothing matched the name with those filters, so these match the name alone.'],
+        [true, false, 'Nothing matched the exact name or those filters, so these are close names without the filters.'],
+      ]
+      for (const [loose, filtered, note] of tries) {
+        const r = search(loose, filtered)
+        if (r.total) return { total: r.total, items: r.items.map(summary), note: `${note} Use one only if it is the item the user named.` }
+      }
+      return { total: 0, items: [] }
     },
 
     async search_sets(a) {
@@ -159,18 +175,26 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     async build_outfit(a) {
       const level = int(a.level)
       if (level === undefined || level < 1 || level > 60) throw new ToolError('level must be 1 to 60.')
-      const armor = typeof a.armor === 'string' && a.armor.trim() ? a.armor.trim().toLowerCase() : undefined
+      // A class decides the armor, whatever armor the model passed: it put leather on warlocks (2026-10-21).
+      let armor = typeof a.armor === 'string' && a.armor.trim() ? a.armor.trim().toLowerCase() : undefined
+      if (typeof a.class === 'string' && a.class.trim()) {
+        armor = armorFor(a.class, level)
+        if (!armor) throw new ToolError(`Unknown class "${a.class}". Use one of: ${CLASS_NAMES.join(', ')}.`)
+      }
       if (armor && !ARMOR_TYPES.includes(armor)) throw new ToolError(`Unknown armor type "${a.armor}". Use cloth, leather, mail or plate.`)
       const weapons = list(a.weapons, WEAPONS, 'weapon type')
       const outfit = buildOutfit(await deps.catalog(), { level, armor, weapons })
-      const picked = Object.entries(outfit.items)
+      // forCommand runs in callCount, so namedSlots belongs to this command.
+      callCount('build_outfit')
+      const kept = Object.keys(outfit.items).filter((slot) => namedSlots.has(slot))
+      const picked = Object.entries(outfit.items).filter(([slot]) => !namedSlots.has(slot))
       const items = Object.fromEntries(picked.map(([slot, i]) => [slot, {
         itemId: i.itemId, name: i.name, requiredLevel: i.requiredLevel ?? null, quality: i.quality, armor: i.armor ?? null, weapon: i.weapon ?? null, hands: i.hands ?? null,
         newInForever: i.newInForever ?? false,
       }]))
       // Equip it on the main character, as the hosted tool list says; an empty outfit changes nothing.
       const look = picked.length ? await command('equip_items', { items: picked.map(([slot, i]) => ({ slot, itemId: i.itemId })) }) : undefined
-      return { level, items, missing: outfit.missing, ...(look ? { look } : {}) }
+      return { level, armor: armor ?? null, items, missing: outfit.missing, ...(kept.length ? { kept } : {}), ...(look ? { look } : {}) }
     },
 
     async list_characters() {
@@ -264,7 +288,12 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       return { identity: store.get().look.identity ?? {} }
     },
     list_animations: () => command('list_animations', {}),
-    equip_item: (a) => command('equip_item', { slot: a.slot, itemId: int(a.itemId) }),
+    async equip_item(a) {
+      const r = await command('equip_item', { slot: a.slot, itemId: int(a.itemId) })
+      forCommand()
+      if (typeof a.slot === 'string') namedSlots.add(a.slot.toLowerCase())
+      return r
+    },
     unequip: (a) => command('unequip', { slot: a.slot }),
     async set_character(a) {
       const again = callCount('set_character') > 1
