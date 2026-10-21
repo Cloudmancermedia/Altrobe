@@ -74,8 +74,16 @@ export class SiteStack extends Stack {
 
     // Vite names everything under static/ by content hash, so browsers may keep it for good. index.html
     // names the current hashes and changes on every deploy, so browsers recheck it each time.
+    // They also carry the security headers the asset host sends, plus HSTS: browsers that have seen the site
+    // go straight to HTTPS for a year. Subdomains are left out so a future one isn't bound to HTTPS by it.
     const cacheControlHeaders = (id: string, value: string) => new ResponseHeadersPolicy(this, id, {
       customHeadersBehavior: { customHeaders: [{ header: 'Cache-Control', value, override: true }] },
+      securityHeadersBehavior: {
+        contentTypeOptions: { override: true },
+        frameOptions: { frameOption: HeadersFrameOption.DENY, override: true },
+        referrerPolicy: { referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN, override: true },
+        strictTransportSecurity: { accessControlMaxAge: Duration.days(365), includeSubdomains: false, override: true },
+      },
     })
     const appPageHeaders = cacheControlHeaders('AppPageHeaders', 'no-cache')
     const appStaticHeaders = cacheControlHeaders('AppStaticHeaders', 'public, max-age=31536000, immutable')
