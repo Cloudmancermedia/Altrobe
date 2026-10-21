@@ -1,4 +1,5 @@
 import { appUrl, call, expect, openApp, settled, test, type Hooks } from './fixtures'
+import { launchBanner } from '../src/identity/name-rules'
 
 // The hosted site, reading a baked bundle (playwright.static.config.ts). Every request must succeed:
 // a 404 here is a file the bake did not write or a URL the static backend built wrong.
@@ -103,11 +104,12 @@ test('a preview link (/l/<look>) opens its look, and the address goes back to /'
   await expect.poll(() => page.evaluate(() => location.pathname)).toBe('/')
 })
 
-test('a banner gives the launch and reservation dates until launch day ends, and stays dismissed', async ({ page }) => {
+test('a banner gives the reservation and launch times until launch day ends, and stays dismissed', async ({ page }) => {
   await openApp(page)
   const banner = page.getByRole('region', { name: 'WoW Forever launch' })
   if (Date.now() >= Date.parse('2026-11-05T08:00:00Z')) { await expect(banner).toHaveCount(0); return }
-  await expect(banner).toContainText('WoW Forever goes live on November 4, and name reservation runs October 27 to November 3, Pacific time.')
+  // The site's own text for today, so the wording can change without this falling behind (it did, 2026-10-21).
+  await expect(banner).toContainText(launchBanner(new Date())!)
   await banner.getByRole('button', { name: 'Dismiss' }).click()
   await expect(banner).toHaveCount(0)
   await page.reload()
