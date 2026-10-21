@@ -19,6 +19,7 @@ const catalog: BundleItem[] = [
   item(7, 'Mail Coif', 'head', { requiredLevel: 20, itemLevel: 25, armor: 'mail', quality: 2 }),
   item(8, 'Hand Axe', 'mainhand', { requiredLevel: 18, armor: null, weapon: 'axe', hands: 'one-hand', quality: 2 }),
   item(246100, 'Whispering Cowl', 'head', { requiredLevel: 40, armor: 'leather', newInForever: true }),
+  item(9, 'Hunting Bow', 'ranged', { requiredLevel: 28, armor: null, weapon: 'bow', hands: 'ranged', quality: 2 }),
 ]
 const byId = new Map(catalog.map((i) => [i.itemId, i]))
 const set = (setId: number, name: string, ids: number[]): BundleSet =>
@@ -144,6 +145,30 @@ describe('hosted tools', () => {
     expect(store.get().look.items.head).toBe(7)
   })
 
+  test('build_outfit gives a class its weapons when no weapon types are passed', async () => {
+    // "a level 30 hunter" showed a weapon only when the model thought to pass weapon types (2026-10-21).
+    const { run, store } = setup()
+    const r = await run('build_outfit', { level: 30, class: 'Hunter' })
+    expect(r.json).toMatchObject({ items: { ranged: { itemId: 9, weapon: 'bow' } } })
+    expect(store.get().look.items.ranged).toBe(9)
+    expect((await run('build_outfit', { level: 30, class: 'Mage' })).json.missing).toContain('mainhand')
+  })
+
+  test("build_outfit's ranged weapon leaves a hand weapon named earlier in the command, and the other way round", async () => {
+    // Equipping a ranged weapon takes off both hands, and a hand weapon the ranged one (commands.ts equipItem).
+    const { run, store, command } = setup()
+    await run('equip_item', { slot: 'mainhand', itemId: 8 })
+    const r = await run('build_outfit', { level: 30, class: 'Hunter' })
+    expect(store.get().look.items.mainhand).toBe(8)
+    expect(store.get().look.items.ranged).toBeUndefined()
+    expect(r.json).toMatchObject({ kept: ['ranged'] })
+    command.n = 2
+    await run('equip_item', { slot: 'ranged', itemId: 9 })
+    await run('build_outfit', { level: 22, armor: 'mail', weapons: ['axe'] })
+    expect(store.get().look.items.ranged).toBe(9)
+    expect(store.get().look.items.mainhand).toBeUndefined()
+  })
+
   test("search_items finds a name the user words a little differently: 'helmet' for Helm", async () => {
     // "Give them both the green iron helmet" searched "green iron helmet", found nothing (the item is
     // Green Iron Helm), then "helmet", and put on Adventurer's Pith Helmet (live, 2026-10-21).
@@ -160,6 +185,22 @@ describe('hosted tools', () => {
     expect(r.json).toMatchObject({ total: 1, items: [{ itemId: 3, name: 'Wrath Helm' }], note: expect.stringMatching(/filters/) })
     // Without a name to fall back on, an empty result stays empty.
     expect((await run('search_items', { slot: 'head', armor: 'cloth' })).json).toMatchObject({ total: 0, items: [] })
+  })
+
+  test('start with new_look clears the screen to one character in no gear, keeping race and name; without it keeps everything', async () => {
+    const { run, store } = setup()
+    await run('equip_item', { slot: 'head', itemId: 1 })
+    await run('compare', { characters: [{ race: 5, sex: 1 }] })
+    await run('set_animation', { name: 'Run' })
+    store.set({ look: { ...store.get().look, identity: { firstName: 'Morgwyn' } } })
+    const kept = await run('start', { new_look: false })
+    expect(kept.json).toMatchObject({ new_look: false, look: { compare: [expect.anything()] } })
+    expect(store.get().look.items).toEqual({ head: 1 })
+    const fresh = await run('start', { new_look: true })
+    expect(fresh.json).toMatchObject({ new_look: true })
+    const look = store.get().look
+    expect([look.items, look.compare, look.anim]).toEqual([{}, [], undefined])
+    expect([look.race, look.sex, look.identity?.firstName]).toEqual([2, 0, 'Morgwyn'])
   })
 
   test('build_outfit with nothing to wear changes nothing', async () => {

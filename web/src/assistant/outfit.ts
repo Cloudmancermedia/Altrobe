@@ -18,6 +18,27 @@ const CLASS_ARMOR: Record<string, [string, string?]> = {
   rogue: ['leather'], druid: ['leather'], priest: ['cloth'], mage: ['cloth'], warlock: ['cloth'],
 }
 export const CLASS_NAMES = ['Warrior', 'Paladin', 'Hunter', 'Shaman', 'Rogue', 'Druid', 'Priest', 'Mage', 'Warlock']
+// ChrClasses IDs, for allowableClass (bit classId - 1).
+const CLASS_IDS: Record<string, number> = {
+  warrior: 1, paladin: 2, hunter: 3, rogue: 4, priest: 5, shaman: 7, mage: 8, warlock: 9, druid: 11,
+}
+
+// The weapons a class carries when no weapon types are asked for, as the maintainer chose them (2026-10-21).
+// Each is matched by weapon type (any when left out) and hands, not by the item's slot: a rogue's off hand
+// can be a one-hander.
+interface WeaponPick { slot: 'mainhand' | 'offhand' | 'ranged'; weapons?: string[]; hands: string[] }
+const TWO_HANDER: WeaponPick[] = [{ slot: 'mainhand', weapons: ['axe', 'sword', 'mace'], hands: ['two-hand'] }]
+const STAFF: WeaponPick[] = [{ slot: 'mainhand', weapons: ['staff'], hands: ['two-hand'] }]
+const CLASS_WEAPONS: Record<string, WeaponPick[]> = {
+  warrior: TWO_HANDER, paladin: TWO_HANDER,
+  hunter: [{ slot: 'ranged', weapons: ['bow', 'gun', 'crossbow'], hands: ['ranged'] }],
+  shaman: [{ slot: 'mainhand', weapons: ['mace', 'axe'], hands: ['one-hand', 'main hand'] }, { slot: 'offhand', hands: ['shield'] }],
+  rogue: [
+    { slot: 'mainhand', weapons: ['dagger', 'sword'], hands: ['one-hand', 'main hand'] },
+    { slot: 'offhand', weapons: ['dagger', 'sword'], hands: ['one-hand', 'off hand'] },
+  ],
+  priest: STAFF, mage: STAFF, warlock: STAFF, druid: STAFF,
+}
 
 /** The armor a class wears at a level, or undefined for a name that isn't a class. */
 export function armorFor(className: string, level: number): string | undefined {
@@ -30,6 +51,8 @@ export interface OutfitRequest {
   /** cloth, leather, mail or plate, for the armor slots. */
   armor?: string
   classId?: number
+  /** A class name: its weapons when no weapon types are given, and its classId when none is. */
+  className?: string
   minQuality?: number
   maxQuality?: number
   slots?: string[]
@@ -47,13 +70,15 @@ export interface Outfit {
 export function buildOutfit(catalog: BundleItem[], r: OutfitRequest): Outfit {
   const minQuality = r.minQuality ?? 2
   const maxQuality = r.maxQuality ?? 5
+  const className = r.className?.trim().toLowerCase() ?? ''
+  const classId = r.classId ?? CLASS_IDS[className]
   const pick = (fits: (i: BundleItem) => boolean): BundleItem | undefined => {
     let best: BundleItem | undefined
     for (const i of catalog) {
       const req = i.requiredLevel
       if (!fits(i) || i.internal || i.unnamed || req == null || req > r.level || req <= r.level - WINDOW) continue
       if (i.quality < minQuality || i.quality > maxQuality) continue
-      if (r.classId !== undefined && !allowsClass(i, r.classId)) continue
+      if (classId !== undefined && !allowsClass(i, classId)) continue
       if (!best || better(i, best)) best = i
     }
     return best
@@ -67,7 +92,19 @@ export function buildOutfit(catalog: BundleItem[], r: OutfitRequest): Outfit {
     else missing.push(slot)
   }
 
-  // Weapons only when asked for by type: the data does not say which weapons a class can use.
+  // A class with no weapon types asked for carries its own; weapon types passed win.
+  const classWeapons = r.weapons?.length ? undefined : CLASS_WEAPONS[className]
+  if (classWeapons) {
+    for (const w of classWeapons) {
+      const taken = Object.values(items)
+      const found = pick((i) => (!w.weapons || w.weapons.includes(i.weapon ?? '')) && w.hands.includes(i.hands ?? '') && !taken.includes(i))
+      if (found) items[w.slot] = found
+      else missing.push(w.slot)
+    }
+    return { items, missing }
+  }
+
+  // Otherwise weapons only when asked for by type.
   const mainHands = r.hands === 'one-hand' ? ['one-hand', 'main hand'] : r.hands === 'two-hand' ? ['two-hand'] : r.hands === 'ranged' ? ['ranged']
     : ['one-hand', 'main hand', 'two-hand', 'ranged']
   const weapons = r.weapons ?? []

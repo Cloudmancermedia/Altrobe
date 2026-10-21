@@ -110,6 +110,19 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     cs.map((c) => `${store.get().characters?.races.find((r) => r.race === c.race)?.name ?? `race ${c.race}`} ${c.sex === 1 ? 'female' : 'male'}`)
 
   const tools: Record<string, (a: Input) => Promise<Record<string, unknown>>> = {
+    // The API makes every command that may change the look begin here. A new look starts from one character
+    // in no gear, so the last command's side-by-side characters and outfit don't linger (2026-10-21); the
+    // race, customization and name stay, for the model to change if asked.
+    async start(a) {
+      const fresh = a.new_look === true
+      if (fresh) {
+        // clear_all isn't on the remote command channel; it takes off the gear, the animation and the
+        // side-by-side characters.
+        deps.cmd.clear_all()
+        await deps.settle?.()
+      }
+      return { new_look: fresh, look: await command('get_look', {}) }
+    },
     async search_items(a) {
       const armor = list(a.armor, ARMOR_TYPES, 'armor type')
       const weapons = list(a.weapon, WEAPONS, 'weapon type')
@@ -177,17 +190,22 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       if (level === undefined || level < 1 || level > 60) throw new ToolError('level must be 1 to 60.')
       // A class decides the armor, whatever armor the model passed: it put leather on warlocks (2026-10-21).
       let armor = typeof a.armor === 'string' && a.armor.trim() ? a.armor.trim().toLowerCase() : undefined
-      if (typeof a.class === 'string' && a.class.trim()) {
-        armor = armorFor(a.class, level)
+      const className = typeof a.class === 'string' && a.class.trim() ? a.class : undefined
+      if (className) {
+        armor = armorFor(className, level)
         if (!armor) throw new ToolError(`Unknown class "${a.class}". Use one of: ${CLASS_NAMES.join(', ')}.`)
       }
       if (armor && !ARMOR_TYPES.includes(armor)) throw new ToolError(`Unknown armor type "${a.armor}". Use cloth, leather, mail or plate.`)
       const weapons = list(a.weapons, WEAPONS, 'weapon type')
-      const outfit = buildOutfit(await deps.catalog(), { level, armor, weapons })
+      const outfit = buildOutfit(await deps.catalog(), { level, armor, weapons, className })
       // forCommand runs in callCount, so namedSlots belongs to this command.
       callCount('build_outfit')
-      const kept = Object.keys(outfit.items).filter((slot) => namedSlots.has(slot))
-      const picked = Object.entries(outfit.items).filter(([slot]) => !namedSlots.has(slot))
+      // A ranged weapon takes off both hands and a hand weapon the ranged one, so either would undo a named weapon.
+      const keeps = (slot: string) => namedSlots.has(slot)
+        || (slot === 'ranged' && (namedSlots.has('mainhand') || namedSlots.has('offhand')))
+        || ((slot === 'mainhand' || slot === 'offhand') && namedSlots.has('ranged'))
+      const kept = Object.keys(outfit.items).filter(keeps)
+      const picked = Object.entries(outfit.items).filter(([slot]) => !keeps(slot))
       const items = Object.fromEntries(picked.map(([slot, i]) => [slot, {
         itemId: i.itemId, name: i.name, requiredLevel: i.requiredLevel ?? null, quality: i.quality, armor: i.armor ?? null, weapon: i.weapon ?? null, hands: i.hands ?? null,
         newInForever: i.newInForever ?? false,

@@ -4,7 +4,8 @@
 // returns and sends their results back with the next step.
 import type { ToolOutcome } from './hosted-tools'
 
-export const MAX_STEPS = 8
+// Eight steps of work, plus start (the prompt API's MAX_STEPS).
+export const MAX_STEPS = 9
 /**
  * The most a tool result may add to the conversation, in characters of JSON. The browser resends the
  * whole conversation each step and the API refuses bodies over 64 KB, so 8 steps of results must fit.

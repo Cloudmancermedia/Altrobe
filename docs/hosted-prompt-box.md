@@ -13,7 +13,7 @@ Prompt Box Spec; this file is the contract between the two halves:
 
 ## `POST /api/prompt`
 
-One request is one model step. A command takes one to eight steps.
+One request is one model step. A command takes one to nine steps. The first step of a command that may change the look (not a name request) makes the model call `start` (Bedrock `toolChoice`), saying whether the request is a new look; the browser then clears the gear, the animation and the side-by-side characters before anything else, keeping the race, customization and name. Without it, the last command's characters lingered: "compare an undead and an orc warlock" then "an orc warrior" showed two Orcs.
 
 ### Request
 
@@ -74,11 +74,11 @@ Never 403 or 404: the app distribution rewrites those to `index.html` for the br
 
 | Status | `error` | When |
 | --- | --- | --- |
-| 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 17), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
+| 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 19), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
 | 400 | `turnstile` | The first step's Turnstile token fails Cloudflare's check |
 | 429 | `ip_limit` | This IP address has used its 20 commands today; `resetAt` says when they come back |
 | 429 | `daily_cap` | Today's spend reached the global cap ($25); `resetAt` says when the box reopens |
-| 429 | `too_many_steps` | The command passed 8 steps |
+| 429 | `too_many_steps` | The command passed 9 steps |
 | 503 | `disabled` | The kill switch is off; the box hides |
 | 503 | `unavailable` | The API can't reach its own storage or secrets; try again in a moment |
 | 502 | `model` | Bedrock failed |
@@ -109,7 +109,7 @@ answers with a `busy` code.
    the step number, an expiry 2 minutes out, the commands left, and a hash of the conversation so far. A step with a missing, expired or mismatched ticket
    is refused, so the limits can't be skipped by starting mid-conversation. Each ticket works once
    (a conditional write in DynamoDB), so a step can't be replayed with other tool results to buy model
-   calls: a command costs at most 8 of them.
+   calls: a command costs at most 9 of them.
 4. **Global daily spend,** in dollars from each Bedrock call's reported token usage at Nova 2 Lite's
    price ($0.33 per million input tokens, $2.75 per million output tokens). Checked before each step; the box closes for everyone at $25 until 13:00 UTC.
 5. **Kill switch:** the SSM parameter `/altrobe/prompt/switch`. When it reads `off`, every request
@@ -130,6 +130,7 @@ The API defines the tools and the instructions; the website runs the tools. Name
 
 | Tool | Input | Runs on |
 | --- | --- | --- |
+| `start` | `new_look` | with `new_look`, `commands.clear_all`; then `get_look` |
 | `search_items` | `query`, `slot`, `quality`, `min_level`, `max_level`, `armor`, `weapon`, `hands`, `new_in_forever`, `limit` | the static catalog |
 | `search_sets` | `query`, `limit` | the static sets |
 | `equip_set` | `setId`, `replace` | the set's pieces, then `equip_items` |
@@ -160,9 +161,9 @@ A name request runs through the same box, one command at a time, but shows in th
 
 The lists are the fallback. When the box can't answer (the daily limits, the kill switch, a busy or failed request) or there's no prompt box (the local app, or `VITE_PROMPT_API` unset), the panel shows five names from the lists and says why; when the model finds fewer than five new names, the lists fill the rest. List picks lean three to one toward Altrobe's names, since the in-game dice button gives Blizzard's. Generate name uses the same lists. Both skip the names the game refuses and the famous names Blizzard's lists hold (Thrall, Arthas, 42 in all).
 
-`build_outfit` takes the class when the user names one and picks the armor that class wears at that level, as Classic trains it (`armorFor` in `web/src/assistant/outfit.ts`): cloth for priests, mages and warlocks; leather for rogues and druids; leather for hunters and shamans and mail for warriors and paladins before 40, then mail and plate. The class wins over any `armor` passed, since the model put leather on warlocks. It leaves slots `equip_item` filled earlier in the same command, so a named helm survives a later outfit, and `search_items` that finds nothing tries again, saying what it relaxed: close names, where each word typed only has to begin a word of the name (up to 4 letters, so "green iron helmet" finds Green Iron Helm), then the name without the filters, then both. The search panel keeps exact matching. Otherwise it follows the local app's rule (`McpTools.BuildOutfit`): in each armor slot, the item with
+`build_outfit` takes the class when the user names one and picks the armor that class wears at that level, as Classic trains it (`armorFor` in `web/src/assistant/outfit.ts`): cloth for priests, mages and warlocks; leather for rogues and druids; leather for hunters and shamans and mail for warriors and paladins before 40, then mail and plate. The class wins over any `armor` passed, since the model put leather on warlocks. Unless weapon types are passed, the class also picks its weapons by the same level rule, among items it may use: a two-hander for warriors and paladins, a bow, gun or crossbow for hunters, a one-handed mace or axe and a shield for shamans, two one-handed daggers or swords for rogues, and a staff for the rest; a weapon slot nothing fits goes in `missing`. It leaves slots `equip_item` filled earlier in the same command, so a named helm survives a later outfit, and `search_items` that finds nothing tries again, saying what it relaxed: close names, where each word typed only has to begin a word of the name (up to 4 letters, so "green iron helmet" finds Green Iron Helm), then the name without the filters, then both. The search panel keeps exact matching. Otherwise it follows the local app's rule (`McpTools.BuildOutfit`): in each armor slot, the item with
 the highest required level within 7 levels below the target, then an item new in Forever, then the
-highest item level; the main hand only when weapon types are given.
+highest item level; without a class, the main hand only when weapon types are given.
 
 ## Privacy
 
