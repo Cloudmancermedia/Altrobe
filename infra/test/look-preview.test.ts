@@ -59,7 +59,7 @@ describe('the look preview function', () => {
     expect(payload.length).toBeGreaterThan(1000)
     const charCodeAt = String.prototype.charCodeAt
     let calls = 0
-    String.prototype.charCodeAt = function (this: string, i?: number) { calls++; return charCodeAt.call(this, i) }
+    String.prototype.charCodeAt = function (this: string, i = 0) { calls++; return charCodeAt.call(this, i) }
     try {
       const r = handler(event(`/l/${payload}`))
       expect(r.statusCode).toBe(200)
@@ -84,7 +84,7 @@ describe('the look preview function', () => {
     expect(payload.length).toBeGreaterThan(4500)
     const charCodeAt = String.prototype.charCodeAt
     let calls = 0
-    String.prototype.charCodeAt = function (this: string, i?: number) { calls++; return charCodeAt.call(this, i) }
+    String.prototype.charCodeAt = function (this: string, i = 0) { calls++; return charCodeAt.call(this, i) }
     let r
     try { r = handler(event(`/l/${payload}`)) } finally { String.prototype.charCodeAt = charCodeAt }
     expect(meta(r.body.data, 'og:title')).toBe('Zoë Ünderhill · Level 60 Undead Paladin')
