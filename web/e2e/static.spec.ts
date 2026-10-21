@@ -190,8 +190,9 @@ test('a quick animation button plays its animation, a reload keeps it, and a sec
   await openApp(page)
   const anim = () => call(page, (h) => (h.commands.get_look() as { anim?: string }).anim)
   const quick = page.getByRole('group', { name: 'Quick animations' })
-  await expect(quick.getByRole('button')).toHaveText(['Cast (aimed)', 'Cast (around)', 'Run', 'Attack (one-hand)', 'Attack (two-hand)'])
-  await expect(quick.getByRole('button', { pressed: true })).toHaveCount(0)
+  await expect(quick.getByRole('button')).toHaveText(['Stand', 'Cast (aimed)', 'Cast (around)', 'Run', 'Attack (one-hand)', 'Attack (two-hand)', 'Shoot (bow)'])
+  // Stand shows pressed while nothing else plays.
+  await expect(quick.getByRole('button', { pressed: true })).toHaveText(['Stand'])
 
   await quick.getByRole('button', { name: 'Run' }).click()
   expect(await anim()).toBe('Run')
@@ -206,7 +207,7 @@ test('a quick animation button plays its animation, a reload keeps it, and a sec
 
   await quick.getByRole('button', { name: 'Run' }).click()
   expect(await anim()).toBeUndefined()
-  await expect(quick.getByRole('button', { pressed: true })).toHaveCount(0)
+  await expect(quick.getByRole('button', { pressed: true })).toHaveText(['Stand'])
 })
 
 test('the two-hand attack button swings a staff with the staff attack', async ({ page }) => {
@@ -273,7 +274,7 @@ test.describe('on a small phone', () => {
     await openApp(page)
     await page.getByRole('radiogroup', { name: 'Panels' }).getByRole('radio', { name: 'Character' }).click()
     const buttons = page.getByRole('group', { name: 'Quick animations' }).getByRole('button')
-    await expect(buttons).toHaveCount(5)
+    await expect(buttons).toHaveCount(7)
     const right = await buttons.evaluateAll((list) => Math.max(...list.map((b) => b.getBoundingClientRect().right)))
     expect(right, 'every button on screen').toBeLessThanOrEqual(360)
     expect(await page.evaluate(() => document.documentElement.scrollWidth), 'no sideways scrolling').toBeLessThanOrEqual(360)
