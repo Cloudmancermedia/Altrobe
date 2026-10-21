@@ -157,9 +157,10 @@ Cloudflare doesn't log query strings, so UTM tags are lost, and app links (Reddi
 send no referrer. To tell channels apart, give each post its own path: any path that isn't a file
 loads the app (CloudFront answers missing files with `index.html`), and the beacon reports the path
 the visitor landed on. Checked on the live site on 2026-10-21: `altrobe.com/reddit` reported
-`location` `https://altrobe.com/reddit`. Use short paths such as `/reddit`, `/x`, `/yt`, `/discord`,
-`/linkedin` and `/hn`, or one per post (`/reddit-launch`), and filter by path in the dashboard. Avoid
-`/l/`, `/api/`, `/static/` and `/shared`, which the site uses. The path stays in the address bar,
+`location` `https://altrobe.com/reddit`. Use short paths: `/r` (Reddit), `/x` (X), `/yt` (YouTube),
+`/li` (LinkedIn), `/dc` (Discord) and `/hn` (Hacker News), or one per post (`/r1`, `/r2`), and filter
+by path in the dashboard. Avoid `/l`, `/api`, `/static`, `/og` and `/shared`, which the site uses: a
+`/l/` path is a share link. The path stays in the address bar,
 so a visitor who copies it from there passes the tag on; the Copy link button gives a clean `/l/`
 link.
 
