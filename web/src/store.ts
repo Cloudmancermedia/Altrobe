@@ -36,8 +36,8 @@ export interface AppState {
   nameIdeasNote: string | null
   /** A command for the hosted prompt box to send, from another panel; `n` changes on every request. */
   ask: { text: string; n: number; creative?: boolean } | null
-  /** The hosted prompt box's daily commands left, from its last answer, for the top bar's counter. */
-  aiQuota: { remaining: number; resetAt: string } | null
+  /** What's left of the hosted prompt box's daily allowance, in model steps, from its last answer, for the top bar. */
+  aiQuota: { remaining: number; limit: number; resetAt: string } | null
   /** The daily limits closed the hosted prompt box until resetAt; the top bar says when it reopens. */
   aiClosed: { code: 'ip_limit' | 'daily_cap'; resetAt: string } | null
   /** The hosted prompt box is running a command; other AI buttons wait. */

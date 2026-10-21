@@ -144,7 +144,7 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
         <button type="button" disabled={!pair} title={pair ? undefined : 'Type a first and a last name first'} onClick={() => pair && save(pair)}>Add to shortlist</button>
         <button type="button" disabled={!!waiting || (hostedPrompt && aiBusy)} onClick={suggest}>{waiting ? 'Suggesting…' : 'Suggest names'}{hostedPrompt && <AiTag />}</button>
       </div>
-      {/* This request's progress shows here, not in Ask; the top bar counts the daily commands. */}
+      {/* This request's progress shows here, not in Ask; the top bar shows the daily AI allowance. */}
       {hostedPrompt && (waiting
         ? <AiStatus from="names" />
         : aiBusy && <p className="muted small ai-note">The AI is working on a request in Ask; this waits until it finishes.</p>)}

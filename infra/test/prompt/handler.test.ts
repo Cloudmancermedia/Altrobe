@@ -115,7 +115,8 @@ describe('a command', () => {
       stop: 'tool_use',
       toolUses: [{ toolUseId: 't1', name: 'search_sets', input: { query: 'Judgement' } }],
       text: 'Looking for the set.',
-      remaining: 19,
+      remaining: 99,
+      limit: 100,
       resetAt: '2026-10-20T13:00:00Z',
     })
     expect(typeof r.body.ticket).toBe('string')
@@ -169,14 +170,15 @@ describe('a command', () => {
     expect(input.inferenceConfig).toEqual({ maxTokens: 600, temperature: 0.8 })
   })
 
-  test('later steps need no Turnstile token and are not counted again', async () => {
+  test('later steps need no Turnstile token, and every step counts against the daily allowance', async () => {
+    // The allowance is model steps, not commands: a simple command costs less of it than a big comparison.
     const { next } = await firstStep()
     bedrockReplies.push(endTurn)
     const r = await call(next)
     expect(r.status).toBe(200)
-    expect(r.body).toMatchObject({ stop: 'end', toolUses: [], text: 'Put Judgement on the Undead.', remaining: 19 })
+    expect(r.body).toMatchObject({ stop: 'end', toolUses: [], text: 'Put Judgement on the Undead.', remaining: 98, limit: 100 })
     expect(turnstileCalls).toHaveLength(1)
-    expect([...counters.ip.values()]).toEqual([1])
+    expect([...counters.ip.values()]).toEqual([2])
     expect((bedrockCalls[1] as { messages: unknown[] }).messages).toHaveLength(3)
   })
 
@@ -303,10 +305,10 @@ describe('400 turnstile', () => {
 })
 
 describe('429 ip_limit', () => {
-  test('20 commands a day per IP address, back at 13:00 UTC', async () => {
-    for (let i = 0; i < 20; i++) {
+  test('100 model steps a day per IP address, back at 13:00 UTC', async () => {
+    for (let i = 0; i < 100; i++) {
       bedrockReplies.push(endTurn)
-      expect((await call(first())).body.remaining).toBe(19 - i)
+      expect((await call(first())).body.remaining).toBe(99 - i)
     }
     const r = await call(first())
     expectError(r, 429, 'ip_limit')
@@ -318,12 +320,22 @@ describe('429 ip_limit', () => {
     bedrockReplies.push(endTurn)
     const next = await call(first())
     expect(next.status).toBe(200)
-    expect(next.body.remaining).toBe(19)
+    expect(next.body.remaining).toBe(99)
     expect(next.body.resetAt).toBe('2026-10-21T13:00:00Z')
   })
 
+  test('a command that starts within the allowance finishes, even past it; the next one is refused', async () => {
+    for (let i = 0; i < 99; i++) { bedrockReplies.push(endTurn); await call(first()) }
+    const { next } = await firstStep()
+    bedrockReplies.push(endTurn)
+    const r = await call(next)
+    expect(r.status).toBe(200)
+    expect(r.body.remaining).toBe(0)
+    expectError(await call(first()), 429, 'ip_limit')
+  })
+
   test('one IPv6 /64 shares a limit', async () => {
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 100; i++) {
       bedrockReplies.push(endTurn)
       expect((await call(first(), { ip: `2001:db8:1:2::${i + 1}` })).status).toBe(200)
     }

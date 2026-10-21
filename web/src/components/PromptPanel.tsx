@@ -192,7 +192,7 @@ const PLACEHOLDER = 'Put the Orc in Thunderfury and show it on an Undead female'
 /**
  * The prompt box on the hosted site: the same look as the local one, with the model run by Altrobe's
  * prompt API (docs/hosted-prompt-box.md) instead of the player's own provider. No settings; a few
- * free commands a day per player, and a global daily budget.
+ * daily AI allowance per player (model steps), and a global daily budget.
  */
 export function HostedPromptPanel() {
   const [text, setText] = useState('')
@@ -298,7 +298,7 @@ export function HostedPromptPanel() {
       ) : (
         <>
           <p className="muted small">
-            Type what you want and a model dresses the character. Suggest names in Identity uses the same daily commands.
+            Type what you want and a model dresses the character. Suggest names in Identity uses the same daily AI allowance.
           </p>
           {lines.length > 0 && (
             <ol className="prompt-lines small" aria-live="polite">
