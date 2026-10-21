@@ -68,7 +68,8 @@ describe('the look preview function', () => {
     } finally {
       String.prototype.charCodeAt = charCodeAt
     }
-    expect(calls).toBeLessThan(20)
+    // Only the shown name and guild, letter by letter; the old decode made 784 calls on this link.
+    expect(calls).toBeLessThan(100)
   })
 
   test("previews the largest look the format allows: six characters, every slot, accented labels", () => {

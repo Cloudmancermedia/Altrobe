@@ -26,11 +26,19 @@ function decode(payload) {
   return JSON.parse(atob(payload.split('-').join('+').split('_').join('/') + '==='.slice((payload.length + 3) % 4)))
 }
 
-// A decoded string's UTF-8 bytes as text; the string as it is when it isn't UTF-8.
+// A decoded string's UTF-8 bytes as text; the string as it is when it isn't UTF-8. A loop, not a regex:
+// CloudFront's regex budget ran out on a 24-letter accented guild (test-function, 2026-10-21). Names and
+// guilds are at most 24 letters, 4 bytes each at most, so the loop stays short.
 function text(s) {
   if (typeof s !== 'string') return s
+  s = s.slice(0, 96)
+  var pct = ''
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i)
+    pct += c < 0x80 && c !== 0x25 ? s.charAt(i) : '%' + c.toString(16)
+  }
   try {
-    return decodeURIComponent(s.replace(/[%\x80-\xff]/g, function (c) { return '%' + c.charCodeAt(0).toString(16) }))
+    return decodeURIComponent(pct)
   } catch (e) {
     return s
   }
