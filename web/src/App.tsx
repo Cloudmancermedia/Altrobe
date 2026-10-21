@@ -230,7 +230,7 @@ export default function App() {
         <main className="layout">
           <aside className={`side left${panelTab === 'character' ? '' : ' narrow-hidden'}`} aria-label="Character">
             <CharacterPanel characters={characters} look={look} />
-            {/* The AI comes first after the character: Ask, then Identity, whose AI buttons share Ask's daily commands. */}
+            {/* The AI comes first after the character: Ask, then Identity, whose AI buttons share Ask's daily AI allowance. */}
             {features.assistant && <PromptPanel />}
             {hostedPrompt && <HostedPromptPanel />}
             <IdentityPanel characters={characters} look={look} tooltipMode={tooltipMode} onTooltipMode={setTooltipMode} />

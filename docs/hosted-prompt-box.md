@@ -55,7 +55,8 @@ One request is one model step. A command takes one to twelve steps (about four o
   "toolUses": [{ "toolUseId": "...", "name": "equip_set", "input": { "setId": 217 } }],
   "message": { "role": "assistant", "content": [ ... ] },
   "text": "Put Judgement on the Undead.",
-  "remaining": 19,
+  "remaining": 87,
+  "limit": 100,
   "resetAt": "2026-10-20T13:00:00Z"
 }
 ```
@@ -65,7 +66,8 @@ One request is one model step. A command takes one to twelve steps (about four o
 - `message`: the model's message, to append to `messages` unchanged.
 - `text`: the model's reply text, at most 200 characters; empty when there is none. `message` holds
   the same trimmed text followed by the tool calls, nothing else.
-- `remaining`: commands this IP address has left today, after this one.
+- `remaining`: model steps this IP address has left today, after this one.
+- `limit`: the day's allowance in model steps (100); the site shows `remaining` as a share of it.
 - `resetAt`: when the daily limits reset, 13:00 UTC.
 
 ### Errors
@@ -76,7 +78,7 @@ Never 403 or 404: the app distribution rewrites those to `index.html` for the br
 | --- | --- | --- |
 | 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 25), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
 | 400 | `turnstile` | The first step's Turnstile token fails Cloudflare's check |
-| 429 | `ip_limit` | This IP address has used its 20 commands today; `resetAt` says when they come back |
+| 429 | `ip_limit` | This IP address has used its 100 model steps today; `resetAt` says when they come back. Checked only on a command's first step |
 | 429 | `daily_cap` | Today's spend reached the global cap ($25); `resetAt` says when the box reopens |
 | 429 | `too_many_steps` | The command passed 12 steps |
 | 503 | `disabled` | The kill switch is off; the box hides |
@@ -99,14 +101,14 @@ answers with a `busy` code.
 1. **Turnstile** on the first step of each command, checked server-side (`secret`, `response`,
    `remoteip`). The token's `action` must be `prompt` and its `hostname` `altrobe.com` or
    `www.altrobe.com`.
-2. **Per IP, 20 commands a day,** counted on the first step only. The count is stored under an
+2. **Per IP, 100 model steps a day,** counted on every step (decided 2026-10-21; it replaced 20 commands a day, since a big comparison costs several times what a simple command does). A new command is refused once the day's steps reach 100; one that started within them finishes, at most 12 steps over. The count is stored under an
    HMAC-SHA256 of the IP address with a key that changes daily, and expires when the day ends. An
    IPv6 address counts by its /64, since one home or phone holds a whole /64. The address comes from
    CloudFront's `CloudFront-Viewer-Address` header; CloudFront also adds a secret header, and the API
    refuses requests without it, so nobody can reach the API directly with a made-up address. The raw
    IP address is never stored or logged.
 3. **The ticket** ties later steps to a counted first step: an HMAC of the command ID, the hashed IP,
-   the step number, an expiry 2 minutes out, the commands left, and a hash of the conversation so far. A step with a missing, expired or mismatched ticket
+   the step number, an expiry 2 minutes out, the steps left, and a hash of the conversation so far. A step with a missing, expired or mismatched ticket
    is refused, so the limits can't be skipped by starting mid-conversation. Each ticket works once
    (a conditional write in DynamoDB), so a step can't be replayed with other tool results to buy model
    calls: a command costs at most 12 of them.
@@ -157,7 +159,7 @@ The API defines the tools and the instructions; the website runs the tools. Name
 
 The Identity panel's Suggest names button sends a command for the character's race, sex and class, the style typed into Name style, and a few of the game's names for the model to match without copying. The model runs at temperature 0.8 for these (`creative`) and makes up new names; the examples never share an ending, since the model copies a shared one. `suggest_names` refuses any name in the game's random-name lists (`names.json` in the bundle) or in Altrobe's own lists (`web/src/identity/more-names.json`, about 200 names per race and list, checked by `more-names.test.ts`), since those are what the lists already offer.
 
-A name request runs through the same box, one command at a time, but shows in the Identity panel: its status line (what the AI is doing and for how many seconds) sits under Suggest names, and its steps stay out of Ask's list. Ask's send button and Suggest names carry a small "AI" tag, since both spend the same daily commands, and the top bar counts them: "AI: 20 commands a day" until the first answer brings `remaining`, then "AI: 18 of 20 left today", or it says when the box reopens while the limits keep it closed. The API sends only what's left, so the site keeps its own copy of the 20 (`DAILY_COMMANDS` in `web/src/assistant/hosted.ts`), and a test checks it against the Lambda's `IP_LIMIT`.
+A name request runs through the same box, one command at a time, but shows in the Identity panel: its status line (what the AI is doing and for how many seconds) sits under Suggest names, and its steps stay out of Ask's list. Ask's send button and Suggest names carry a small "AI" tag, since both spend the same daily allowance, and the top bar shows the share left ("AI: 72% left today", from `remaining` and `limit`), or when the box reopens while the limits keep it closed. The browser keeps the last answer's quota until its reset, so a reload shows it; before any answer it shows 100%.
 
 The lists are the fallback. When the box can't answer (the daily limits, the kill switch, a busy or failed request) or there's no prompt box (the local app, or `VITE_PROMPT_API` unset), the panel shows five names from the lists and says why; when the model finds fewer than five new names, the lists fill the rest. List picks lean three to one toward Altrobe's names, since the in-game dice button gives Blizzard's. Generate name uses the same lists. Both skip the names the game refuses and the famous names Blizzard's lists hold (Thrall, Arthas, 42 in all).
 

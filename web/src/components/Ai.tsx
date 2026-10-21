@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { store } from '../app-state'
-import { quotaText } from '../assistant/hosted'
+import { quotaText, savedQuota } from '../assistant/hosted'
 import { statusText } from '../assistant/status'
 import { useStore } from '../store'
 
@@ -24,10 +24,22 @@ export function AiStatus({ from }: { from: 'ask' | 'names' }) {
   return <p className="ai-status small" role="status"><span className="ai-pulse" aria-hidden="true" />{statusText(mine.phase, (now - mine.since) / 1000)}</p>
 }
 
-/** The top bar's daily count, shared by Ask and Suggest names; the daily limit until the first answer brings a count. */
+const QUOTA_KEY = 'altrobe.aiQuota'
+
+/**
+ * The top bar's share of today's AI allowance, shared by Ask and Suggest names. Kept in this browser, so a
+ * reload shows what the last answer said rather than all of it.
+ */
 export function AiCounter() {
   const quota = useStore(store, (s) => s.aiQuota)
   const closed = useStore(store, (s) => s.aiClosed)
+  useEffect(() => {
+    if (quota) { try { globalThis.localStorage?.setItem(QUOTA_KEY, JSON.stringify(quota)) } catch { /* not kept */ } return }
+    let raw: string | null = null
+    try { raw = globalThis.localStorage?.getItem(QUOTA_KEY) ?? null } catch { /* none kept */ }
+    const kept = savedQuota(raw, new Date())
+    if (kept) store.set({ aiQuota: kept })
+  }, [quota])
   // A count from before the daily reset is no longer true, so it goes until the next answer.
   useEffect(() => {
     if (!quota) return

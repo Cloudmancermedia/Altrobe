@@ -35,10 +35,13 @@ interface StepResponse {
   message: Message
   text: string
   remaining: number
+  /** The day's allowance in model steps (the API's DAILY_STEPS). */
+  limit: number
   resetAt: string
 }
 
-export interface Quota { remaining: number; resetAt: string }
+/** What's left of the day's AI allowance, in model steps. */
+export interface Quota { remaining: number; limit: number; resetAt: string }
 
 /** How a command ended. Each kind is one state of the box. */
 export type HostedResult =
@@ -158,10 +161,10 @@ async function runSteps(text: string, o: HostedOptions, command: number): Promis
     if (!r || typeof r !== 'object' || !r.message || !Array.isArray(r.toolUses)) return failed('network')
 
     ticket = r.ticket
-    o.onQuota?.({ remaining: r.remaining, resetAt: r.resetAt })
+    o.onQuota?.({ remaining: r.remaining, limit: r.limit || 100, resetAt: r.resetAt })
     if (r.text) o.onText?.(r.text)
     messages.push(r.message)
-    if (r.stop !== 'tool_use' || r.toolUses.length === 0) return { kind: 'done', text: r.text ?? '', remaining: r.remaining, resetAt: r.resetAt }
+    if (r.stop !== 'tool_use' || r.toolUses.length === 0) return { kind: 'done', text: r.text ?? '', remaining: r.remaining, limit: r.limit || 100, resetAt: r.resetAt }
 
     const results: Content[] = []
     for (const use of r.toolUses) {
@@ -191,14 +194,21 @@ export function closedText(code: 'ip_limit' | 'daily_cap', resetAt: string, opts
   const at = resetTimeLabel(resetAt, opts)
   return code === 'daily_cap'
     ? `The free daily budget is used up; it reopens at ${at}.`
-    : `You've used today's free commands. More at ${at}.`
+    : `You've used today's AI allowance. More at ${at}.`
 }
 
-/** Commands per player per day: the prompt API's IP_LIMIT, which it doesn't send. */
-export const DAILY_COMMANDS = 20
-
-/** The top bar's AI counter: what's left today, or when a closed box reopens; the daily limit before the first answer brings a count. */
+/** The top bar's AI counter: the share of today's allowance left, or when a closed box reopens; all of it before the first answer. */
 export function quotaText(q: Quota | null, closed: { code: 'ip_limit' | 'daily_cap'; resetAt: string } | null, opts: { locale?: string; timeZone?: string } = {}): string {
   if (closed) return closedText(closed.code, closed.resetAt, opts)
-  return q ? `AI: ${q.remaining} of ${DAILY_COMMANDS} left today` : `AI: ${DAILY_COMMANDS} commands a day`
+  return `AI: ${q ? Math.round((q.remaining / q.limit) * 100) : 100}% left today`
+}
+
+/** The quota this browser last saw (kept by the top bar's counter), while its day lasts; else null. */
+export function savedQuota(raw: string | null, now: Date): Quota | null {
+  try {
+    const q = JSON.parse(raw ?? '') as Quota
+    return typeof q?.remaining === 'number' && typeof q.limit === 'number' && q.limit > 0 && Date.parse(q.resetAt) > now.getTime() ? q : null
+  } catch {
+    return null
+  }
 }

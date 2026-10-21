@@ -11,7 +11,9 @@ import { parseRequest } from './validate.js'
 
 export const PATH = '/api/prompt'
 export const ORIGIN_HEADER = 'x-altrobe-origin'
-const IP_LIMIT = 20
+// Model steps a day per IP address: a simple command costs a few, a big comparison more (decided 2026-10-21;
+// it replaced 20 commands a day). The check is at a command's start, so one that starts within it finishes.
+export const DAILY_STEPS = 100
 const DAILY_CAP_MICRO_USD = 25_000_000
 // Eleven steps of work, plus start. Nine ran out on ordinary commands (2026-10-21).
 const MAX_STEPS = 12
@@ -37,7 +39,7 @@ type ErrorCode = 'bad_request' | 'turnstile' | 'ip_limit' | 'daily_cap' | 'too_m
 const ERRORS: Record<ErrorCode, [number, string]> = {
   bad_request: [400, "The prompt box couldn't read that request."],
   turnstile: [400, "Couldn't confirm you're human. Try again."],
-  ip_limit: [429, "You've used today's prompts."],
+  ip_limit: [429, "You've used today's AI allowance."],
   daily_cap: [429, 'The prompt box is closed for today.'],
   too_many_steps: [429, 'That took too many steps. Try something simpler.'],
   disabled: [503, 'The prompt box is off for now.'],
@@ -88,6 +90,9 @@ export function createHandler(deps: Deps) {
       const ticketKey = hmac(secrets.hmacKey, 'ticket')
       const ticketIp = hmac(ticketKey, `ip|${ipKey}`).toString('hex')
       const nowSeconds = Math.floor(now.getTime() / 1000)
+      // The key changes daily, so yesterday's hashes can't be matched to today's.
+      const stepsKey = `ip#${hmac(hmac(secrets.hmacKey, `ip|${day.id}`), ipKey).toString('hex')}`
+      const stepsExpire = Math.floor(day.resetAt.getTime() / 1000)
 
       let step: number
       let remaining: number
@@ -99,7 +104,7 @@ export function createHandler(deps: Deps) {
         if (!claims) return fail('bad_request', 'ticket')
         if (claims.step !== step || claims.digest !== digest(req.messages.slice(0, -1))) return fail('bad_request', 'ticket_conversation')
         if (step > MAX_STEPS) return fail('too_many_steps')
-        ;({ remaining, commandId } = claims)
+        ;({ commandId } = claims)
       } else {
         step = 1
         entry.step = step
@@ -108,17 +113,20 @@ export function createHandler(deps: Deps) {
       if (await deps.counters.spent(day.id) >= DAILY_CAP_MICRO_USD) return fail('daily_cap')
       // Each step's ticket works once: replaying it, even with other tool results, would buy model calls.
       if (req.kind === 'later' && !(await deps.counters.useTicket(`ticket#${commandId!}#${step}`, nowSeconds + TICKET_SECONDS))) return fail('bad_request', 'ticket_used')
+      if (req.kind === 'later') {
+        // Counted, never refused: a command that started within the allowance finishes (at most MAX_STEPS over).
+        const counted = await deps.counters.countCommand(stepsKey, DAILY_STEPS + MAX_STEPS, stepsExpire)
+        remaining = Math.max(0, DAILY_STEPS - (counted ?? DAILY_STEPS))
+      }
 
       if (req.kind === 'first') {
         const human = await verifyTurnstile(deps.fetch, {
           secret: secrets.turnstileSecret, token: req.turnstileToken, ip, hostnames: deps.config.hostnames, action: deps.config.action,
         })
         if (!human) return fail('turnstile')
-        // The key changes daily, so yesterday's hashes can't be matched to today's.
-        const dailyKey = hmac(secrets.hmacKey, `ip|${day.id}`)
-        const counted = await deps.counters.countCommand(`ip#${hmac(dailyKey, ipKey).toString('hex')}`, IP_LIMIT, Math.floor(day.resetAt.getTime() / 1000))
+        const counted = await deps.counters.countCommand(stepsKey, DAILY_STEPS, stepsExpire)
         if (counted === undefined) return fail('ip_limit')
-        remaining = Math.max(0, IP_LIMIT - counted)
+        remaining = Math.max(0, DAILY_STEPS - counted)
         commandId = deps.randomId()
       }
       entry.command = commandId!
@@ -146,7 +154,7 @@ export function createHandler(deps: Deps) {
         ...entry, outcome: 'ok', stop: reply.stop, tools: reply.toolUses.map((t) => t.name), stopReason: output.stopReason,
         inputTokens: output.usage?.inputTokens, outputTokens: output.usage?.outputTokens, microUsd: cost, ms: Date.now() - started,
       })
-      return json(200, { ticket, stop: reply.stop, toolUses: reply.toolUses, message: reply.message, text: reply.text, remaining: remaining!, resetAt })
+      return json(200, { ticket, stop: reply.stop, toolUses: reply.toolUses, message: reply.message, text: reply.text, remaining: remaining!, limit: DAILY_STEPS, resetAt })
     } catch (e) {
       // DynamoDB, Secrets Manager or SSM failing: retryable, and not the kill switch (which hides the box).
       return fail('unavailable', `internal:${(e as Error).name}`)

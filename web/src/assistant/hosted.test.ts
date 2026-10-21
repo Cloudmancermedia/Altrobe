@@ -1,6 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import handler from '../../../infra/lambda/prompt/handler.ts?raw'
-import { closedText, DAILY_COMMANDS, MAX_RESULT_CHARS, MAX_STEPS, quotaText, resetTimeLabel, runHostedCommand, type HostedOptions } from './hosted'
+import { closedText, MAX_RESULT_CHARS, MAX_STEPS, quotaText, resetTimeLabel, runHostedCommand, savedQuota, type HostedOptions } from './hosted'
 import type { ToolOutcome } from './hosted-tools'
 
 const RESET = '2026-10-20T13:00:00Z'
@@ -12,11 +11,11 @@ const toolStep = (n: number, calls: { name: string; input: Record<string, unknow
   return json(200, {
     ticket: `ticket-${n}`, stop: 'tool_use', toolUses,
     message: { role: 'assistant', content: toolUses.map((t) => ({ toolUse: t })) },
-    text: '', remaining: 19, resetAt: RESET, ...extra,
+    text: '', remaining: 19, limit: 100, resetAt: RESET, ...extra,
   })
 }
 const endStep = (n: number, text: string) => json(200, {
-  ticket: `ticket-${n}`, stop: 'end', toolUses: [], message: { role: 'assistant', content: [{ text }] }, text, remaining: 19, resetAt: RESET,
+  ticket: `ticket-${n}`, stop: 'end', toolUses: [], message: { role: 'assistant', content: [{ text }] }, text, remaining: 19, limit: 100, resetAt: RESET,
 })
 
 /** A fake prompt API answering each request with the next scripted response, keeping each request body. */
@@ -56,7 +55,7 @@ describe('runHostedCommand', () => {
     const { opts, tools, steps, tokenCount } = options(api)
     const r = await runHostedCommand('put this Undead in Judgement', opts)
 
-    expect(r).toEqual({ kind: 'done', text: 'Put Judgement on the Undead.', remaining: 19, resetAt: RESET })
+    expect(r).toEqual({ kind: 'done', text: 'Put Judgement on the Undead.', remaining: 19, limit: 100, resetAt: RESET })
     expect(tools.map((t) => t.name)).toEqual(['search_sets', 'set_character', 'equip_set'])
     expect(steps).toEqual(['search_sets', 'set_character', 'equip_set'])
     expect(tokenCount()).toBe(1)
@@ -241,23 +240,27 @@ describe('box copy', () => {
   test('says when a closed box reopens, in local time', () => {
     const utc = { locale: 'en-US', timeZone: 'UTC' }
     expect(closedText('daily_cap', RESET, utc)).toBe('The free daily budget is used up; it reopens at 1:00 PM.')
-    expect(closedText('ip_limit', RESET, utc)).toBe("You've used today's free commands. More at 1:00 PM.")
+    expect(closedText('ip_limit', RESET, utc)).toBe("You've used today's AI allowance. More at 1:00 PM.")
   })
 
-  test('the header counts the commands left of the day\'s limit, and says when a closed box reopens', () => {
+  test("the header shows the share of the day's AI allowance left, and says when a closed box reopens", () => {
+    // The allowance is model steps (the API's DAILY_STEPS), shown as a percentage (decided 2026-10-21).
     const utc = { locale: 'en-US', timeZone: 'UTC' }
-    expect(quotaText({ remaining: 18, resetAt: RESET }, null)).toBe('AI: 18 of 20 left today')
-    expect(quotaText({ remaining: 1, resetAt: RESET }, null)).toBe('AI: 1 of 20 left today')
-    expect(quotaText({ remaining: 3, resetAt: RESET }, { code: 'ip_limit', resetAt: RESET }, utc)).toBe("You've used today's free commands. More at 1:00 PM.")
+    expect(quotaText({ remaining: 72, limit: 100, resetAt: RESET }, null)).toBe('AI: 72% left today')
+    expect(quotaText({ remaining: 1, limit: 100, resetAt: RESET }, null)).toBe('AI: 1% left today')
+    expect(quotaText({ remaining: 3, limit: 7, resetAt: RESET }, null)).toBe('AI: 43% left today')
+    expect(quotaText({ remaining: 3, limit: 100, resetAt: RESET }, { code: 'ip_limit', resetAt: RESET }, utc)).toBe("You've used today's AI allowance. More at 1:00 PM.")
     expect(quotaText(null, { code: 'daily_cap', resetAt: RESET }, utc)).toBe('The free daily budget is used up; it reopens at 1:00 PM.')
   })
 
-  test('gives the daily limit before the first command, when the count is unknown', () => {
-    expect(quotaText(null, null)).toBe('AI: 20 commands a day')
-  })
-
-  test('the daily limit matches the prompt API\'s', () => {
-    // The API sends only what's left, so the site keeps its own copy of the limit.
-    expect(handler).toMatch(new RegExp(`const IP_LIMIT = ${DAILY_COMMANDS}\\b`))
+  test('before the first answer: the share last seen in this browser today, or all of it', () => {
+    expect(quotaText(null, null)).toBe('AI: 100% left today')
+    const now = new Date(Date.parse(RESET) - 3600_000)
+    const kept = JSON.stringify({ remaining: 40, limit: 100, resetAt: RESET })
+    expect(savedQuota(kept, now)).toEqual({ remaining: 40, limit: 100, resetAt: RESET })
+    // Past its reset, or unreadable, it's forgotten.
+    expect(savedQuota(kept, new Date(Date.parse(RESET) + 1))).toBeNull()
+    expect(savedQuota('not json', now)).toBeNull()
+    expect(savedQuota(null, now)).toBeNull()
   })
 })
