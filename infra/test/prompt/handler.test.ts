@@ -130,6 +130,23 @@ describe('a command', () => {
     expect(counters.spend.get('2026-10-19')).toBe(Math.ceil(3000 * 0.33 + 100 * 2.75))
   })
 
+  test('the first step makes the model call start, which says whether the request is a new look; later steps choose freely', async () => {
+    // Leftovers from the last command stayed on screen ("compare an undead and an orc warlock", then "an orc
+    // warrior" kept the Orc beside the new main), so each command first says whether it starts over (2026-10-21).
+    const { next } = await firstStep()
+    expect((bedrockCalls[0] as Record<string, any>).toolConfig.toolChoice).toEqual({ tool: { name: 'start' } })
+    expect(TOOL_NAMES).toContain('start')
+    bedrockReplies.push(endTurn)
+    await call(next)
+    expect((bedrockCalls[1] as Record<string, any>).toolConfig.toolChoice).toBeUndefined()
+  })
+
+  test("a name request (creative) doesn't call start: it doesn't change the look", async () => {
+    bedrockReplies.push(endTurn)
+    await call({ ...first(), creative: true })
+    expect((bedrockCalls[0] as Record<string, any>).toolConfig.toolChoice).toBeUndefined()
+  })
+
   test('creative: true (Suggest names) runs the model at temperature 0.8, on every step that sends it', async () => {
     bedrockReplies.push(toolTurn)
     const r = await call({ ...first(), creative: true })
@@ -161,18 +178,18 @@ describe('a command', () => {
     expect((bedrockCalls[1] as { messages: unknown[] }).messages).toHaveLength(3)
   })
 
-  test('a whole command can take eight steps; the ninth is refused with 429 too_many_steps', async () => {
+  test('a whole command can take nine steps, start among them; the tenth is refused with 429 too_many_steps', async () => {
     let { next } = await firstStep()
-    for (let step = 2; step <= 8; step++) {
+    for (let step = 2; step <= 9; step++) {
       bedrockReplies.push(() => toolTurn(`t${step}`))
       const r = await call(next)
       expect(r.status).toBe(200)
       const results = { role: 'user', content: [{ toolResult: { toolUseId: `t${step}`, content: [{ text: 'ok' }] } }] }
       next = { messages: [...next.messages, r.body.message, results], ticket: r.body.ticket }
     }
-    expect(next.messages).toHaveLength(17)
+    expect(next.messages).toHaveLength(19)
     expectError(await call(next), 429, 'too_many_steps')
-    expect(bedrockCalls).toHaveLength(8)
+    expect(bedrockCalls).toHaveLength(9)
   })
 })
 

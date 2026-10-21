@@ -110,6 +110,19 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     cs.map((c) => `${store.get().characters?.races.find((r) => r.race === c.race)?.name ?? `race ${c.race}`} ${c.sex === 1 ? 'female' : 'male'}`)
 
   const tools: Record<string, (a: Input) => Promise<Record<string, unknown>>> = {
+    // The API makes every command that may change the look begin here. A new look starts from one character
+    // in no gear, so the last command's side-by-side characters and outfit don't linger (2026-10-21); the
+    // race, customization and name stay, for the model to change if asked.
+    async start(a) {
+      const fresh = a.new_look === true
+      if (fresh) {
+        // clear_all isn't on the remote command channel; it takes off the gear, the animation and the
+        // side-by-side characters.
+        deps.cmd.clear_all()
+        await deps.settle?.()
+      }
+      return { new_look: fresh, look: await command('get_look', {}) }
+    },
     async search_items(a) {
       const armor = list(a.armor, ARMOR_TYPES, 'armor type')
       const weapons = list(a.weapon, WEAPONS, 'weapon type')

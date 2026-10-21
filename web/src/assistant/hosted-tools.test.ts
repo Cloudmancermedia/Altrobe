@@ -162,6 +162,22 @@ describe('hosted tools', () => {
     expect((await run('search_items', { slot: 'head', armor: 'cloth' })).json).toMatchObject({ total: 0, items: [] })
   })
 
+  test('start with new_look clears the screen to one character in no gear, keeping race and name; without it keeps everything', async () => {
+    const { run, store } = setup()
+    await run('equip_item', { slot: 'head', itemId: 1 })
+    await run('compare', { characters: [{ race: 5, sex: 1 }] })
+    await run('set_animation', { name: 'Run' })
+    store.set({ look: { ...store.get().look, identity: { firstName: 'Morgwyn' } } })
+    const kept = await run('start', { new_look: false })
+    expect(kept.json).toMatchObject({ new_look: false, look: { compare: [expect.anything()] } })
+    expect(store.get().look.items).toEqual({ head: 1 })
+    const fresh = await run('start', { new_look: true })
+    expect(fresh.json).toMatchObject({ new_look: true })
+    const look = store.get().look
+    expect([look.items, look.compare, look.anim]).toEqual([{}, [], undefined])
+    expect([look.race, look.sex, look.identity?.firstName]).toEqual([2, 0, 'Morgwyn'])
+  })
+
   test('build_outfit with nothing to wear changes nothing', async () => {
     const { run, store } = setup()
     const r = await run('build_outfit', { level: 1 })

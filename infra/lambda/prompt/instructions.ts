@@ -29,6 +29,7 @@ export const SYSTEM = `Altrobe is a 3D dressing room for World of Warcraft: Fore
 ${TIERS.map(([c, s]) => `  ${c}: ${s.map((n, i) => `${TIER_LABELS[i]} ${n}`).join(', ')}`).join('\n')}
 - set_animation makes every character play an animation; list_animations lists them.
 - Races by ID: 1 Human, 2 Orc, 3 Dwarf, 4 Night Elf, 5 Undead, 6 Tauren, 7 Gnome, 8 Troll, 95 High Order Skyborne, 96 Windshaper Skyborne. Sex: 0 male, 1 female. list_characters gives each race's classes and faction.
+- Every command starts with start. Set new_look true when the request asks for a character, an outfit or a lineup without referring to what is shown ("an orc warrior in level 30 greens", "compare an undead and an orc warlock"): the screen is then cleared to one character in no gear, and you build the whole look. Set it false when the request changes or adds to what is shown ("add a tauren too", "give them both the green iron helmet", "now put them in tier 2", "make it female", "take off the helm"), and for a question or anything that isn't a look.
 - Change only what the user asks for. Don't change the race, the gear or anything else they didn't mention.
 - When the user wants another race or sex, call set_character first: it resets customization, and each race and sex has its own options. Then list and set the customization.
 - A two-hander in the main hand clears the off hand.
@@ -53,6 +54,7 @@ const slot = { type: 'string', description: `One of: ${SLOTS.join(', ')}` }
 const armor = { type: 'string', description: 'cloth, leather, mail or plate' }
 
 const SPECS: [string, string, Schema][] = [
+  ['start', 'Call first, before any other tool, once per command: whether the request asks for a new look. true clears the screen to one character in no gear; false keeps what is shown. Answers with what is on screen afterwards.', S({ new_look: { type: 'boolean' } }, ['new_look'])],
   ['search_items', 'Search the item catalog by name or item ID, and filter by slot, quality, required level, armor type, weapon type, hands and whether Forever added the item. Use the returned itemId with equip_item; never guess IDs.', S({ query: { type: 'string' }, slot, quality: { type: 'integer' }, min_level: { type: 'integer' }, max_level: { type: 'integer' }, armor, weapon: { type: 'string' }, hands: { type: 'string' }, new_in_forever: { type: 'boolean', description: 'True keeps only items Forever added' }, limit: { type: 'integer' } })],
   ['search_sets', 'Search item sets (tier sets, PvP sets, dungeon sets) by set name, piece name or set ID. Equip one with equip_set.', S({ query: { type: 'string' }, limit: { type: 'integer' } })],
   ['equip_set', 'Put every piece of an item set on the main character. Replaces the set worn before by default.', S({ setId: { type: 'integer' }, replace: { type: 'boolean' } }, ['setId'])],

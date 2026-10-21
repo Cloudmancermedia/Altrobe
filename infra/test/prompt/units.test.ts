@@ -109,7 +109,7 @@ describe('the instructions', () => {
   test('keep the tier labels, the off-topic line and every tool in the contract', () => {
     expect(SYSTEM).toContain('Warrior: T0 Battlegear of Valor, T0.5 Battlegear of Heroism, T1 Battlegear of Might, T2 Battlegear of Wrath')
     expect(SYSTEM).toContain('If the request is not about dressing, naming or showing a WoW character, do not call any tool')
-    expect(TOOL_NAMES).toEqual(['search_items', 'search_sets', 'equip_set', 'equip_item', 'unequip', 'list_characters', 'set_character', 'get_look', 'compare', 'build_outfit', 'list_animations', 'set_animation',
+    expect(TOOL_NAMES).toEqual(['start', 'search_items', 'search_sets', 'equip_set', 'equip_item', 'unequip', 'list_characters', 'set_character', 'get_look', 'compare', 'build_outfit', 'list_animations', 'set_animation',
       'list_customization', 'set_customization', 'randomize_customization', 'reset_customization', 'set_identity', 'set_view', 'suggest_names'])
     expect(SYSTEM).toContain('When the user asks for name ideas or options, call suggest_names')
     expect(SYSTEM).toContain("When a name request doesn't say the race and sex, call get_look first")

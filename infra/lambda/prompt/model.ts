@@ -34,12 +34,16 @@ export function costMicroUsd(usage: Usage | undefined): number {
  */
 export const NAME_TEMPERATURE = 0.8
 
-export function converse(bedrock: Bedrock, messages: unknown[], creative = false, tools = true) {
+/**
+ * One model step. `start` makes the model call the start tool, which says whether the request is a new
+ * look: the first step of a command that may change the look.
+ */
+export function converse(bedrock: Bedrock, messages: unknown[], creative = false, tools = true, start = false) {
   return bedrock.send(new ConverseCommand({
     modelId: MODEL_ID,
     system: [{ text: SYSTEM }],
     messages: messages as Message[],
-    ...(tools ? { toolConfig: { tools: TOOLS } } : {}),
+    ...(tools ? { toolConfig: { tools: TOOLS, ...(start ? { toolChoice: { tool: { name: 'start' } } } : {}) } } : {}),
     inferenceConfig: { maxTokens: 600, temperature: creative ? NAME_TEMPERATURE : 0 },
   }))
 }
