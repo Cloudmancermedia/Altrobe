@@ -65,7 +65,7 @@ export class SiteStack extends Stack {
     })
 
     // A share link's preview for chat apps and social sites: /l/<look> answers with that look's Open Graph
-    // tags and sends people on to /#look=<look> (functions/look-preview.js).
+    // tags and sends people on to /shared/<site they came from>#look=<look> (functions/look-preview.js).
     const lookPreview = new CfFunction(this, 'LookPreview', {
       code: FunctionCode.fromFile({ filePath: fileURLToPath(new URL('../functions/look-preview.js', import.meta.url)) }),
       runtime: FunctionRuntime.JS_2_0,

@@ -1,7 +1,7 @@
 // CloudFront Function (JavaScript runtime 2.0) on /l/*: a share link's preview for chat apps and social sites.
 // They read a link's Open Graph tags and never see the part after "#", so share links carry the look in the
 // path (/l/<base64url look>). This answers with that look's tags, then sends people into the app at
-// /#look=<look>. Only ES 5.1 globals and atob, which the 2.0 runtime documents; no modules. Under 10 KB.
+// /shared/<site>#look=<look> (sharedPath below). Only ES 5.1 globals and atob, which the 2.0 runtime documents; no modules. Under 10 KB.
 var SITE = 'https://altrobe.com'
 var RACES = { 1: ['Human', 'Alliance'], 2: ['Orc', 'Horde'], 3: ['Dwarf', 'Alliance'], 4: ['Night Elf', 'Alliance'],
   5: ['Undead', 'Horde'], 6: ['Tauren', 'Horde'], 7: ['Gnome', 'Alliance'], 8: ['Troll', 'Horde'],
@@ -52,8 +52,18 @@ function page(card, url, target) {
     + '<meta property="og:url" content="' + html(url) + '"><meta property="og:image" content="' + html(card.image) + '">'
     + '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
     + '<meta name="twitter:card" content="summary_large_image">'
+    + '<meta name="referrer" content="no-referrer">'
     + '<meta http-equiv="refresh" content="0; url=' + html(target) + '">'
     + '</head><body><p><a href="' + html(target) + '">Open this look in Altrobe</a></p></body></html>'
+}
+
+// Where a shared look sends people: /shared, then the site the link was opened from (Referer, www.
+// dropped), so the visit counter (web/src/analytics.ts), which drops query strings, can tell shared looks
+// and their sources apart. Apps often send no Referer; those land on /shared.
+function sharedPath(headers) {
+  var m = headers.referer && /^https?:\/\/(?:www\.)?([a-z0-9.-]{1,64})(?:[:\/?#]|$)/i.exec(headers.referer.value)
+  var host = m ? m[1].toLowerCase() : ''
+  return host && host !== 'altrobe.com' ? '/shared/' + host : '/shared'
 }
 
 function handler(event) {
@@ -63,13 +73,14 @@ function handler(event) {
     try { card = describe(decode(m[1])) } catch (e) { card = null }
   }
   var url = card ? SITE + '/l/' + m[1] : SITE + '/'
-  var target = card ? '/#look=' + m[1] : '/'
+  var target = card ? sharedPath(event.request.headers) + '#look=' + m[1] : '/'
   return {
     statusCode: 200,
     statusDescription: 'OK',
     headers: {
       'content-type': { value: 'text/html; charset=utf-8' },
-      'cache-control': { value: 'public, max-age=86400' },
+      // The target depends on the Referer, so a kept copy would send the next visit the wrong way.
+      'cache-control': { value: 'no-store' },
       'x-content-type-options': { value: 'nosniff' },
     },
     body: { encoding: 'text', data: page(card || PLAIN, url, target) },

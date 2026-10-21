@@ -159,8 +159,16 @@ loads the app (CloudFront answers missing files with `index.html`), and the beac
 the visitor landed on. Checked on the live site on 2026-10-21: `altrobe.com/reddit` reported
 `location` `https://altrobe.com/reddit`. Use short paths such as `/reddit`, `/x`, `/yt`, `/discord`,
 `/linkedin` and `/hn`, or one per post (`/reddit-launch`), and filter by path in the dashboard. Avoid
-`/l/`, `/api/` and `/static/`, which the site uses. The path stays in the address bar, so a visitor
-who copies it from there passes the tag on; the Copy link button gives a clean `/l/` link.
+`/l/`, `/api/`, `/static/` and `/shared`, which the site uses. The path stays in the address bar,
+so a visitor who copies it from there passes the tag on; the Copy link button gives a clean `/l/`
+link.
+
+Shared looks count on their own: the `/l/<look>` preview page (`infra/functions/look-preview.js`)
+sends people on to `/shared/<site>#look=...`, where `<site>` is the host the link was opened from
+(`reddit.com`, `discord.com`), or to `/shared` when the browser sends no Referer, as apps often don't.
+The preview page sends no referrer onward, so the arrival counts as a visit from outside rather than a
+click inside altrobe.com. The beacon runs with `"spa": false`, so a page view is a page load; the
+app's address changes on every look change and would otherwise count as page views.
 
 ## How CI deploys
 
