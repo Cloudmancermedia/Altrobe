@@ -120,6 +120,38 @@ describe('hosted tools', () => {
     expect(store.get().look.items).toEqual({ head: 7, mainhand: 8 })
   })
 
+  test("build_outfit takes a class and dresses it in the armor that class wears at that level, whatever armor is passed", async () => {
+    // "an undead and orc warlock in level 30 greens and blues" put leather on warlocks (live, 2026-10-21).
+    const { run } = setup()
+    const warrior = await run('build_outfit', { level: 22, class: 'Warrior' })
+    expect(warrior.json).toMatchObject({ armor: 'mail', items: { head: { itemId: 7, armor: 'mail' } } })
+    const priest = await run('build_outfit', { level: 22, class: 'priest', armor: 'leather' })
+    expect(priest.json.armor).toBe('cloth')
+    expect(Object.values(priest.json.items as Record<string, { armor: string | null }>).every((i) => i.armor === null || i.armor === 'cloth')).toBe(true)
+    expect(await run('build_outfit', { level: 22, class: 'Bard' })).toMatchObject({ status: 'error', json: { error: expect.stringContaining('Warlock') } })
+  })
+
+  test('build_outfit keeps an item equipped by name earlier in the same command', async () => {
+    // "my undead and orc warrior in the green iron helm" could end in a leather helm: an outfit built after
+    // the helm was equipped dressed the head too (2026-10-21).
+    const { run, store, command } = setup()
+    await run('equip_item', { slot: 'head', itemId: 3 })
+    const r = await run('build_outfit', { level: 22, class: 'Warrior' })
+    expect(store.get().look.items.head).toBe(3)
+    expect(r.json).toMatchObject({ kept: ['head'] })
+    command.n = 2
+    await run('build_outfit', { level: 22, class: 'Warrior' })
+    expect(store.get().look.items.head).toBe(7)
+  })
+
+  test('search_items falls back to the name alone when its filters leave nothing, and says so', async () => {
+    const { run } = setup()
+    const r = await run('search_items', { query: 'wrath helm', slot: 'head', armor: 'leather' })
+    expect(r.json).toMatchObject({ total: 1, items: [{ itemId: 3, name: 'Wrath Helm' }], note: expect.stringMatching(/filters/) })
+    // Without a name to fall back on, an empty result stays empty.
+    expect((await run('search_items', { slot: 'head', armor: 'cloth' })).json).toMatchObject({ total: 0, items: [] })
+  })
+
   test('build_outfit with nothing to wear changes nothing', async () => {
     const { run, store } = setup()
     const r = await run('build_outfit', { level: 1 })

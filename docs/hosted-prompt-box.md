@@ -139,7 +139,7 @@ The API defines the tools and the instructions; the website runs the tools. Name
 | `set_character` | `race`, `sex` | `commands.set_character` |
 | `get_look` | none | `describeLook`, plus the identity with its title and class in words (`commands.describe_identity`) |
 | `compare` | `characters` (each with `race`, `sex`, and optionally `label`, `setId`, `items`), `add` | the set's pieces, then `commands.compare`; with `add`, after the characters already there |
-| `build_outfit` | `level`, `armor`, `weapons` | the static catalog, then `equip_items` |
+| `build_outfit` | `level`, `class`, `armor`, `weapons` | the static catalog, then `equip_items`, leaving slots `equip_item` filled earlier in the command |
 | `list_animations` | none | the base look's animations |
 | `set_animation` | `name` | `commands.set_animation` |
 | `list_customization` | `option` | the main character's options, and whose they are; with `option`, its choices and their swatch colors |
@@ -160,7 +160,7 @@ A name request runs through the same box, one command at a time, but shows in th
 
 The lists are the fallback. When the box can't answer (the daily limits, the kill switch, a busy or failed request) or there's no prompt box (the local app, or `VITE_PROMPT_API` unset), the panel shows five names from the lists and says why; when the model finds fewer than five new names, the lists fill the rest. List picks lean three to one toward Altrobe's names, since the in-game dice button gives Blizzard's. Generate name uses the same lists. Both skip the names the game refuses and the famous names Blizzard's lists hold (Thrall, Arthas, 42 in all).
 
-`build_outfit` follows the local app's rule (`McpTools.BuildOutfit`): in each armor slot, the item with
+`build_outfit` takes the class when the user names one and picks the armor that class wears at that level, as Classic trains it (`armorFor` in `web/src/assistant/outfit.ts`): cloth for priests, mages and warlocks; leather for rogues and druids; leather for hunters and shamans and mail for warriors and paladins before 40, then mail and plate. The class wins over any `armor` passed, since the model put leather on warlocks. It leaves slots `equip_item` filled earlier in the same command, so a named helm survives a later outfit, and `search_items` that finds nothing with its filters tries the name alone. Otherwise it follows the local app's rule (`McpTools.BuildOutfit`): in each armor slot, the item with
 the highest required level within 7 levels below the target, then an item new in Forever, then the
 highest item level; the main hand only when weapon types are given.
 

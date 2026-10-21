@@ -11,6 +11,20 @@ export const DEFAULT_SLOTS = ['head', 'shoulder', 'chest', 'waist', 'legs', 'fee
 const ARMOR_SLOTS = new Set(['head', 'shoulder', 'chest', 'waist', 'legs', 'feet', 'wrist', 'hands'])
 export const ARMOR_TYPES = ['cloth', 'leather', 'mail', 'plate']
 
+// The armor each class wears, as Classic trains it: warriors and paladins learn plate at 40, hunters and
+// shamans mail. Before that they wear the next type down. Forever's own rules weren't checked (2026-10-21).
+const CLASS_ARMOR: Record<string, [string, string?]> = {
+  warrior: ['mail', 'plate'], paladin: ['mail', 'plate'], hunter: ['leather', 'mail'], shaman: ['leather', 'mail'],
+  rogue: ['leather'], druid: ['leather'], priest: ['cloth'], mage: ['cloth'], warlock: ['cloth'],
+}
+export const CLASS_NAMES = ['Warrior', 'Paladin', 'Hunter', 'Shaman', 'Rogue', 'Druid', 'Priest', 'Mage', 'Warlock']
+
+/** The armor a class wears at a level, or undefined for a name that isn't a class. */
+export function armorFor(className: string, level: number): string | undefined {
+  const armor = CLASS_ARMOR[className.trim().toLowerCase()]
+  return armor && (level >= 40 && armor[1] ? armor[1] : armor[0])
+}
+
 export interface OutfitRequest {
   level: number
   /** cloth, leather, mail or plate, for the armor slots. */
