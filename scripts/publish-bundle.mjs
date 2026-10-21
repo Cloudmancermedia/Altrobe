@@ -7,9 +7,9 @@
 // folder but the new one and the one it replaced. --dry-run prints the commands only (it still reads
 // the bucket to show what --prune would delete).
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, relative, sep } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { buildsToPrune, fail, prunePlan, publishPlan, root, run } from './lib.mjs'
 
@@ -61,16 +61,23 @@ try {
   fail(e.message)
 }
 
-console.log(`Publishing ${opts.product} ${current.build}: ${files.length} files, ${plan.filter((s) => s.kind === 'gzip').length} gzipped.`)
+console.log(`Publishing ${opts.product} ${current.build}: ${files.length} files, ${plan.filter((s) => s.kind === 'gzip').reduce((n, s) => n + s.files.length, 0)} gzipped.`)
 
 const tmp = mkdtempSync(join(tmpdir(), 'altrobe-publish-'))
 try {
   for (const step of plan) {
     let args = step.args
     if (step.kind === 'gzip') {
-      const gz = join(tmp, `${plan.indexOf(step)}.gz`)
-      if (!opts.dryRun) writeFileSync(gz, gzipSync(readFileSync(step.file), { level: 9 }))
-      args = args.map((x) => (x === '{gz}' ? gz : x))
+      // The gzipped copies keep their paths, so one sync uploads them all to where the originals go.
+      const stage = join(tmp, String(plan.indexOf(step)))
+      if (!opts.dryRun) {
+        for (const p of step.files) {
+          const gz = join(stage, ...p.split('/'))
+          mkdirSync(dirname(gz), { recursive: true })
+          writeFileSync(gz, gzipSync(readFileSync(join(step.from, ...p.split('/'))), { level: 9 }))
+        }
+      }
+      args = args.map((x) => (x === '{stage}' ? stage : x))
     }
     console.log(`aws ${args.join(' ')}`)
     if (!opts.dryRun) run('aws', args)

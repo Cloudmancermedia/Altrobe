@@ -137,17 +137,23 @@ test('desktop package: one file for every OS, the manifest stamped with the vers
   assert.deepEqual(stampManifest({ name: 'altrobe', version: '0.0.0' }, '0.2.0-beta.1'), { name: 'altrobe', version: '0.2.0-beta.1' })
 })
 
-test('publishPlan syncs the build, gzips files CloudFront will not compress, then switches current.json last', () => {
+test('publishPlan syncs the build, gzips every model and files CloudFront will not compress, then switches current.json last', () => {
   const plan = publishPlan({
     bundleDir: '/b', product: 'wow_classic_beta', bucket: 'assets-bucket', distribution: 'E123',
     current: { build: '1.60.1.70245', path: '1.60.1.70245/' },
-    files: [{ path: 'catalog.json', size: 4_200_000 }, { path: 'v2/anims/1/2.glb', size: 12_000_000 }, { path: 'items/9.json', size: 10_000_000 }],
+    files: [
+      { path: 'catalog.json', size: 4_200_000 }, { path: 'v2/anims/1/2.glb', size: 12_000_000 }, { path: 'items/9.json', size: 10_000_000 },
+      { path: 'v2/models/5.glb', size: 300_000 }, { path: 'v2/textures/1.png', size: 2_000_000 }, { path: 'items/big.json', size: 11_000_000 },
+    ],
   })
-  assert.deepEqual(plan.map((s) => s.kind), ['sync', 'gzip', 'current', 'invalidate'])
-  const [sync, gzip, current, invalidate] = plan
-  assert.deepEqual(sync.args, ['s3', 'sync', join('/b', 'wow_classic_beta', '1.60.1.70245'), 's3://assets-bucket/wow_classic_beta/1.60.1.70245', '--exclude', 'v2/anims/1/2.glb'])
-  assert.equal(gzip.file, join('/b', 'wow_classic_beta', '1.60.1.70245', 'v2/anims/1/2.glb'))
-  assert.deepEqual(gzip.args, ['s3', 'cp', '{gz}', 's3://assets-bucket/wow_classic_beta/1.60.1.70245/v2/anims/1/2.glb', '--content-encoding', 'gzip', '--content-type', 'model/gltf-binary'])
+  assert.deepEqual(plan.map((s) => s.kind), ['sync', 'gzip', 'gzip', 'current', 'invalidate'])
+  const [sync, json, glb, current, invalidate] = plan
+  assert.deepEqual(sync.args, ['s3', 'sync', join('/b', 'wow_classic_beta', '1.60.1.70245'), 's3://assets-bucket/wow_classic_beta/1.60.1.70245', '--exclude', '*.glb', '--exclude', 'items/big.json'])
+  assert.equal(json.from, join('/b', 'wow_classic_beta', '1.60.1.70245'))
+  assert.deepEqual(json.files, ['items/big.json'])
+  assert.deepEqual(json.args, ['s3', 'sync', '{stage}', 's3://assets-bucket/wow_classic_beta/1.60.1.70245', '--content-encoding', 'gzip', '--content-type', 'application/json'])
+  assert.deepEqual(glb.files, ['v2/anims/1/2.glb', 'v2/models/5.glb'])
+  assert.deepEqual(glb.args, ['s3', 'sync', '{stage}', 's3://assets-bucket/wow_classic_beta/1.60.1.70245', '--content-encoding', 'gzip', '--content-type', 'model/gltf-binary'])
   assert.deepEqual(current.args, ['s3', 'cp', join('/b', 'wow_classic_beta', 'current.json'), 's3://assets-bucket/wow_classic_beta/current.json', '--content-type', 'application/json'])
   assert.deepEqual(invalidate.args, ['cloudfront', 'create-invalidation', '--distribution-id', 'E123', '--paths', '/wow_classic_beta/current.json'])
 })

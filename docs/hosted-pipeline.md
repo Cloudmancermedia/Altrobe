@@ -110,8 +110,9 @@ nothing is pruned. The dry run still reads the bucket, to show what would be del
 `AltrobeSite` outputs ([deployment.md](deployment.md)); `--bundle` defaults to `output/bundle`. In
 order, it:
 
-1. Syncs `{product}/{build}/` to the bucket.
-2. Uploads files over 10,000,000 bytes gzipped with `Content-Encoding: gzip`
+1. Syncs `{product}/{build}/` to the bucket, except the files step 2 uploads.
+2. Uploads every `.glb` and every file over 10,000,000 bytes gzipped with `Content-Encoding: gzip`:
+   it gzips them into a staging folder and syncs that, one sync per content type
    ([deployment.md](deployment.md#publishing-a-bundle) says why).
 3. Uploads `{product}/current.json`, so the site moves to the build only once every file is there.
 4. Invalidates `/{product}/current.json` in CloudFront.
