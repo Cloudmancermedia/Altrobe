@@ -202,6 +202,22 @@ describe('AltrobeSite', () => {
     })
   })
 
+  test('the app page and its build files send security headers, HSTS among them', () => {
+    const { site } = stacks()
+    const policies = Object.values(site.findResources('AWS::CloudFront::ResponseHeadersPolicy'))
+      .map((p) => p.Properties.ResponseHeadersPolicyConfig)
+      .filter((c) => ['no-cache', 'public, max-age=31536000, immutable'].includes(c.CustomHeadersConfig?.Items?.[0]?.Value) && !c.CorsConfig)
+    expect(policies.length).toBe(2)
+    for (const c of policies) {
+      expect(c.SecurityHeadersConfig).toEqual({
+        ContentTypeOptions: { Override: true },
+        FrameOptions: { FrameOption: 'DENY', Override: true },
+        ReferrerPolicy: { ReferrerPolicy: 'strict-origin-when-cross-origin', Override: true },
+        StrictTransportSecurity: { AccessControlMaxAgeSec: 31536000, IncludeSubdomains: false, Override: true },
+      })
+    }
+  })
+
   test('browsers keep build files for a year and recheck current.json after a minute', () => {
     const { site } = stacks()
     const cacheControl = (value: string) => site.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
