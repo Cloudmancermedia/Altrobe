@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, test } from 'vitest'
-import { CLEARANCE, NAME_SHARE, apparentHeight, boxSkull, measureSkull, nameSize, plateAnchor, screenPoint, skullGeoset } from './nameplate'
+import { CLEARANCE, NAME_SHARE, apparentHeight, boxSkull, clearanceFor, measureSkull, nameSize, plateAnchor, screenPoint, skullGeoset } from './nameplate'
 
 describe('screenPoint', () => {
   const camera = new THREE.PerspectiveCamera(35, 2, 0.01, 100)
@@ -95,6 +95,11 @@ describe('plateAnchor', () => {
     expect(room(1.134, 0.363)).toBeGreaterThan(room(2.024, 0.262)) // Gnome, Human
   })
 
+  test('takes a clearance for models whose hair or horns stand well above the skull', () => {
+    const at = plateAnchor({ top: new THREE.Vector3(0, 2, 0), height: 0.25 }, 2)
+    expect(at.y).toBeCloseTo(2 + 0.25 * 2)
+  })
+
   test('without a skull, sits over the box top, with a head a tenth of the box\'s height', () => {
     const box = new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.3), new THREE.Vector3(0.5, 2, 0.3))
     const at = plateAnchor(boxSkull(box))
@@ -146,5 +151,15 @@ describe('apparentHeight', () => {
 
   test('halves when the camera is twice as far', () => {
     expect(apparentHeight(2, head, look(new THREE.Vector3(10, 1, 0)), 900)).toBeCloseTo(apparentHeight(2, head, look(new THREE.Vector3(5, 1, 0)), 900) / 2, 5)
+  })
+})
+
+describe('clearanceFor', () => {
+  test('is the shared clearance for most models, and more where hair or horns crowd the name', () => {
+    expect(clearanceFor(1, 0)).toBe(CLEARANCE) // Human male
+    expect(clearanceFor(3, 1)).toBe(CLEARANCE) // Dwarf female: already roomy (gap 1.8x the text, 2026-10-21)
+    // The tightest by measurement on 2026-10-21 (gap between the guild line and the head, in text heights):
+    // Troll male 0.67, Tauren male 0.74, Orc female 0.82, Skyborne males 1.02, Undead female 1.1.
+    for (const [race, sex] of [[8, 0], [6, 0], [2, 1], [95, 0], [96, 0], [5, 1]]) expect(clearanceFor(race, sex)).toBeGreaterThan(CLEARANCE)
   })
 })
