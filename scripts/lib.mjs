@@ -242,14 +242,16 @@ export function readZip(buf) {
   return entries
 }
 
-// CloudFront compresses only files of 1,000 to 10,000,000 bytes, so larger ones are uploaded gzipped.
+// CloudFront compresses only files of 1,000 to 10,000,000 bytes, and never model/gltf-binary, so larger
+// files and every .glb are uploaded gzipped (a model gzips to about 45% of its size).
 export const CLOUDFRONT_MAX_COMPRESS = 10_000_000
 const CONTENT_TYPES = { '.glb': 'model/gltf-binary', '.json': 'application/json', '.png': 'image/png' }
 export const contentType = (path) => CONTENT_TYPES[path.slice(path.lastIndexOf('.'))] ?? 'application/octet-stream'
 
 /**
  * The AWS CLI commands that publish one baked build, in order: sync the build's folder, upload the
- * files too big for CloudFront to compress gzipped (`{gz}` stands for the gzipped copy), then
+ * files CloudFront will not compress gzipped, one sync per content type (each step's `files` are
+ * gzipped from `from` into a staging folder at the same paths; `{stage}` stands for it), then
  * rewrite `{product}/current.json` and invalidate it, so the site switches only once every file is up.
  * `files` are the build folder's files (`path` relative to it, `size` in bytes).
  */
@@ -261,13 +263,20 @@ export function publishPlan({ bundleDir, product, bucket, distribution, profile,
   }
   const local = join(bundleDir, product, current.build)
   const remote = `s3://${bucket}/${product}/${current.build}`
-  const big = files.filter((f) => f.size > CLOUDFRONT_MAX_COMPRESS).map((f) => f.path)
+  const gzipped = files.filter((f) => f.path.endsWith('.glb') || f.size > CLOUDFRONT_MAX_COMPRESS).map((f) => f.path)
+  // A build has thousands of models, so the main sync skips them with one pattern rather than one each.
+  const excludes = ['*.glb', ...gzipped.filter((p) => !p.endsWith('.glb'))]
+  const byType = new Map()
+  for (const p of gzipped) {
+    if (!byType.has(contentType(p))) byType.set(contentType(p), [])
+    byType.get(contentType(p)).push(p)
+  }
   const tail = profile ? ['--profile', profile] : []
   return [
-    { kind: 'sync', args: ['s3', 'sync', local, remote, ...big.flatMap((p) => ['--exclude', p]), ...tail] },
-    ...big.map((p) => ({
-      kind: 'gzip', file: join(local, p),
-      args: ['s3', 'cp', '{gz}', `${remote}/${p}`, '--content-encoding', 'gzip', '--content-type', contentType(p), ...tail],
+    { kind: 'sync', args: ['s3', 'sync', local, remote, ...excludes.flatMap((p) => ['--exclude', p]), ...tail] },
+    ...[...byType.keys()].sort().map((type) => ({
+      kind: 'gzip', from: local, files: byType.get(type),
+      args: ['s3', 'sync', '{stage}', remote, '--content-encoding', 'gzip', '--content-type', type, ...tail],
     })),
     { kind: 'current', args: ['s3', 'cp', join(bundleDir, product, 'current.json'), `s3://${bucket}/${product}/current.json`, '--content-type', 'application/json', ...tail] },
     { kind: 'invalidate', args: ['cloudfront', 'create-invalidation', '--distribution-id', distribution, '--paths', `/${product}/current.json`, ...tail] },

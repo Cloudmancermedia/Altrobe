@@ -59,6 +59,9 @@ export interface Character {
   setTime(t: number): void
   /** Turns the items' billboard bones to `camera`. Call once per frame, after update and camera moves. */
   faceCamera(camera: THREE.Camera): void
+  /** The race and sex it was built as, for the nameplate's clearance. */
+  race: number
+  sex: number
   /** The skull in the current pose, from the skin and face meshes' head vertices; null without a head bone. */
   skull(): Skull | null
   dispose(): void
@@ -297,7 +300,7 @@ export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.
   root.traverse((o) => { if (o.userData.keyBoneId === HEAD_KEY_BONE) headBone ??= o })
 
   return {
-    root, box, attached, notices, mixer, itemMixers,
+    root, box, attached, notices, mixer, itemMixers, race: baseLook.race, sex: baseLook.sex,
     drawn: { geosets: look.geosets, layerFiles: look.layers.map((l) => l.fileDataId) },
     update(dt) {
       for (const b of billboards) b.bone.quaternion.copy(b.rest)

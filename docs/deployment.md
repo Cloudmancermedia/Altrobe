@@ -224,8 +224,9 @@ deletes builds older than the previous one. See
 on `main` (sub `...:ref:refs/heads/main`), so whatever merges to `main` can write the bundle bucket;
 it can't assume the CDK roles or touch the web app's distribution.
 
-CloudFront compresses only files between 1 KB and 10 MB. The publish step must gzip larger files
-itself (such as `catalog.json` and big models) and upload them with `Content-Encoding: gzip`.
+CloudFront compresses only files between 1 KB and 10 MB, and never `model/gltf-binary`. The publish
+step gzips larger files (such as `catalog.json`) and every `.glb` itself, and uploads them with
+`Content-Encoding: gzip`; a gzipped model is about 45% of its original size.
 
 ## Switching products
 

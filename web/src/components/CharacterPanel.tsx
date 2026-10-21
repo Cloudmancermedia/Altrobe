@@ -107,12 +107,14 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
 function AnimationPresets({ look }: { look: Look }) {
   const animations = useStore(store, (s) => s.animations)
   const subclass = useItemSubclass(look.items.mainhand, look.race, look.sex, look.models)
-  const presets = animationPresets(animations, subclass)
+  const rangedSubclass = useItemSubclass(look.items.ranged, look.race, look.sex, look.models)
+  const presets = animationPresets(animations, subclass, rangedSubclass)
   if (!presets.length) return null
   return (
     <div className="actions presets" role="group" aria-label="Quick animations">
       {presets.map((p) => {
-        const on = look.anim === p.animation
+        // Stand is on when nothing else plays; pressing any pressed button stands.
+        const on = p.animation === 'Stand' ? !look.anim || look.anim === 'Stand' : look.anim === p.animation
         return (
           <button key={p.animation} type="button" aria-pressed={on} onClick={() => commands.set_animation(on ? 'Stand' : p.animation)}>
             {p.label}

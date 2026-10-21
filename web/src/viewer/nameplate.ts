@@ -78,7 +78,24 @@ export function boxSkull(box: THREE.Box3): Skull {
 // gets more room, an Orc's less.
 export const CLEARANCE = 1.4
 
+// Models whose hair, horns or ears stand well above the skull, which the skull leaves out, so the shared
+// clearance left them the least room: by race and sex ("race-sex"). Tuned on 2026-10-21 by measuring the
+// gap between the guild line and the head on every model, to bring these near the others.
+const MODEL_CLEARANCE: Record<string, number> = {
+  '8-0': 2.3, // Troll male
+  '6-0': 1.8, // Tauren male
+  '2-1': 2.0, // Orc female
+  '95-0': 1.7, // High Order Skyborne male
+  '96-0': 1.7, // Windshaper Skyborne male
+  '5-1': 1.7, // Undead female
+}
+
+/** The clearance for a model, in head heights above its skull. */
+export function clearanceFor(race: number, sex: number): number {
+  return MODEL_CLEARANCE[`${race}-${sex}`] ?? CLEARANCE
+}
+
 /** Where the nameplate's bottom edge goes in the world: over the head, a clearance above the skull. */
-export function plateAnchor(skull: Skull): THREE.Vector3 {
-  return skull.top.clone().add(new THREE.Vector3(0, skull.height * CLEARANCE, 0))
+export function plateAnchor(skull: Skull, clearance = CLEARANCE): THREE.Vector3 {
+  return skull.top.clone().add(new THREE.Vector3(0, skull.height * clearance, 0))
 }

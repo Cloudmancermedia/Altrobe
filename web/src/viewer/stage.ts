@@ -7,7 +7,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { View } from '../look/look'
 import type { Character } from './character'
-import { apparentHeight, boxSkull, nameSize, plateAnchor, screenPoint } from './nameplate'
+import { apparentHeight, boxSkull, clearanceFor, nameSize, plateAnchor, screenPoint } from './nameplate'
 
 // How far the camera starts from a character, in character heights, and how far above the middle of the
 // character it aims: room above the head for the name, which sits there at a fixed height.
@@ -93,7 +93,7 @@ export class StageView {
     if (c) {
       // The render loop has animated the character once before this runs, so the skull is where the
       // head really is in its pose, hunched or not. Taken once, then kept.
-      this.plateAt ??= plateAnchor(c.skull() ?? boxSkull(c.box))
+      this.plateAt ??= plateAnchor(c.skull() ?? boxSkull(c.box), clearanceFor(c.race, c.sex))
       // Sized from how tall the character looks at the camera's distance, the same for every race at the
       // default framing (frame() fits the box), following the zoom and the view's size. The distance, not
       // the box's height on screen, so the name keeps its size when the camera looks down or up.
