@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 import type { Features } from '../api/backend'
-import { aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT } from './footer'
+import { analyticsBeacon } from '../analytics'
+import { hostedSite } from '../api/client'
+import { ANALYTICS_PRIVACY, aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT } from './footer'
+
+const counting = analyticsBeacon(import.meta.env.VITE_CF_ANALYTICS_TOKEN, hostedSite) !== null
 
 /** What the footer leaves out: what Altrobe is, support, links, credits and the legal notice. Opens only on click. */
 export function AboutDialog({ open, onClose, features, hostedPrompt = false }: { open: boolean; onClose: () => void; features: Features; hostedPrompt?: boolean }) {
@@ -23,6 +27,7 @@ export function AboutDialog({ open, onClose, features, hostedPrompt = false }: {
         </header>
         <p>A dressing room for World of Warcraft: Forever. Dress any race in any gear, give the character a name, guild and title, and share the look as a link.</p>
         {hostedPrompt && <p className="small">{PROMPT_PRIVACY}</p>}
+        {counting && <p className="small">{ANALYTICS_PRIVACY}</p>}
         <section className="about-support">
           <p>Altrobe is free to use. If it's useful to you, you can help keep it running.</p>
           <a className="support-button" href={SUPPORT.href} target="_blank" rel="noreferrer">{SUPPORT.label}</a>

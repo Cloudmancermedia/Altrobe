@@ -34,6 +34,9 @@ export function copyrightLine(now = new Date()): string {
   return `© ${year > first ? `${first}–${year}` : first} Ryan Williams`
 }
 
+/** The website's visit counter (web/src/analytics.ts). About shows it only when counting is on. */
+export const ANALYTICS_PRIVACY = "Cloudflare Web Analytics counts visits to the site. It doesn't collect personal data."
+
 /** What the hosted prompt box does with what you type (docs/hosted-prompt-box.md, "Privacy"). About shows it only when the box is on. */
 export const PROMPT_PRIVACY = "The prompt box sends what you type to Amazon Bedrock to run the model. Altrobe doesn't store it, "
   + "and it isn't used to train models. "

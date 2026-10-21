@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT, TAGLINE } from './footer'
+import { ANALYTICS_PRIVACY, aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT, TAGLINE } from './footer'
 
 const LOCAL_APP = 'Download the local app'
 
@@ -47,5 +47,15 @@ describe('PROMPT_PRIVACY', () => {
 describe('TAGLINE', () => {
   test('says under the name what the site is, for the game it is for', () => {
     expect(TAGLINE).toBe('WoW: Forever model viewer and character planner')
+  })
+})
+
+describe('ANALYTICS_PRIVACY', () => {
+  test('names the visit counter and what Cloudflare says it collects', () => {
+    expect(ANALYTICS_PRIVACY).toContain('Cloudflare Web Analytics')
+    // "Cloudflare Web Analytics does not collect or use your visitors' personal data"
+    // (developers.cloudflare.com/web-analytics/about/, read 2026-10-21).
+    expect(ANALYTICS_PRIVACY).toContain("doesn't collect personal data")
+    expect(ANALYTICS_PRIVACY).not.toMatch(/[\u2014\u2018\u2019\u201c\u201d]/)
   })
 })
