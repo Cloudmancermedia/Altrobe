@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, clearCache, features, getCharacters, getStatus, hostedPrompt, selectInstall } from './api/client'
 import { AboutDialog } from './components/AboutDialog'
 import { AiCounter } from './components/Ai'
-import { copyrightLine, SUPPORT } from './components/footer'
+import { copyrightLine, SUPPORT, TAGLINE } from './components/footer'
 import { launchBanner } from './identity/name-rules'
 import type { CharactersResponse, ResolvedItem, Status } from './api/types'
 import { commands, store } from './app-state'
@@ -42,7 +42,8 @@ const itemSpeedParam = Number(new URLSearchParams(location.search).get('itemspee
 const startPath = typeof location === 'undefined' ? '/' : location.pathname
 if (startPath.startsWith('/l/')) history.replaceState(null, '', `/${location.search}${location.hash}`)
 
-const BANNER_KEY = 'altrobe.bannerDismissed.foreverLaunch'
+// New with the times (2026-10-21), so a banner dismissed before shows once more.
+const BANNER_KEY = 'altrobe.bannerDismissed.foreverLaunchTimes'
 
 /** The launch and reservation dates over the app, until launch day ends. Dismissing it is remembered in this browser. */
 function LaunchBanner() {
@@ -193,7 +194,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>Altrobe</h1>
+        <div className="brand">
+          <h1>Altrobe</h1>
+          <span className="muted small">{TAGLINE}</span>
+        </div>
         <span className="muted small">
           {status?.active ? `${status.active.product} ${status.active.build}` : phase === 'starting' ? 'Connecting…' : 'No install'}
         </span>
