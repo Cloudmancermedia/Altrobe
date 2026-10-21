@@ -153,6 +153,15 @@ repository variable `CF_ANALYTICS_TOKEN`, then merge or run "Deploy". The About 
 counted whenever the token is set. Unset the variable and deploy to stop. The numbers are in the
 same Web Analytics page.
 
+Cloudflare doesn't log query strings, so UTM tags are lost, and app links (Reddit, X, Discord) often
+send no referrer. To tell channels apart, give each post its own path: any path that isn't a file
+loads the app (CloudFront answers missing files with `index.html`), and the beacon reports the path
+the visitor landed on. Checked on the live site on 2026-10-21: `altrobe.com/reddit` reported
+`location` `https://altrobe.com/reddit`. Use short paths such as `/reddit`, `/x`, `/yt`, `/discord`,
+`/linkedin` and `/hn`, or one per post (`/reddit-launch`), and filter by path in the dashboard. Avoid
+`/l/`, `/api/` and `/static/`, which the site uses. The path stays in the address bar, so a visitor
+who copies it from there passes the tag on; the Copy link button gives a clean `/l/` link.
+
 ## How CI deploys
 
 - **Every pull request and push** (`.github/workflows/ci.yml`): the `infra` job type-checks, runs the
