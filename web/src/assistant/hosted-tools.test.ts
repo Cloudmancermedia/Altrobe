@@ -19,6 +19,7 @@ const catalog: BundleItem[] = [
   item(7, 'Mail Coif', 'head', { requiredLevel: 20, itemLevel: 25, armor: 'mail', quality: 2 }),
   item(8, 'Hand Axe', 'mainhand', { requiredLevel: 18, armor: null, weapon: 'axe', hands: 'one-hand', quality: 2 }),
   item(246100, 'Whispering Cowl', 'head', { requiredLevel: 40, armor: 'leather', newInForever: true }),
+  item(9, 'Hunting Bow', 'ranged', { requiredLevel: 28, armor: null, weapon: 'bow', hands: 'ranged', quality: 2 }),
 ]
 const byId = new Map(catalog.map((i) => [i.itemId, i]))
 const set = (setId: number, name: string, ids: number[]): BundleSet =>
@@ -142,6 +143,30 @@ describe('hosted tools', () => {
     command.n = 2
     await run('build_outfit', { level: 22, class: 'Warrior' })
     expect(store.get().look.items.head).toBe(7)
+  })
+
+  test('build_outfit gives a class its weapons when no weapon types are passed', async () => {
+    // "a level 30 hunter" showed a weapon only when the model thought to pass weapon types (2026-10-21).
+    const { run, store } = setup()
+    const r = await run('build_outfit', { level: 30, class: 'Hunter' })
+    expect(r.json).toMatchObject({ items: { ranged: { itemId: 9, weapon: 'bow' } } })
+    expect(store.get().look.items.ranged).toBe(9)
+    expect((await run('build_outfit', { level: 30, class: 'Mage' })).json.missing).toContain('mainhand')
+  })
+
+  test("build_outfit's ranged weapon leaves a hand weapon named earlier in the command, and the other way round", async () => {
+    // Equipping a ranged weapon takes off both hands, and a hand weapon the ranged one (commands.ts equipItem).
+    const { run, store, command } = setup()
+    await run('equip_item', { slot: 'mainhand', itemId: 8 })
+    const r = await run('build_outfit', { level: 30, class: 'Hunter' })
+    expect(store.get().look.items.mainhand).toBe(8)
+    expect(store.get().look.items.ranged).toBeUndefined()
+    expect(r.json).toMatchObject({ kept: ['ranged'] })
+    command.n = 2
+    await run('equip_item', { slot: 'ranged', itemId: 9 })
+    await run('build_outfit', { level: 22, armor: 'mail', weapons: ['axe'] })
+    expect(store.get().look.items.ranged).toBe(9)
+    expect(store.get().look.items.mainhand).toBeUndefined()
   })
 
   test("search_items finds a name the user words a little differently: 'helmet' for Helm", async () => {

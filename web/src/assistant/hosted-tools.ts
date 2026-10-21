@@ -190,17 +190,22 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       if (level === undefined || level < 1 || level > 60) throw new ToolError('level must be 1 to 60.')
       // A class decides the armor, whatever armor the model passed: it put leather on warlocks (2026-10-21).
       let armor = typeof a.armor === 'string' && a.armor.trim() ? a.armor.trim().toLowerCase() : undefined
-      if (typeof a.class === 'string' && a.class.trim()) {
-        armor = armorFor(a.class, level)
+      const className = typeof a.class === 'string' && a.class.trim() ? a.class : undefined
+      if (className) {
+        armor = armorFor(className, level)
         if (!armor) throw new ToolError(`Unknown class "${a.class}". Use one of: ${CLASS_NAMES.join(', ')}.`)
       }
       if (armor && !ARMOR_TYPES.includes(armor)) throw new ToolError(`Unknown armor type "${a.armor}". Use cloth, leather, mail or plate.`)
       const weapons = list(a.weapons, WEAPONS, 'weapon type')
-      const outfit = buildOutfit(await deps.catalog(), { level, armor, weapons })
+      const outfit = buildOutfit(await deps.catalog(), { level, armor, weapons, className })
       // forCommand runs in callCount, so namedSlots belongs to this command.
       callCount('build_outfit')
-      const kept = Object.keys(outfit.items).filter((slot) => namedSlots.has(slot))
-      const picked = Object.entries(outfit.items).filter(([slot]) => !namedSlots.has(slot))
+      // A ranged weapon takes off both hands and a hand weapon the ranged one, so either would undo a named weapon.
+      const keeps = (slot: string) => namedSlots.has(slot)
+        || (slot === 'ranged' && (namedSlots.has('mainhand') || namedSlots.has('offhand')))
+        || ((slot === 'mainhand' || slot === 'offhand') && namedSlots.has('ranged'))
+      const kept = Object.keys(outfit.items).filter(keeps)
+      const picked = Object.entries(outfit.items).filter(([slot]) => !keeps(slot))
       const items = Object.fromEntries(picked.map(([slot, i]) => [slot, {
         itemId: i.itemId, name: i.name, requiredLevel: i.requiredLevel ?? null, quality: i.quality, armor: i.armor ?? null, weapon: i.weapon ?? null, hands: i.hands ?? null,
         newInForever: i.newInForever ?? false,

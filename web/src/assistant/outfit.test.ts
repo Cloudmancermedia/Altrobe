@@ -46,7 +46,7 @@ describe('buildOutfit', () => {
     expect(buildOutfit([paladinOnly], { level: 30, classId: 2 }).items.wrist.itemId).toBe(paladinOnly.itemId)
   })
 
-  test('fills the main hand only when weapon types are given', () => {
+  test('without a class, fills the main hand only when weapon types are given', () => {
     const axe = item('mainhand', 30, { weapon: 'axe', hands: 'two-hand' })
     const bow = item('ranged', 30, { weapon: 'bow', hands: 'ranged', itemLevel: 50 })
     expect(buildOutfit([axe], { level: 30 }).missing).toContain('mainhand')
@@ -63,6 +63,52 @@ describe('buildOutfit', () => {
     const oneHand = buildOutfit([sword, shield], { level: 30, weapons: ['sword'], offHand: 'shield' })
     expect(oneHand.items.offhand.itemId).toBe(shield.itemId)
     expect(buildOutfit([sword, greatsword, shield], { level: 30, weapons: ['sword'], offHand: 'shield' }).items.offhand).toBeUndefined()
+  })
+
+  describe('a class with no weapon types carries its own weapons', () => {
+    const greataxe = item('mainhand', 30, { weapon: 'axe', hands: 'two-hand' })
+    const polearm = item('mainhand', 30, { weapon: 'polearm', hands: 'two-hand', itemLevel: 60 })
+    const staff = item('mainhand', 29, { weapon: 'staff', hands: 'two-hand' })
+    const bow = item('ranged', 30, { weapon: 'bow', hands: 'ranged' })
+    const wand = item('ranged', 30, { weapon: 'wand', hands: 'ranged', itemLevel: 60 })
+    const mace = item('mainhand', 30, { weapon: 'mace', hands: 'one-hand' })
+    const shield = item('offhand', 30, { hands: 'shield' })
+    const dagger = item('mainhand', 30, { weapon: 'dagger', hands: 'one-hand', itemLevel: 40 })
+    const sword = item('mainhand', 30, { weapon: 'sword', hands: 'one-hand' })
+    const catalog = [greataxe, polearm, staff, bow, wand, mace, shield, dagger, sword]
+    const weapons = (className: string) => {
+      const r = buildOutfit(catalog, { level: 30, className, slots: [] })
+      return Object.fromEntries(Object.entries(r.items).map(([slot, i]) => [slot, i.itemId]))
+    }
+
+    test('warriors and paladins a two-hander, hunters a ranged weapon, casters a staff', () => {
+      expect(weapons('Warrior')).toEqual({ mainhand: greataxe.itemId })
+      expect(weapons('paladin')).toEqual({ mainhand: greataxe.itemId })
+      expect(weapons('Hunter')).toEqual({ ranged: bow.itemId })
+      for (const cls of ['Priest', 'Mage', 'Warlock', 'Druid']) expect(weapons(cls)).toEqual({ mainhand: staff.itemId })
+    })
+
+    test('shamans a one-handed mace or axe and a shield, rogues two different one-handed daggers or swords', () => {
+      expect(weapons('Shaman')).toEqual({ mainhand: mace.itemId, offhand: shield.itemId })
+      expect(weapons('Rogue')).toEqual({ mainhand: dagger.itemId, offhand: sword.itemId })
+    })
+
+    test('weapon types passed win over the class', () => {
+      expect(buildOutfit(catalog, { level: 30, className: 'Hunter', weapons: ['axe'], slots: [] }).items).toEqual({ mainhand: greataxe })
+    })
+
+    test('only weapons the class may use', () => {
+      const paladinHammer = item('mainhand', 30, { weapon: 'mace', hands: 'two-hand', itemLevel: 90, allowableClass: 1 << 1 })
+      expect(buildOutfit([greataxe, paladinHammer], { level: 30, className: 'Paladin', slots: [] }).items.mainhand.itemId).toBe(paladinHammer.itemId)
+      expect(buildOutfit([greataxe, paladinHammer], { level: 30, className: 'Warrior', slots: [] }).items.mainhand.itemId).toBe(greataxe.itemId)
+    })
+
+    test('lists the weapon slots it could not fill at that level', () => {
+      expect(buildOutfit(catalog, { level: 50, className: 'Shaman', slots: [] }).missing).toEqual(['mainhand', 'offhand'])
+      expect(buildOutfit(catalog, { level: 50, className: 'Hunter', slots: [] }).missing).toEqual(['ranged'])
+      // A shield still goes on when no one-hander fits.
+      expect(buildOutfit([shield], { level: 30, className: 'Shaman', slots: [] })).toMatchObject({ items: { offhand: shield }, missing: ['mainhand'] })
+    })
   })
 
   test('at the same required level, an item new in Forever wins; it never beats a higher level', () => {
