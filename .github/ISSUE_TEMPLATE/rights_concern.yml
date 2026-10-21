@@ -1,0 +1,19 @@
+name: Rights concern
+description: You hold rights in something Altrobe shows or uses and want to raise it.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Don't include private contact details. For a security problem, use
+        SECURITY.md instead.
+  - type: textarea
+    id: concern
+    attributes:
+      label: Your concern
+      description: What it's about, and where in Altrobe or the repository you saw it.
+    validations:
+      required: true
+  - type: textarea
+    id: request
+    attributes:
+      label: What you'd like done

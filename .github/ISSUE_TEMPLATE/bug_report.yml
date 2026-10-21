@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in Altrobe doesn't work or looks wrong.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open altrobe.com
+        2. Pick ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: share-link
+    attributes:
+      label: Share link to the look
+      description: Use Copy link in the app, so we can open the same character and gear.
+      placeholder: https://altrobe.com/l/...
+  - type: input
+    id: browser-device
+    attributes:
+      label: Browser and device
+      placeholder: Firefox 131 on Windows 11, Safari on iPhone 15
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag an image or a short clip into this box.
