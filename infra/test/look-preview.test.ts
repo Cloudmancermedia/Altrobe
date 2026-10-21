@@ -7,7 +7,7 @@ const source = readFileSync(path, 'utf8')
 const handler = new Function(`${source}\nreturn handler`)() as (event: unknown) => { statusCode: number; headers: Record<string, { value: string }>; body: { encoding: string; data: string } }
 
 const encode = (look: unknown) => Buffer.from(JSON.stringify(look), 'utf8').toString('base64url')
-const event = (uri: string) => ({ version: '1.0', context: {}, viewer: {}, request: { method: 'GET', uri, querystring: {}, headers: {}, cookies: {} } })
+const event = (uri: string, referer?: string) => ({ version: '1.0', context: {}, viewer: {}, request: { method: 'GET', uri, querystring: {}, headers: referer ? { referer: { value: referer } } : {}, cookies: {} } })
 const meta = (html: string, key: string) => new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1]
 
 describe('the look preview function', () => {
@@ -24,7 +24,23 @@ describe('the look preview function', () => {
     expect(meta(html, 'og:image')).toBe('https://altrobe.com/og/5-1.jpg')
     expect(meta(html, 'og:url')).toBe(`https://altrobe.com/l/${payload}`)
     expect(meta(html, 'twitter:card')).toBe('summary_large_image')
-    expect(html).toContain(`url=/#look=${payload}`)
+    expect(html).toContain(`url=/shared#look=${payload}`)
+  })
+
+  test('sends people on under /shared, with the site they came from in the path, so visit counts can tell shared looks and their sources apart', () => {
+    const payload = encode(look)
+    const target = (referer?: string) => /url=([^"]*)"/.exec(handler(event(`/l/${payload}`, referer)).body.data)?.[1]
+    expect(target('https://www.reddit.com/r/wowforever/comments/abc/')).toBe(`/shared/reddit.com#look=${payload}`)
+    expect(target('https://discord.com/channels/1/2')).toBe(`/shared/discord.com#look=${payload}`)
+    expect(target('https://altrobe.com/')).toBe(`/shared#look=${payload}`)
+    expect(target('javascript:alert(1)')).toBe(`/shared#look=${payload}`)
+    expect(target('https://<b>.example/')).toBe(`/shared#look=${payload}`)
+  })
+
+  test("the refresh sends no referrer, so the app's visit counter sees an arrival from outside, and the page isn't kept, since it depends on the referrer", () => {
+    const r = handler(event(`/l/${encode(look)}`, 'https://www.reddit.com/'))
+    expect(r.body.data).toContain('<meta name="referrer" content="no-referrer">')
+    expect(r.headers['cache-control'].value).toBe('no-store')
   })
 
   test('without a name, the title is the character; accents in names come through', () => {

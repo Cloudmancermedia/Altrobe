@@ -3,9 +3,12 @@ import { analyticsBeacon } from './analytics'
 
 describe('analyticsBeacon', () => {
   test("is Cloudflare Web Analytics' beacon with the site's token, on the website only", () => {
+    // As Cloudflare's snippet loads it; "spa": false, since the app's own address changes are each look
+    // change, not a page (developers.cloudflare.com/web-analytics/get-started/web-analytics-spa/).
     expect(analyticsBeacon('abc123', true)).toEqual({
       src: 'https://static.cloudflareinsights.com/beacon.min.js',
-      data: '{"token":"abc123"}',
+      type: 'module',
+      data: '{"token":"abc123","spa":false}',
     })
   })
 

@@ -153,6 +153,24 @@ repository variable `CF_ANALYTICS_TOKEN`, then merge or run "Deploy". The About 
 counted whenever the token is set. Unset the variable and deploy to stop. The numbers are in the
 same Web Analytics page.
 
+Cloudflare doesn't log query strings, so UTM tags are lost, and app links (Reddit, X, Discord) often
+send no referrer. To tell channels apart, give each post its own path: any path that isn't a file
+loads the app (CloudFront answers missing files with `index.html`), and the beacon reports the path
+the visitor landed on. Checked on the live site on 2026-10-21: `altrobe.com/reddit` reported
+`location` `https://altrobe.com/reddit`. Use short paths: `/r` (Reddit), `/x` (X), `/yt` (YouTube),
+`/li` (LinkedIn), `/dc` (Discord) and `/hn` (Hacker News), or one per post (`/r1`, `/r2`), and filter
+by path in the dashboard. Avoid `/l`, `/api`, `/static`, `/og` and `/shared`, which the site uses: a
+`/l/` path is a share link. The path stays in the address bar,
+so a visitor who copies it from there passes the tag on; the Copy link button gives a clean `/l/`
+link.
+
+Shared looks count on their own: the `/l/<look>` preview page (`infra/functions/look-preview.js`)
+sends people on to `/shared/<site>#look=...`, where `<site>` is the host the link was opened from
+(`reddit.com`, `discord.com`), or to `/shared` when the browser sends no Referer, as apps often don't.
+The preview page sends no referrer onward, so the arrival counts as a visit from outside rather than a
+click inside altrobe.com. The beacon runs with `"spa": false`, so a page view is a page load; the
+app's address changes on every look change and would otherwise count as page views.
+
 ## How CI deploys
 
 - **Every pull request and push** (`.github/workflows/ci.yml`): the `infra` job type-checks, runs the
