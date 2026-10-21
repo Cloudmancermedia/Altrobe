@@ -15,10 +15,11 @@ function html(text) {
 }
 
 // base64url to a string: atob gives one character per byte, decodeURIComponent turns the UTF-8 bytes into text.
+// Only the bytes decodeURIComponent needs escaped (% and non-ASCII) are percent-encoded; encoding every byte
+// in a loop ran past CloudFront's instruction limit on a look with two side-by-side characters.
 function decode(payload) {
   var bin = atob(payload.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((payload.length + 3) % 4))
-  var pct = ''
-  for (var i = 0; i < bin.length; i++) pct += '%' + ('0' + bin.charCodeAt(i).toString(16)).slice(-2)
+  var pct = bin.replace(/[%\x80-\xff]/g, function (c) { return '%' + c.charCodeAt(0).toString(16) })
   return JSON.parse(decodeURIComponent(pct))
 }
 
