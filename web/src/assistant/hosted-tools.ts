@@ -296,10 +296,14 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     },
     unequip: (a) => command('unequip', { slot: a.slot }),
     async set_character(a) {
-      const again = callCount('set_character') > 1
+      // Nova switched the main character once per race named and then added every race with compare, so
+      // "an orc and an undead side by side" showed three characters (2026-10-21). The first race named
+      // stays the main character; a note didn't stop it, so a second switch is refused.
+      if (callCount('set_character') > 1) {
+        const now = named([store.get().look])[0]
+        throw new ToolError(`The main character is already ${now} in this command. Add the other races with compare, each with its own items or setId.`)
+      }
       const r = await command('set_character', { race: int(a.race), sex: int(a.sex) })
-      // Switching race once per set leaves only the last one showing.
-      if (again) return { ...r, note: 'The main character changed race again. To show several races at once, keep one main character and add the others with compare, each with its own setId.' }
       // Nova leaves the old lineup standing beside a new main character unless told (benchmarked 2026-10-20).
       const beside = store.get().look.compare
       return beside.length ? { ...r, besideIt: named(beside), note: 'These still stand beside the main character. If the user named only this race, call compare with an empty list; if they named others, call compare with those.' } : r
@@ -316,12 +320,23 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
         const { setId: _, ...rest } = c
         return { ...rest, items: { ...Object.fromEntries(set.pieces.map((p) => [p.slot, p.item.itemId])), ...(c.items as object ?? {}) } }
       })
-      const before = store.get().look.compare
-      const r = await command('compare', { characters: a.add === true ? [...before, ...list] : list })
+      // A copy of the main character (same race, sex and outfit) shows the same look twice, so it's left out.
+      const main = store.get().look
+      const sameItems = (items: unknown) => {
+        const own = (items ?? main.items) as Record<string, unknown>
+        const keys = new Set([...Object.keys(own), ...Object.keys(main.items)])
+        return [...keys].every((k) => int(own[k]) === (main.items as Record<string, number | undefined>)[k])
+      }
+      const others = list.filter((c) => !(int(c?.race) === main.race && int(c?.sex) === main.sex && sameItems(c?.items)))
+      const copies = list.length - others.length
+      const before = main.compare
+      const r = await command('compare', { characters: a.add === true ? [...before, ...others] : others })
+      const notes = copies ? [`Left out ${copies === 1 ? 'a copy' : `${copies} copies`} of the main character: it already shows. Pass compare only the other characters.`] : []
       // A replaced lineup is easy to miss when the user asked to add one (benchmarked 2026-10-20).
       const kept = named(store.get().look.compare)
-      const removed = named(before).filter((n) => !kept.includes(n))
-      return a.add !== true && removed.length ? { ...r, removed, note: 'compare replaced these. If the user asked to add a character, call compare again with add true.' } : r
+      const removed = a.add === true ? [] : named(before).filter((n) => !kept.includes(n))
+      if (removed.length) notes.push('compare replaced these. If the user asked to add a character, call compare again with add true.')
+      return { ...r, ...(removed.length ? { removed } : {}), ...(notes.length ? { note: notes.join(' ') } : {}) }
     },
     set_animation: (a) => command('set_animation', { name: a.name }),
 
