@@ -34,12 +34,13 @@ describe('transitions', () => {
     expect(transitions.unequipSlots(worn, ['wings']).error).toMatch(/unknown slot "wings"/)
   })
 
-  test('clear_all takes everything off and stops the animation, keeping the character', () => {
-    const dressed = { ...bare, items: { head: 1, mainhand: 3 }, hide: ['head' as const], anim: 'Run', custom: { '7': 70 } }
+  test('clear_all takes everything off, stops the animation and removes the side-by-side characters, keeping the character', () => {
+    const dressed = { ...bare, items: { head: 1, mainhand: 3 }, hide: ['head' as const], anim: 'Run', custom: { '7': 70 }, compare: [{ race: 5, sex: 1 as const, models: 'hd' as const }] }
     const r = transitions.clearAll(dressed).look!
     expect(r.items).toEqual({})
     expect(r.hide).toEqual([])
     expect(r.anim).toBeUndefined()
+    expect(r.compare).toEqual([])
     expect([r.race, r.sex, r.custom]).toEqual([2, 0, { '7': 70 }])
   })
 

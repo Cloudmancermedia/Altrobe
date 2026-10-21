@@ -137,9 +137,9 @@ export const transitions = {
     return { look: next }
   },
 
-  /** Takes everything off and stops the animation. The character and its customizations stay. */
+  /** Takes everything off, stops the animation and removes the side-by-side characters. The character and its customizations stay. */
   clearAll(look: Look): Result {
-    return { look: { ...look, items: {}, hide: [], anim: undefined } }
+    return { look: { ...look, items: {}, hide: [], anim: undefined, compare: [] } }
   },
 
   /** Customization option IDs belong to one body model, so changing race, sex or models clears them. */

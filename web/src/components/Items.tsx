@@ -299,7 +299,7 @@ export function ClearButtons({ look }: { look: Look }) {
       <button type="button" disabled={!worn} onClick={clearSetPieces}>Clear set pieces</button>
       <button type="button" disabled={!WEAPON_SLOTS.some((s) => look.items[s])} onClick={() => commands.unequip_slots(WEAPON_SLOTS)}>Clear weapons</button>
       <button type="button" disabled={!look.anim} onClick={() => commands.set_animation('Stand')}>Clear animation</button>
-      <button type="button" disabled={!worn && !look.anim} onClick={() => commands.clear_all()}>Clear all</button>
+      <button type="button" disabled={!worn && !look.anim && !look.compare.length} onClick={() => commands.clear_all()}>Clear all</button>
     </div>
   )
 }

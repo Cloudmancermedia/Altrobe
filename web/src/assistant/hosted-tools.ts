@@ -87,13 +87,25 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
   // tools hold it to it (benchmarked 2026-10-19).
   let callsFor: number | undefined
   let calls: Record<string, number> = {}
+  // Set IDs search_sets returned in the running command: Nova guesses set IDs from the tier list
+  // otherwise (benchmarked 2026-10-20).
+  let foundSets = new Set<number>()
   // The command of the tool call running now (runHostedCommand numbers them).
   let current: number | undefined
+  const forCommand = () => {
+    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set() }
+  }
   const callCount = (name: string) => {
-    const id = current
-    if (id !== callsFor) { callsFor = id; calls = {} }
+    forCommand()
     return (calls[name] = (calls[name] ?? 0) + 1)
   }
+  const checkFound = (setId: unknown) => {
+    forCommand()
+    if (!foundSets.has(int(setId) ?? NaN)) throw new ToolError(`Set ${setId} is not one search_sets returned. Find the set with search_sets first; never guess set IDs.`)
+  }
+  // "Orc male", for the notes about who stands beside the main character.
+  const named = (cs: { race: number; sex: number }[]) =>
+    cs.map((c) => `${store.get().characters?.races.find((r) => r.race === c.race)?.name ?? `race ${c.race}`} ${c.sex === 1 ? 'female' : 'male'}`)
 
   const tools: Record<string, (a: Input) => Promise<Record<string, unknown>>> = {
     async search_items(a) {
@@ -119,6 +131,8 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
         limit: clamp(int(a.limit) ?? 10, 1, 20),
         includeInternal: false,
       })
+      forCommand()
+      for (const s of page.sets) foundSets.add(s.setId)
       return {
         total: page.total,
         sets: page.sets.map((s) => ({
@@ -129,6 +143,7 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     },
 
     async equip_set(a) {
+      checkFound(a.setId)
       const setId = int(a.setId)
       const set = (await deps.sets()).find((s) => s.setId === setId)
       if (!set || !set.pieces.length) throw new ToolError(`Set ${a.setId} is not in the catalog, or has no piece that can be shown. Use search_sets to find a set ID.`)
@@ -255,10 +270,14 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       const again = callCount('set_character') > 1
       const r = await command('set_character', { race: int(a.race), sex: int(a.sex) })
       // Switching race once per set leaves only the last one showing.
-      return again ? { ...r, note: 'The main character changed race again. To show several races at once, keep one main character and add the others with compare, each with its own setId.' } : r
+      if (again) return { ...r, note: 'The main character changed race again. To show several races at once, keep one main character and add the others with compare, each with its own setId.' }
+      // Nova leaves the old lineup standing beside a new main character unless told (benchmarked 2026-10-20).
+      const beside = store.get().look.compare
+      return beside.length ? { ...r, besideIt: named(beside), note: 'These still stand beside the main character. If the user named only this race, call compare with an empty list; if they named others, call compare with those.' } : r
     },
     async compare(a) {
       const characters = Array.isArray(a.characters) ? a.characters as Input[] : []
+      for (const c of characters) if (c?.setId !== undefined) checkFound(c.setId)
       // A set by ID saves the model copying each piece's item ID; its own items go on top.
       const all = characters.some((c) => c?.setId !== undefined) ? await deps.sets() : []
       const list = characters.map((c) => {
@@ -268,7 +287,12 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
         const { setId: _, ...rest } = c
         return { ...rest, items: { ...Object.fromEntries(set.pieces.map((p) => [p.slot, p.item.itemId])), ...(c.items as object ?? {}) } }
       })
-      return command('compare', { characters: list })
+      const before = store.get().look.compare
+      const r = await command('compare', { characters: a.add === true ? [...before, ...list] : list })
+      // A replaced lineup is easy to miss when the user asked to add one (benchmarked 2026-10-20).
+      const kept = named(store.get().look.compare)
+      const removed = named(before).filter((n) => !kept.includes(n))
+      return a.add !== true && removed.length ? { ...r, removed, note: 'compare replaced these. If the user asked to add a character, call compare again with add true.' } : r
     },
     set_animation: (a) => command('set_animation', { name: a.name }),
 
