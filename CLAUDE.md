@@ -1,4 +1,10 @@
+@AGENTS.md
+
 # Altrobe: agent notes
+
+AGENTS.md, imported above, applies to every session, but its pull request section is written for
+outside contributors: maintainer sessions may open pull requests and change `.github/` and `infra/`
+when the task calls for it.
 
 ## Branches
 
