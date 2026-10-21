@@ -155,3 +155,13 @@ describe('item search filters', () => {
     expect(ids(searchItemsIn(withNew, { slots: ['head'] }))).toEqual([10, 11, 12, 246100])
   })
 })
+
+describe('loose item search', () => {
+  const named = (name: string, itemId: number) => ({ itemId, name, slot: 'head', quality: 2, iconFileDataId: 0, internal: false, unnamed: false, allowableClass: -1 }) as BundleItem
+  const items = [named('Green Iron Helm', 1), named("Adventurer's Pith Helmet", 2), named('Helm of the Green Iron Order', 3), named('Iron Helm', 4)]
+  test("each word typed only has to begin a word of the name (up to 4 letters), shortest names first", () => {
+    expect(searchItemsIn(items, { q: 'green iron helmet' }).total).toBe(0)
+    expect(searchItemsIn(items, { q: 'green iron helmet', loose: true }).items.map((i) => i.itemId)).toEqual([1, 3])
+    expect(searchItemsIn(items, { q: 'iron helmets', loose: true }).items.map((i) => i.itemId)).toEqual([4, 1, 3])
+  })
+})

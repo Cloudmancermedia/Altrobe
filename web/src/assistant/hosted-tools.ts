@@ -118,21 +118,27 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       const q = typeof a.query === 'string' ? a.query : a.query === undefined || a.query === null ? undefined : String(a.query)
       const limit = clamp(int(a.limit) ?? 20, 1, 50)
       const catalog = await deps.catalog()
-      const page = searchItemsIn(catalog, {
-        q,
+      const filters = {
         slots: typeof a.slot === 'string' && a.slot ? [a.slot.toLowerCase()] : undefined,
         qualities: quality === undefined ? undefined : [quality],
         minLevel: int(a.min_level), maxLevel: int(a.max_level), armor, weapons, hands,
         newInForever: a.new_in_forever === true || a.new_in_forever === 'true',
-        limit,
-        includeInternal: false,
-      })
-      // A wrong filter (leather for a mail helm) hid an item the user named, so the name alone gets a second try.
-      if (page.total === 0 && q?.trim()) {
-        const byName = searchItemsIn(catalog, { q, limit, includeInternal: false })
-        if (byName.total) return { total: byName.total, items: byName.items.map(summary), note: 'Nothing matched the name with those filters, so these match the name alone. Use one of them if it is the item the user named.' }
       }
-      return { total: page.total, items: page.items.map(summary) }
+      const search = (loose: boolean, filtered: boolean) => searchItemsIn(catalog, { q, limit, includeInternal: false, loose, ...(filtered ? filters : {}) })
+      const page = search(false, true)
+      if (page.total || !q?.trim()) return { total: page.total, items: page.items.map(summary) }
+      // The user's wording ("green iron helmet" for Green Iron Helm) or a wrong filter (leather for a mail
+      // helm) hid an item they named (2026-10-21), so each gets a second try, saying what was relaxed.
+      const tries: [boolean, boolean, string][] = [
+        [true, true, 'Nothing matched the exact name, so these are close names with those filters.'],
+        [false, false, 'Nothing matched the name with those filters, so these match the name alone.'],
+        [true, false, 'Nothing matched the exact name or those filters, so these are close names without the filters.'],
+      ]
+      for (const [loose, filtered, note] of tries) {
+        const r = search(loose, filtered)
+        if (r.total) return { total: r.total, items: r.items.map(summary), note: `${note} Use one only if it is the item the user named.` }
+      }
+      return { total: 0, items: [] }
     },
 
     async search_sets(a) {

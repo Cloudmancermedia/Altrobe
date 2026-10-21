@@ -144,6 +144,16 @@ describe('hosted tools', () => {
     expect(store.get().look.items.head).toBe(7)
   })
 
+  test("search_items finds a name the user words a little differently: 'helmet' for Helm", async () => {
+    // "Give them both the green iron helmet" searched "green iron helmet", found nothing (the item is
+    // Green Iron Helm), then "helmet", and put on Adventurer's Pith Helmet (live, 2026-10-21).
+    const { run } = setup()
+    const r = await run('search_items', { query: 'wrath helmet', slot: 'head' })
+    expect(r.json).toMatchObject({ total: 1, items: [{ itemId: 3, name: 'Wrath Helm' }], note: expect.stringMatching(/close/) })
+    // An exact match stays exact, with no note.
+    expect((await run('search_items', { query: 'wrath helm' })).json).toEqual(expect.not.objectContaining({ note: expect.anything() }))
+  })
+
   test('search_items falls back to the name alone when its filters leave nothing, and says so', async () => {
     const { run } = setup()
     const r = await run('search_items', { query: 'wrath helm', slot: 'head', armor: 'leather' })

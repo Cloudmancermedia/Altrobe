@@ -44,6 +44,12 @@ export interface ItemQuery {
   maxLevel?: number
   /** Armor types to keep: cloth, leather, mail or plate. */
   armor?: string[]
+  /**
+   * Match each word's start instead of the whole text, shortest names first: up to 4 letters of each
+   * word typed must begin a word of the name, so "green iron helmet" finds Green Iron Helm. The prompt
+   * box's second try when the exact text finds nothing; the search panel doesn't use it.
+   */
+  loose?: boolean
   /** Leave out items restricted to other classes (allowableClass bit classId - 1; -1 is any class). */
   classId?: number
   /** Weapon types to keep (sword, axe, ...). */
@@ -73,6 +79,11 @@ function asId(text: string): number | null {
 
 // string.Contains(text, StringComparison.OrdinalIgnoreCase).
 const contains = (name: string, text: string) => name.toUpperCase().includes(text.toUpperCase())
+const words = (text: string) => text.toUpperCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+const looselyMatches = (name: string, text: string) => {
+  const parts = words(name)
+  return words(text).every((w) => parts.some((p) => p.startsWith(w.slice(0, 4))))
+}
 
 function page<T>(matches: T[], limit: number | undefined, offset: number | undefined, bounds: { fallback: number; max: number }) {
   const l = Math.min(Math.max(limit ?? bounds.fallback, 1), bounds.max)
@@ -89,7 +100,7 @@ export function searchItemsIn(items: BundleItem[], query: ItemQuery): { total: n
   const id = asId(text)
   const internal = query.includeInternal ?? true
   const matches = items.filter((i) =>
-    (i.itemId === id || ((internal || !i.internal) && (query.includeUnnamed || !i.unnamed) && (text === '' || contains(i.name, text))))
+    (i.itemId === id || ((internal || !i.internal) && (query.includeUnnamed || !i.unnamed) && (text === '' || (query.loose ? looselyMatches : contains)(i.name, text))))
     && (!query.slots?.length || query.slots.includes(i.slot))
     && (!query.qualities?.length || query.qualities.includes(i.quality))
     && (query.minLevel === undefined || (i.requiredLevel != null && i.requiredLevel >= query.minLevel))
@@ -99,6 +110,7 @@ export function searchItemsIn(items: BundleItem[], query: ItemQuery): { total: n
     && (!query.weapons?.length || (i.weapon != null && query.weapons.includes(i.weapon)))
     && (!query.hands?.length || (i.hands != null && query.hands.includes(i.hands)))
     && (!query.newInForever || i.newInForever === true))
+  if (query.loose) matches.sort((a, b) => a.name.length - b.name.length)
   return { total: matches.length, items: page(matches, query.limit, query.offset, ITEM_LIMIT) }
 }
 
