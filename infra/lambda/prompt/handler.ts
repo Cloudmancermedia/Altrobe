@@ -12,7 +12,7 @@ import { parseRequest } from './validate.js'
 export const PATH = '/api/prompt'
 export const ORIGIN_HEADER = 'x-altrobe-origin'
 const IP_LIMIT = 20
-const DAILY_CAP_MICRO_USD = 10_000_000
+const DAILY_CAP_MICRO_USD = 25_000_000
 const MAX_STEPS = 8
 const TICKET_SECONDS = 120
 /** How long a day's spend total is kept after the day ends. */

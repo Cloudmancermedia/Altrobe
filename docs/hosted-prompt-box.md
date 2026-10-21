@@ -77,7 +77,7 @@ Never 403 or 404: the app distribution rewrites those to `index.html` for the br
 | 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 17), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
 | 400 | `turnstile` | The first step's Turnstile token fails Cloudflare's check |
 | 429 | `ip_limit` | This IP address has used its 20 commands today; `resetAt` says when they come back |
-| 429 | `daily_cap` | Today's spend reached the global cap ($10); `resetAt` says when the box reopens |
+| 429 | `daily_cap` | Today's spend reached the global cap ($25); `resetAt` says when the box reopens |
 | 429 | `too_many_steps` | The command passed 8 steps |
 | 503 | `disabled` | The kill switch is off; the box hides |
 | 503 | `unavailable` | The API can't reach its own storage or secrets; try again in a moment |
@@ -111,7 +111,7 @@ answers with a `busy` code.
    (a conditional write in DynamoDB), so a step can't be replayed with other tool results to buy model
    calls: a command costs at most 8 of them.
 4. **Global daily spend,** in dollars from each Bedrock call's reported token usage at Nova 2 Lite's
-   price ($0.33 per million input tokens, $2.75 per million output tokens). Checked before each step; the box closes for everyone at $10 until 13:00 UTC.
+   price ($0.33 per million input tokens, $2.75 per million output tokens). Checked before each step; the box closes for everyone at $25 until 13:00 UTC.
 5. **Kill switch:** the SSM parameter `/altrobe/prompt/switch`. When it reads `off`, every request
    answers 503 within 30 seconds (each Lambda instance caches it that long).
 6. **Lambda reserved concurrency of 5.** Requests over it are throttled before the Lambda runs, with no

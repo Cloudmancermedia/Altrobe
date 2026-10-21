@@ -326,9 +326,15 @@ describe('429 ip_limit', () => {
 })
 
 describe('429 daily_cap', () => {
-  test('closes for everyone at $10 spent today, before Turnstile, on every step, until 13:00 UTC', async () => {
+  test('stays open just under $25 spent today', async () => {
+    counters.spend.set('2026-10-19', 24_999_999)
+    bedrockReplies.push(endTurn)
+    expect((await call(first())).status).toBe(200)
+  })
+
+  test('closes for everyone at $25 spent today, before Turnstile, on every step, until 13:00 UTC', async () => {
     const { next } = await firstStep()
-    counters.spend.set('2026-10-19', 10_000_000)
+    counters.spend.set('2026-10-19', 25_000_000)
     const r = await call(first(), { ip: '203.0.113.7' })
     expectError(r, 429, 'daily_cap')
     expect(r.body.resetAt).toBe('2026-10-20T13:00:00Z')

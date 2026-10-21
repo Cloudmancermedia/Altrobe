@@ -313,7 +313,7 @@ describe('AltrobeBudget', () => {
     const t = budget()
     t.hasResourceProperties('AWS::Budgets::Budget', {
       Budget: Match.objectLike({
-        BudgetName: 'altrobe-bedrock-monthly', BudgetType: 'COST', TimeUnit: 'MONTHLY', BudgetLimit: { Amount: 100, Unit: 'USD' },
+        BudgetName: 'altrobe-bedrock-monthly', BudgetType: 'COST', TimeUnit: 'MONTHLY', BudgetLimit: { Amount: 300, Unit: 'USD' },
         FilterExpression: { Dimensions: { Key: 'SERVICE', Values: ['Amazon Bedrock'] } },
       }),
     })

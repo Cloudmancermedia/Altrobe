@@ -4,10 +4,11 @@ import { Effect, ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from '
 import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from 'aws-cdk-lib/custom-resources'
 import type { Construct } from 'constructs'
 
-// The prompt box's Bedrock backstop (docs/hosted-prompt-box.md, limit 7): $100 a month, decided by the
-// maintainer on 2026-10-18. The daily cap ($10) is the real control; this catches the cap failing, and
-// leaves room for about ten full-cap days a month before it cuts Bedrock off.
-export const BEDROCK_MONTHLY_LIMIT_USD = 100
+// The prompt box's Bedrock backstop (docs/hosted-prompt-box.md, limit 7): $300 a month for launch
+// weeks, raised with the daily cap on 2026-10-20 (it was $100 with a $10 cap). The daily cap ($25) is
+// the real control; this catches the cap failing, and leaves room for about twelve full-cap days a
+// month before it cuts Bedrock off.
+export const BEDROCK_MONTHLY_LIMIT_USD = 300
 
 export interface BudgetStackProps extends StackProps {
   /** Where the alerts go. Comes from the deploy environment, never the repository. */
