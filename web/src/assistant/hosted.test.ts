@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
-import { aiCommandNote, closedText, commandsLeft, MAX_RESULT_CHARS, MAX_STEPS, resetTimeLabel, runHostedCommand, type HostedOptions } from './hosted'
+import handler from '../../../infra/lambda/prompt/handler.ts?raw'
+import { closedText, DAILY_COMMANDS, MAX_RESULT_CHARS, MAX_STEPS, quotaText, resetTimeLabel, runHostedCommand, type HostedOptions } from './hosted'
 import type { ToolOutcome } from './hosted-tools'
 
 const RESET = '2026-10-20T13:00:00Z'
@@ -225,14 +226,6 @@ describe('runHostedCommand', () => {
   })
 })
 
-describe('aiCommandNote', () => {
-  test('says a request uses the same daily AI commands as the Ask box, with the count once known', () => {
-    expect(aiCommandNote(null)).toBe('Uses one of your daily AI commands, shared with Ask.')
-    expect(aiCommandNote({ remaining: 17, resetAt: RESET })).toBe('Uses one of your daily AI commands, shared with Ask: 17 left today.')
-    expect(aiCommandNote({ remaining: 1, resetAt: RESET })).toBe('Uses one of your daily AI commands, shared with Ask: 1 left today.')
-  })
-})
-
 describe('resetTimeLabel', () => {
   test('gives the reset time in the reader\'s time zone', () => {
     expect(resetTimeLabel(RESET, { locale: 'en-US', timeZone: 'America/New_York' })).toBe('9:00 AM')
@@ -251,8 +244,20 @@ describe('box copy', () => {
     expect(closedText('ip_limit', RESET, utc)).toBe("You've used today's free commands. More at 1:00 PM.")
   })
 
-  test('counts the commands left', () => {
-    expect(commandsLeft(19)).toBe('19 commands left today')
-    expect(commandsLeft(1)).toBe('1 command left today')
+  test('the header counts the commands left of the day\'s limit, and says when a closed box reopens', () => {
+    const utc = { locale: 'en-US', timeZone: 'UTC' }
+    expect(quotaText({ remaining: 18, resetAt: RESET }, null)).toBe('AI: 18 of 20 left today')
+    expect(quotaText({ remaining: 1, resetAt: RESET }, null)).toBe('AI: 1 of 20 left today')
+    expect(quotaText({ remaining: 3, resetAt: RESET }, { code: 'ip_limit', resetAt: RESET }, utc)).toBe("You've used today's free commands. More at 1:00 PM.")
+    expect(quotaText(null, { code: 'daily_cap', resetAt: RESET }, utc)).toBe('The free daily budget is used up; it reopens at 1:00 PM.')
+  })
+
+  test('gives the daily limit before the first command, when the count is unknown', () => {
+    expect(quotaText(null, null)).toBe('AI: 20 commands a day')
+  })
+
+  test('the daily limit matches the prompt API\'s', () => {
+    // The API sends only what's left, so the site keeps its own copy of the limit.
+    expect(handler).toMatch(new RegExp(`const IP_LIMIT = ${DAILY_COMMANDS}\\b`))
   })
 })

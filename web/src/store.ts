@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { AnimationInfo, CharactersResponse, CustomizationOption, ItemSearchResult, Status } from './api/types'
 import { emptyLook, type Look } from './look/look'
 import type { NamePair } from './identity/name-rules'
-import type { HostedResult } from './assistant/hosted'
+import type { HostedPhase, HostedResult } from './assistant/hosted'
 
 export interface ItemInfo {
   name: string
@@ -36,10 +36,14 @@ export interface AppState {
   nameIdeasNote: string | null
   /** A command for the hosted prompt box to send, from another panel; `n` changes on every request. */
   ask: { text: string; n: number; creative?: boolean } | null
-  /** The hosted prompt box's daily commands left, from its last answer; the Identity panel shows it too. */
+  /** The hosted prompt box's daily commands left, from its last answer, for the top bar's counter. */
   aiQuota: { remaining: number; resetAt: string } | null
+  /** The daily limits closed the hosted prompt box until resetAt; the top bar says when it reopens. */
+  aiClosed: { code: 'ip_limit' | 'daily_cap'; resetAt: string } | null
   /** The hosted prompt box is running a command; other AI buttons wait. */
   aiBusy: boolean
+  /** What the running command is doing and since when, and which panel asked, so that panel shows the status line. */
+  aiStatus: { from: 'ask' | 'names'; phase: HostedPhase; since: number } | null
   /** How the request `n` ended in the prompt box, with the model's reply when it finished, so the panel that asked can use it or fall back. */
   askDone: { n: number; kind: HostedResult['kind']; text?: string } | null
 }
@@ -84,7 +88,9 @@ export const initialState = (): AppState => ({
   ask: null,
   askDone: null,
   aiQuota: null,
+  aiClosed: null,
   aiBusy: false,
+  aiStatus: null,
 })
 
 const ANY_CLASS_KEY = 'altrobe.anyClass'

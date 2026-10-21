@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, clearCache, features, getCharacters, getStatus, hostedPrompt, selectInstall } from './api/client'
 import { AboutDialog } from './components/AboutDialog'
+import { AiCounter } from './components/Ai'
 import { copyrightLine, SUPPORT } from './components/footer'
 import { launchBanner } from './identity/name-rules'
 import type { CharactersResponse, ResolvedItem, Status } from './api/types'
@@ -196,6 +197,7 @@ export default function App() {
         <span className="muted small">
           {status?.active ? `${status.active.product} ${status.active.build}` : phase === 'starting' ? 'Connecting…' : 'No install'}
         </span>
+        {hostedPrompt && <AiCounter />}
         {phase === 'ready' && <SharePanel look={look} defaults={defaults} />}
       </header>
       <LaunchBanner />
