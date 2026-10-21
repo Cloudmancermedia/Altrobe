@@ -199,7 +199,10 @@ commit SHA; Dependabot keeps the pins current.
   jobs, CodeQL and dependency review), and block force pushes and deletion. Leave required approvals
   at zero: GitHub doesn't let an author approve their own pull request, and only the maintainer has
   write access, so nobody else can merge. `CODEOWNERS` still requests the maintainer's review on
-  other people's pull requests.
+  other people's pull requests. The Repository admin role may bypass the ruleset for pull requests
+  only (bypass mode "pull_request", added 2026-10-21), so a stuck or broken check (GitHub's Windows
+  runners stalled once) doesn't block a merge: `gh pr merge <n> --merge --admin`. It still can't push
+  to `main` directly. Remove the bypass once other people merge code.
 - **Code security:** turn on the dependency graph (the dependency review workflow fails without it),
   secret scanning with push protection, Dependabot alerts, Dependabot
   security updates, and private vulnerability reporting ([SECURITY.md](SECURITY.md) points reporters
