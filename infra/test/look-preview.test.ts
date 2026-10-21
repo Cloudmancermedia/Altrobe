@@ -71,6 +71,27 @@ describe('the look preview function', () => {
     expect(calls).toBeLessThan(20)
   })
 
+  test("previews the largest look the format allows: six characters, every slot, accented labels", () => {
+    // CloudFront stopped this one too, after the first fix, with "Regex execute instruction limit exceeded"
+    // (test-function, 2026-10-21): a regex over the whole link costs more the longer the link.
+    const items = Object.fromEntries(['head', 'neck', 'shoulder', 'shirt', 'chest', 'waist', 'legs', 'feet', 'wrist', 'hands', 'back', 'mainhand', 'offhand', 'ranged', 'tabard'].map((s, i) => [s, 240000 + i * 137]))
+    const custom = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [String(30000 + i), 400000 + i]))
+    const char = (race: number) => ({ race, sex: 1, models: 'hd', label: 'Ü'.repeat(40), items, hide: ['head', 'back', 'tabard'], custom })
+    const big = { ...look, items, custom, hide: ['head'], anim: 'AttackTwoHand', identity: { firstName: 'Zoë', lastName: 'Ünderhill', guild: 'Ñ'.repeat(24), titleId: 1284, level: 60, classId: 2, pvp: true },
+      compare: [2, 6, 95, 1, 4].map(char) }
+    const payload = encode(big)
+    expect(payload.length).toBeGreaterThan(4500)
+    const charCodeAt = String.prototype.charCodeAt
+    let calls = 0
+    String.prototype.charCodeAt = function (this: string, i?: number) { calls++; return charCodeAt.call(this, i) }
+    let r
+    try { r = handler(event(`/l/${payload}`)) } finally { String.prototype.charCodeAt = charCodeAt }
+    expect(meta(r.body.data, 'og:title')).toBe('Zoë Ünderhill · Level 60 Undead Paladin')
+    expect(meta(r.body.data, 'og:description')).toContain(`&lt;${'Ñ'.repeat(24)}&gt;`)
+    // Only the shown name and guild are decoded byte by byte, not the labels.
+    expect(calls).toBeLessThan(100)
+  })
+
   test('decodes UTF-8 names and a % in a label', () => {
     const r = handler(event(`/l/${encode({ ...look, identity: { firstName: 'Zoë', guild: '100% Ñoño' }, compare: [{ race: 2, sex: 0, label: '50% orc' }] })}`))
     expect(meta(r.body.data, 'og:title')).toBe('Zoë · Undead female')

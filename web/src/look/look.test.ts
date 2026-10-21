@@ -1,10 +1,12 @@
 // Ported from tools/viewer-test/look.test.mjs, plus the "compare" addition.
 import { describe, expect, test } from 'vitest'
+import preview from '../../../infra/functions/look-preview.js?raw'
 import type { ResolvedItem } from '../api/types'
 import {
   canonicalJSON, checkAgainstData, decodeLook, defaultsFrom, dressStateFor, encodeLook, lookFromFragment,
-  MAX_GUILD, MAX_NAME, normalizeLook, shareUrl, previewUrl, lookFromLocation, type Look,
+  emptyLook, MAX_COMPARE, MAX_GUILD, MAX_LABEL, MAX_LEVEL, MAX_NAME, normalizeLook, shareUrl, previewUrl, lookFromLocation, type Look,
 } from './look'
+import { SLOT_ORDER, type SlotName } from '../viewer/dress'
 
 const outfitA = {
   v: 1, game: 'forever', build: '1.60.1.70009', models: 'hd', race: 2, sex: 0,
@@ -269,5 +271,24 @@ describe('preview links', () => {
     expect(lookFromLocation({ hash: `#look=${encodeLook(a)}`, pathname: `/l/${encodeLook(b)}` })?.look).toEqual(a)
     expect(lookFromLocation({ hash: '', pathname: `/l/${encodeLook(b)}/` })?.look).toEqual(b)
     expect(lookFromLocation({ hash: '', pathname: '/' })).toBeNull()
+  })
+})
+
+describe('share link length', () => {
+  // The guard against creep: every field a feature adds to the look makes every share link longer. The
+  // preview function (infra/functions/look-preview.js) reads looks up to MAX_LOOK characters, and CloudFront
+  // refuses URLs over 8,192 bytes. If this fails, make the format shorter instead of raising the cap.
+  test('the largest look the format allows stays under the preview function\'s cap', () => {
+    const max = Number(/var MAX_LOOK = (\d+)/.exec(preview)?.[1])
+    expect(max).toBeGreaterThan(0)
+    const items = Object.fromEntries(SLOT_ORDER.map((s, i) => [s, 240000 + i * 137]))
+    const custom = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [String(30000 + i), 400000 + i]))
+    const hide = ['head', 'back', 'tabard'] as SlotName[]
+    const char = (race: number) => ({ race, sex: 1 as const, models: 'hd' as const, label: 'Ü'.repeat(MAX_LABEL), items, hide, custom })
+    const look: Look = { ...emptyLook(5, 1),  items, hide, custom, anim: 'AttackTwoHand',
+      identity: { firstName: 'Ü'.repeat(12), lastName: 'Ü'.repeat(12), guild: 'Ü'.repeat(MAX_GUILD), titleId: 1284, level: MAX_LEVEL, classId: 2, pvp: true },
+      compare: [2, 6, 95, 1, 4].slice(0, MAX_COMPARE).map(char) }
+    const payload = encodeLook(look)
+    expect(payload.length).toBeLessThanOrEqual(max)
   })
 })
