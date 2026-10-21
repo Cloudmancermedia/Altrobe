@@ -151,7 +151,9 @@ button.link { background: none; border: none; padding: 0 2px; color: var(--muted
   .share { flex-wrap: wrap; }
   .share-link { display: none; }
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
-  .layout > .doll { order: 1; height: 60vh; min-height: 400px; }
+  /* At least 60% of the screen, but as tall as its slots, weapons and Clear buttons need: on a short phone
+     (iPhone at 393x659) a fixed height let the Clear row spill over the Find and Character tabs. */
+  .layout > .doll { order: 1; height: auto; min-height: max(400px, 60vh); }
   .side { overflow: visible; }
   .layout > .panel-tabs { display: flex; order: 2; margin: 10px 12px 0; }
   .side.right, .side.left { order: 3; }
