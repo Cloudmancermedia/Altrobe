@@ -3,6 +3,9 @@ import type { Features } from '../api/backend'
 const REPO = 'https://github.com/Cloudmancermedia/altrobe'
 
 /** Support for the project: the footer and the About dialog both show it on its own. */
+/** Under the name in the top bar: what the site is, for a first-time visitor. */
+export const TAGLINE = 'WoW: Forever model viewer and character planner'
+
 export const SUPPORT = { label: 'Buy me a coffee', href: 'https://buymeacoffee.com/cloudmancer' }
 
 export interface AboutLink { label: string; href: string; note?: string }

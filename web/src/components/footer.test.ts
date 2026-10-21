@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT } from './footer'
+import { aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT, TAGLINE } from './footer'
 
 const LOCAL_APP = 'Download the local app'
 
@@ -41,5 +41,11 @@ describe('PROMPT_PRIVACY', () => {
     expect(PROMPT_PRIVACY).toContain('hashed form of your IP address for one day')
     expect(PROMPT_PRIVACY).toContain('Cloudflare Turnstile')
     expect(PROMPT_PRIVACY).not.toMatch(/[\u2014\u2018\u2019\u201c\u201d]/)
+  })
+})
+
+describe('TAGLINE', () => {
+  test('says under the name what the site is, for the game it is for', () => {
+    expect(TAGLINE).toBe('WoW: Forever model viewer and character planner')
   })
 })

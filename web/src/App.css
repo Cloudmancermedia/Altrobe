@@ -1,6 +1,8 @@
 .app { display: flex; flex-direction: column; height: 100%; }
 
 .topbar { display: flex; align-items: center; gap: 14px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
+/* The name with the tagline under it. */
+.brand { display: flex; flex-direction: column; line-height: 1.15; }
 .share { display: flex; gap: 6px; margin-left: auto; align-items: center; min-width: 0; }
 .share-link { width: 260px; font: 11px ui-monospace, monospace; color: var(--muted); }
 

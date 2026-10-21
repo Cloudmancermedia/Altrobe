@@ -55,9 +55,16 @@ describe('the suggest command', () => {
 })
 
 describe('the launch banner', () => {
-  test('gives the launch and reservation dates until launch day ends in Pacific time (08:00 UTC on November 5)', () => {
-    expect(launchBanner(new Date('2026-10-19T12:00:00Z'))).toBe('WoW Forever goes live on November 4, and name reservation runs October 27 to November 3, Pacific time.')
-    expect(launchBanner(new Date('2026-11-05T07:59:59Z'))).not.toBeNull()
+  test('gives the reservation and launch times, as Blizzard announced them, until launch day ends in Pacific time (08:00 UTC on November 5)', () => {
+    const launch = 'WoW Forever launches worldwide November 4 at 3 p.m. PST.'
+    expect(launchBanner(new Date('2026-10-19T12:00:00Z'))).toBe(`Name reservation opens October 27 at 1 p.m. PDT in North America and 18:00 CET in Europe. ${launch}`)
+    // North America's reservation opens at 20:00 UTC (1 p.m. PDT), Europe's three hours earlier.
+    expect(launchBanner(new Date('2026-10-27T19:59:59Z'))).toMatch(/^Name reservation opens/)
+    expect(launchBanner(new Date('2026-10-27T20:00:00Z'))).toBe(`Name reservation is open through November 3. ${launch}`)
+    expect(launchBanner(new Date('2026-11-04T22:59:59Z'))).toBe(`Name reservation is open through November 3. ${launch}`)
+    // Launch is 23:00 UTC (3 p.m. PST).
+    expect(launchBanner(new Date('2026-11-04T23:00:00Z'))).toBe('WoW Forever is live.')
+    expect(launchBanner(new Date('2026-11-05T07:59:59Z'))).toBe('WoW Forever is live.')
     expect(launchBanner(new Date('2026-11-05T08:00:00Z'))).toBeNull()
   })
 })
