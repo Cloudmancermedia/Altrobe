@@ -203,6 +203,44 @@ describe('hosted tools', () => {
     expect([look.race, look.sex, look.identity?.firstName]).toEqual([2, 0, 'Morgwyn'])
   })
 
+  test('start answers with the races, so the model needs no list_characters step', async () => {
+    const { run } = setup()
+    expect((await run('start', { new_look: true })).json).toMatchObject({ races: [{ race: 2, name: 'Orc', classes: ['Warrior'] }, { race: 5, name: 'Undead' }] })
+  })
+
+  test("equip_item puts an item in its own slot whatever slot the model names", async () => {
+    // The model put a hunter's Balanced Long Bow in the main hand, and the app dropped it (2026-10-21).
+    const { run, store } = setup()
+    expect((await run('equip_item', { slot: 'chest', itemId: 1 })).status).toBe('success')
+    expect(store.get().look.items).toEqual({ head: 1 })
+  })
+
+  test('compare dresses a side-by-side character for a level and class in the same call', async () => {
+    // With no way to dress the character beside the main one, the model spent a dozen steps equipping items
+    // that only ever reached the main character (2026-10-21).
+    const { run, store } = setup()
+    const r = await run('compare', { characters: [{ race: 5, sex: 1, level: 22, class: 'Warrior' }] })
+    expect(r.status).toBe('success')
+    expect(store.get().look.compare[0].items).toMatchObject({ head: 7 })
+    expect(store.get().look.items).toEqual({})
+  })
+
+  test('after a fresh start, compare without a set_character makes the first character the main one', async () => {
+    // "compare an undead and an orc warlock" put both beside the leftover main character: three (2026-10-21).
+    const { run, store, command } = setup()
+    await run('start', { new_look: true })
+    const r = await run('compare', { characters: [{ race: 5, sex: 1, level: 22, class: 'Warrior' }, { race: 2, sex: 0 }] })
+    expect(r.json).toMatchObject({ note: expect.stringMatching(/main character/) })
+    const look = store.get().look
+    expect([look.race, look.sex, look.items.head]).toEqual([5, 1, 7])
+    expect(look.compare.map((c) => c.race)).toEqual([2])
+    // Without a fresh start, the main character stays.
+    command.n = 2
+    await run('start', { new_look: false })
+    await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 3 } }] })
+    expect(store.get().look.race).toBe(5)
+  })
+
   test('build_outfit with nothing to wear changes nothing', async () => {
     const { run, store } = setup()
     const r = await run('build_outfit', { level: 1 })
@@ -392,7 +430,8 @@ describe('hosted tools', () => {
 
   test('errors and tools outside the hosted list come back as errors', async () => {
     const { run } = setup()
-    expect(await run('equip_item', { slot: 'nose', itemId: 1 })).toMatchObject({ status: 'error', json: { error: 'unknown slot "nose"' } })
+    // An item not in the catalog keeps the slot it was given, so a made-up slot is still an error.
+    expect(await run('equip_item', { slot: 'nose', itemId: 999 })).toMatchObject({ status: 'error', json: { error: 'unknown slot "nose"' } })
     expect(await run('share_link', {})).toMatchObject({ status: 'error', json: { error: expect.stringContaining('share_link') } })
     expect(await run('toString', {})).toMatchObject({ status: 'error' })
   })

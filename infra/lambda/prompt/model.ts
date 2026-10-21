@@ -1,5 +1,5 @@
 import { ConverseCommand, type ConverseCommandOutput, type Message } from '@aws-sdk/client-bedrock-runtime'
-import { SYSTEM, TOOLS } from './instructions.js'
+import { SYSTEM, LATER_TOOLS, TOOLS } from './instructions.js'
 
 /** Nova 2 Lite through the US cross-region inference profile. */
 export const MODEL_ID = 'us.amazon.nova-2-lite-v1:0'
@@ -43,7 +43,7 @@ export function converse(bedrock: Bedrock, messages: unknown[], creative = false
     modelId: MODEL_ID,
     system: [{ text: SYSTEM }],
     messages: messages as Message[],
-    ...(tools ? { toolConfig: { tools: TOOLS, ...(start ? { toolChoice: { tool: { name: 'start' } } } : {}) } } : {}),
+    ...(tools ? { toolConfig: start ? { tools: TOOLS, toolChoice: { tool: { name: 'start' } } } : { tools: LATER_TOOLS } } : {}),
     inferenceConfig: { maxTokens: 600, temperature: creative ? NAME_TEMPERATURE : 0 },
   }))
 }

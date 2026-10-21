@@ -1,7 +1,7 @@
 // Request checks from docs/hosted-prompt-box.md. Everything here answers 400 bad_request.
 export const MAX_BODY_BYTES = 64 * 1024
-// The typed text, then a model message and its tool results for each of up to 9 steps after the first.
-export const MAX_MESSAGES = 19
+// The typed text, then a model message and its tool results for each of up to 12 steps after the first.
+export const MAX_MESSAGES = 25
 export const MAX_TEXT = 500
 const MAX_TOKEN = 2048
 
