@@ -239,7 +239,8 @@ describe('hosted tools', () => {
 
   test('compare replaces the characters beside the main one and names the ones it removed; add keeps them', async () => {
     const { run, store } = setup()
-    await run('compare', { characters: [{ race: 2, sex: 0 }] })
+    // An Orc in its own helmet: the main character is an Orc too, so one in the same outfit would be a copy.
+    await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 3 } }] })
     const added = await run('compare', { add: true, characters: [{ race: 5, sex: 1 }] })
     expect(store.get().look.compare.map((c) => c.race)).toEqual([2, 5])
     expect(added.json.removed).toBeUndefined()
@@ -267,12 +268,26 @@ describe('hosted tools', () => {
     expect((await run('equip_set', { setId: 217 })).status).toBe('error')
   })
 
-  test('a second set_character in one command reminds the model to use compare for several races', async () => {
-    const { run, command } = setup()
-    expect((await run('set_character', { race: 5, sex: 1 })).json.note).toBeUndefined()
-    expect((await run('set_character', { race: 2, sex: 0 })).json.note).toMatch(/compare.*setId/)
+  test('a second set_character in one command is refused, so the first race named stays the main character', async () => {
+    // "an orc warrior and an undead warrior side by side" switched the main character to Orc, then to
+    // Undead, then put both beside it: three characters (live, 2026-10-21).
+    const { run, store, command } = setup()
+    expect((await run('set_character', { race: 5, sex: 1 })).status).toBe('success')
+    expect(await run('set_character', { race: 2, sex: 0 })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/compare/) } })
+    expect(store.get().look.race).toBe(5)
     command.n = 2
-    expect((await run('set_character', { race: 5, sex: 1 })).json.note).toBeUndefined()
+    expect((await run('set_character', { race: 2, sex: 0 })).status).toBe('success')
+  })
+
+  test('compare leaves out a copy of the main character: same race, sex and outfit', async () => {
+    const { run, store } = setup()
+    await run('equip_item', { slot: 'head', itemId: 1 })
+    const r = await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 1 } }, { race: 5, sex: 1 }, { race: 2, sex: 0 }] })
+    expect(store.get().look.compare.map((c) => c.race)).toEqual([5])
+    expect(r.json).toMatchObject({ note: expect.stringMatching(/main character/) })
+    // The same race in another outfit is a real comparison and stays.
+    await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 3 } }] })
+    expect(store.get().look.compare.map((c) => c.race)).toEqual([2])
   })
 
   test('suggest_names refuses famous Warcraft names', async () => {
