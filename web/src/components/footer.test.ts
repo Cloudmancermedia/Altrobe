@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { ANALYTICS_PRIVACY, aboutLinks, copyrightLine, PROMPT_PRIVACY, SUPPORT, TAGLINE } from './footer'
+import { ANALYTICS_PRIVACY, aboutLinks, copyrightLine, gameDataLine, PROMPT_PRIVACY, SUPPORT, TAGLINE } from './footer'
 
 const LOCAL_APP = 'Download the local app'
 
@@ -57,5 +57,13 @@ describe('ANALYTICS_PRIVACY', () => {
     // (developers.cloudflare.com/web-analytics/about/, read 2026-10-21).
     expect(ANALYTICS_PRIVACY).toContain("doesn't collect personal data")
     expect(ANALYTICS_PRIVACY).not.toMatch(/[\u2014\u2018\u2019\u201c\u201d]/)
+  })
+})
+
+describe('gameDataLine', () => {
+  test('names the game build the app reads, in the footer, or says why there is none yet', () => {
+    expect(gameDataLine({ product: 'wow_classic_beta', build: '1.60.1.70450' }, 'ready')).toBe('Game data: wow_classic_beta 1.60.1.70450')
+    expect(gameDataLine(undefined, 'starting')).toBe('Connecting…')
+    expect(gameDataLine(undefined, 'no-install')).toBe('No install')
   })
 })
