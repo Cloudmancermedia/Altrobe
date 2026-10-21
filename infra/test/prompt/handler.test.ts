@@ -139,6 +139,8 @@ describe('a command', () => {
     bedrockReplies.push(endTurn)
     await call(next)
     expect((bedrockCalls[1] as Record<string, any>).toolConfig.toolChoice).toBeUndefined()
+    // Offered on later steps, the model called start again, up to three times a command (live logs, 2026-10-21).
+    expect((bedrockCalls[1] as Record<string, any>).toolConfig.tools.map((t: any) => t.toolSpec.name)).not.toContain('start')
   })
 
   test("a name request (creative) doesn't call start: it doesn't change the look", async () => {
@@ -178,18 +180,18 @@ describe('a command', () => {
     expect((bedrockCalls[1] as { messages: unknown[] }).messages).toHaveLength(3)
   })
 
-  test('a whole command can take nine steps, start among them; the tenth is refused with 429 too_many_steps', async () => {
+  test('a whole command can take twelve steps, start among them; the thirteenth is refused with 429 too_many_steps', async () => {
     let { next } = await firstStep()
-    for (let step = 2; step <= 9; step++) {
+    for (let step = 2; step <= 12; step++) {
       bedrockReplies.push(() => toolTurn(`t${step}`))
       const r = await call(next)
       expect(r.status).toBe(200)
       const results = { role: 'user', content: [{ toolResult: { toolUseId: `t${step}`, content: [{ text: 'ok' }] } }] }
       next = { messages: [...next.messages, r.body.message, results], ticket: r.body.ticket }
     }
-    expect(next.messages).toHaveLength(19)
+    expect(next.messages).toHaveLength(25)
     expectError(await call(next), 429, 'too_many_steps')
-    expect(bedrockCalls).toHaveLength(9)
+    expect(bedrockCalls).toHaveLength(12)
   })
 })
 

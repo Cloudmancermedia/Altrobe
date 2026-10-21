@@ -92,10 +92,12 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
   let foundSets = new Set<number>()
   // Slots equip_item filled in the running command: build_outfit leaves them, so a named item survives it.
   let namedSlots = new Set<string>()
+  // Whether start cleared the screen in the running command.
+  let freshStart = false
   // The command of the tool call running now (runHostedCommand numbers them).
   let current: number | undefined
   const forCommand = () => {
-    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set(); namedSlots = new Set() }
+    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set(); namedSlots = new Set(); freshStart = false }
   }
   const callCount = (name: string) => {
     forCommand()
@@ -115,13 +117,17 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     // race, customization and name stay, for the model to change if asked.
     async start(a) {
       const fresh = a.new_look === true
+      forCommand()
+      freshStart = fresh
       if (fresh) {
         // clear_all isn't on the remote command channel; it takes off the gear, the animation and the
         // side-by-side characters.
         deps.cmd.clear_all()
         await deps.settle?.()
       }
-      return { new_look: fresh, look: await command('get_look', {}) }
+      // The races come with it: the model called list_characters for their IDs on most commands.
+      const races = (store.get().characters?.races ?? []).map((r) => ({ race: r.race, name: r.name, classes: r.classes.map((c) => c.name) }))
+      return { new_look: fresh, races, look: await command('get_look', {}) }
     },
     async search_items(a) {
       const armor = list(a.armor, ARMOR_TYPES, 'armor type')
@@ -307,6 +313,9 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     },
     list_animations: () => command('list_animations', {}),
     async equip_item(a) {
+      // An item goes in its own slot: the model put a bow in the main hand, and the app dropped it.
+      const own = (await deps.catalog()).find((i) => i.itemId === int(a.itemId))?.slot
+      if (own) a = { ...a, slot: own }
       const r = await command('equip_item', { slot: a.slot, itemId: int(a.itemId) })
       forCommand()
       if (typeof a.slot === 'string') namedSlots.add(a.slot.toLowerCase())
@@ -331,13 +340,40 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       for (const c of characters) if (c?.setId !== undefined) checkFound(c.setId)
       // A set by ID saves the model copying each piece's item ID; its own items go on top.
       const all = characters.some((c) => c?.setId !== undefined) ? await deps.sets() : []
-      const list = characters.map((c) => {
+      // A level (and class) dresses the character in that outfit, by build_outfit's rules: the model had no
+      // way to dress a side-by-side character and spent its steps equipping the main one (2026-10-21).
+      const catalog = characters.some((c) => c?.level !== undefined) ? await deps.catalog() : []
+      const dressed = characters.map((c) => {
+        const level = int(c?.level)
+        if (level === undefined) return c
+        if (level < 1 || level > 60) throw new ToolError('level must be 1 to 60.')
+        const cls = typeof c.class === 'string' && c.class.trim() ? c.class : undefined
+        const armor = cls ? armorFor(cls, level) : undefined
+        if (cls && !armor) throw new ToolError(`Unknown class "${c.class}". Use one of: ${CLASS_NAMES.join(', ')}.`)
+        const outfit = buildOutfit(catalog, { level, armor, className: cls })
+        const { level: _l, class: _c, ...rest } = c
+        return { ...rest, items: { ...Object.fromEntries(Object.entries(outfit.items).map(([slot, i]) => [slot, i.itemId])), ...(c.items as object ?? {}) } }
+      })
+      let list = dressed.map((c) => {
         if (c?.setId === undefined) return c
         const set = all.find((s) => s.setId === int(c.setId))
         if (!set || !set.pieces.length) throw new ToolError(`Set ${c.setId} is not in the catalog, or has no piece that can be shown. Use search_sets to find a set ID.`)
         const { setId: _, ...rest } = c
         return { ...rest, items: { ...Object.fromEntries(set.pieces.map((p) => [p.slot, p.item.itemId])), ...(c.items as object ?? {}) } }
       })
+      // After a fresh start the main character is a leftover, so the first character named becomes it, as the
+      // instructions ask: "compare an undead and an orc warlock" had put both beside it (2026-10-21).
+      forCommand()
+      let promoted = false
+      if (freshStart && !calls.set_character && list.length) {
+        const [first, ...others] = list
+        callCount('set_character')
+        await command('set_character', { race: int(first?.race), sex: int(first?.sex) })
+        const own = first?.items as Record<string, unknown> | undefined
+        if (own && Object.keys(own).length) await command('equip_items', { items: Object.entries(own).map(([slot, itemId]) => ({ slot, itemId: int(itemId) })) })
+        list = others
+        promoted = true
+      }
       // A copy of the main character (same race, sex and outfit) shows the same look twice, so it's left out.
       const main = store.get().look
       const sameItems = (items: unknown) => {
@@ -349,7 +385,8 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       const copies = list.length - others.length
       const before = main.compare
       const r = await command('compare', { characters: a.add === true ? [...before, ...others] : others })
-      const notes = copies ? [`Left out ${copies === 1 ? 'a copy' : `${copies} copies`} of the main character: it already shows. Pass compare only the other characters.`] : []
+      const notes = promoted ? ['The first character became the main character; the others stand beside it.'] : []
+      if (copies) notes.push(`Left out ${copies === 1 ? 'a copy' : `${copies} copies`} of the main character: it already shows. Pass compare only the other characters.`)
       // A replaced lineup is easy to miss when the user asked to add one (benchmarked 2026-10-20).
       const kept = named(store.get().look.compare)
       const removed = a.add === true ? [] : named(before).filter((n) => !kept.includes(n))

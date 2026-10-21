@@ -13,8 +13,8 @@ export const PATH = '/api/prompt'
 export const ORIGIN_HEADER = 'x-altrobe-origin'
 const IP_LIMIT = 20
 const DAILY_CAP_MICRO_USD = 25_000_000
-// Eight steps of work, plus start.
-const MAX_STEPS = 9
+// Eleven steps of work, plus start. Nine ran out on ordinary commands (2026-10-21).
+const MAX_STEPS = 12
 const TICKET_SECONDS = 120
 /** How long a day's spend total is kept after the day ends. */
 const SPEND_KEPT_SECONDS = 7 * 86_400

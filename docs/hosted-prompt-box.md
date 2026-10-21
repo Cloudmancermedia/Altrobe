@@ -13,7 +13,7 @@ Prompt Box Spec; this file is the contract between the two halves:
 
 ## `POST /api/prompt`
 
-One request is one model step. A command takes one to nine steps. The first step of a command that may change the look (not a name request) makes the model call `start` (Bedrock `toolChoice`), saying whether the request is a new look; the browser then clears the gear, the animation and the side-by-side characters before anything else, keeping the race, customization and name. Without it, the last command's characters lingered: "compare an undead and an orc warlock" then "an orc warrior" showed two Orcs.
+One request is one model step. A command takes one to twelve steps (about four or five in practice). The first step of a command that may change the look (not a name request) makes the model call `start` (Bedrock `toolChoice`), saying whether the request is a new look; the browser then clears the gear, the animation and the side-by-side characters before anything else, keeping the race, customization and name. Without it, the last command's characters lingered: "compare an undead and an orc warlock" then "an orc warrior" showed two Orcs.
 
 ### Request
 
@@ -74,11 +74,11 @@ Never 403 or 404: the app distribution rewrites those to `index.html` for the br
 
 | Status | `error` | When |
 | --- | --- | --- |
-| 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 19), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
+| 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 25), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
 | 400 | `turnstile` | The first step's Turnstile token fails Cloudflare's check |
 | 429 | `ip_limit` | This IP address has used its 20 commands today; `resetAt` says when they come back |
 | 429 | `daily_cap` | Today's spend reached the global cap ($25); `resetAt` says when the box reopens |
-| 429 | `too_many_steps` | The command passed 9 steps |
+| 429 | `too_many_steps` | The command passed 12 steps |
 | 503 | `disabled` | The kill switch is off; the box hides |
 | 503 | `unavailable` | The API can't reach its own storage or secrets; try again in a moment |
 | 502 | `model` | Bedrock failed |
@@ -109,7 +109,7 @@ answers with a `busy` code.
    the step number, an expiry 2 minutes out, the commands left, and a hash of the conversation so far. A step with a missing, expired or mismatched ticket
    is refused, so the limits can't be skipped by starting mid-conversation. Each ticket works once
    (a conditional write in DynamoDB), so a step can't be replayed with other tool results to buy model
-   calls: a command costs at most 9 of them.
+   calls: a command costs at most 12 of them.
 4. **Global daily spend,** in dollars from each Bedrock call's reported token usage at Nova 2 Lite's
    price ($0.33 per million input tokens, $2.75 per million output tokens). Checked before each step; the box closes for everyone at $25 until 13:00 UTC.
 5. **Kill switch:** the SSM parameter `/altrobe/prompt/switch`. When it reads `off`, every request
@@ -130,7 +130,7 @@ The API defines the tools and the instructions; the website runs the tools. Name
 
 | Tool | Input | Runs on |
 | --- | --- | --- |
-| `start` | `new_look` | with `new_look`, `commands.clear_all`; then `get_look` |
+| `start` | `new_look` | with `new_look`, `commands.clear_all`; then the races and `get_look`. Offered on the first step only |
 | `search_items` | `query`, `slot`, `quality`, `min_level`, `max_level`, `armor`, `weapon`, `hands`, `new_in_forever`, `limit` | the static catalog |
 | `search_sets` | `query`, `limit` | the static sets |
 | `equip_set` | `setId`, `replace` | the set's pieces, then `equip_items` |
@@ -151,7 +151,7 @@ The API defines the tools and the instructions; the website runs the tools. Name
 | `set_view` | `view` (`front`, `side`, `back` or `head`) | `commands.set_view` |
 | `suggest_names` | `names`: up to 8 of `{ firstName, lastName }` | the name check, the name lists and the famous names, then the first 5 that pass join the Identity panel's suggestions; the look doesn't change |
 
-`compare` takes a whole set by `setId`, so the model doesn't copy each piece's item ID; `items` go on top of it. It replaces the characters beside the main one unless `add` is true, and when it replaces some it names them, so a model that meant to add one can call it again. `set_character` names the characters still beside the main one, so a model told "just show a Gnome" clears them. `equip_set` and `compare` take only a set ID that `search_sets` returned in the same command, since the model otherwise guesses set IDs from the tier list. The instructions tell the model that the races a prompt names are the whole lineup, the first one named being the main character, unless the prompt refers to the characters already shown ("add", "them"). `set_identity` finds a title by its wording among the race's faction's titles, and an empty string clears a name or the guild. `set_customization` by name saves the model a listing step; colors have no names, so those still go by ID. `suggest_names` sends back the pairs that fail the name check (`web/src/identity/name-rules.ts`), use a name already in the name lists or the batch, or use a famous Warcraft name (`web/src/identity/famous-names.ts`), so the model can replace them. A pair already showing that the model sends again is left as it is, and `shown` counts every name showing. The first `suggest_names` call of each command starts the suggestions over, and a command gets three calls: the model ignores "do this once" in the instructions, so the tool refuses a fourth. For the same reason, a second `set_character` in one command is refused with a reminder to add other races with `compare`, so the first race named stays the main character, and `compare` leaves out a copy of the main character (same race, sex and outfit) and says so: "an orc and an undead side by side" had switched the main character twice and added both races beside it.
+`compare` takes a whole set by `setId`, so the model doesn't copy each piece's item ID; `items` go on top of it. A `level` (and `class`) dresses a side-by-side character as `build_outfit` would, since the other tools only dress the main character. After a fresh start, a `compare` with no `set_character` before it makes the first character the main one. `equip_item` puts an item in its own catalog slot, whatever slot the model names. These came from live logs on 2026-10-21, where commands ran out of steps: the model called `start` again, called `list_characters` for IDs it had, re-equipped what `build_outfit` had equipped, and tried to dress side-by-side characters one `equip_item` at a time. It replaces the characters beside the main one unless `add` is true, and when it replaces some it names them, so a model that meant to add one can call it again. `set_character` names the characters still beside the main one, so a model told "just show a Gnome" clears them. `equip_set` and `compare` take only a set ID that `search_sets` returned in the same command, since the model otherwise guesses set IDs from the tier list. The instructions tell the model that the races a prompt names are the whole lineup, the first one named being the main character, unless the prompt refers to the characters already shown ("add", "them"). `set_identity` finds a title by its wording among the race's faction's titles, and an empty string clears a name or the guild. `set_customization` by name saves the model a listing step; colors have no names, so those still go by ID. `suggest_names` sends back the pairs that fail the name check (`web/src/identity/name-rules.ts`), use a name already in the name lists or the batch, or use a famous Warcraft name (`web/src/identity/famous-names.ts`), so the model can replace them. A pair already showing that the model sends again is left as it is, and `shown` counts every name showing. The first `suggest_names` call of each command starts the suggestions over, and a command gets three calls: the model ignores "do this once" in the instructions, so the tool refuses a fourth. For the same reason, a second `set_character` in one command is refused with a reminder to add other races with `compare`, so the first race named stays the main character, and `compare` leaves out a copy of the main character (same race, sex and outfit) and says so: "an orc and an undead side by side" had switched the main character twice and added both races beside it.
 
 ### Names
 
