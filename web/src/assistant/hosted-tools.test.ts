@@ -241,6 +241,18 @@ describe('hosted tools', () => {
     expect(store.get().look.race).toBe(5)
   })
 
+  test('equip_set and compare take a class and tier instead of a set ID, with no search first', async () => {
+    // "tier 2 priest on a Troll next to a Gnome mage in tier 2" guessed set 212 (Nemesis Raiment) for the
+    // mage, then searched the T2.5 set: the model reads the tier list one off (2026-10-21).
+    const { run, store } = setup()
+    expect((await run('equip_set', { class: 'Warrior', tier: 'T2' })).status).toBe('success')
+    expect(store.get().look.items).toMatchObject({ head: 3, legs: 4 })
+    expect((await run('compare', { characters: [{ race: 5, sex: 1, class: 'Paladin', tier: 'tier 2' }] })).status).toBe('success')
+    expect(store.get().look.compare[0].items).toMatchObject({ head: 1, chest: 2 })
+    expect(await run('equip_set', { class: 'Warrior', tier: 'T9' })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/T2\.5/) } })
+    expect(await run('equip_set', { class: 'Bard', tier: 'T2' })).toMatchObject({ status: 'error' })
+  })
+
   test('build_outfit with nothing to wear changes nothing', async () => {
     const { run, store } = setup()
     const r = await run('build_outfit', { level: 1 })
