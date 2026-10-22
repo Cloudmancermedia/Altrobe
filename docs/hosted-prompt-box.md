@@ -42,7 +42,7 @@ One request is one model step. A command takes one to twelve steps (about four o
   no tools, so it can only reply in text (at most 200 characters, like any reply). Such a command ends in
   one step, so a later step with `tools: false` is a `bad_request`, as is any value other than `false`.
 - `ticket`: required on every later step: the value the previous step's response returned. Each
-  ticket is good for the next step only, for two minutes, from the same IP address (the same /64 for
+  ticket is good for the next step only, for ten minutes, from the same IP address (the same /64 for
   IPv6), and only for the conversation it was issued with: the messages before the last one must be
   exactly those of the previous request plus the `message` it returned.
 
@@ -108,7 +108,7 @@ answers with a `busy` code.
    refuses requests without it, so nobody can reach the API directly with a made-up address. The raw
    IP address is never stored or logged.
 3. **The ticket** ties later steps to a counted first step: an HMAC of the command ID, the hashed IP,
-   the step number, an expiry 2 minutes out, the steps left, and a hash of the conversation so far. A step with a missing, expired or mismatched ticket
+   the step number, an expiry 10 minutes out, the steps left, and a hash of the conversation so far. A step with a missing, expired or mismatched ticket
    is refused, so the limits can't be skipped by starting mid-conversation. Each ticket works once
    (a conditional write in DynamoDB), so a step can't be replayed with other tool results to buy model
    calls: a command costs at most 12 of them.

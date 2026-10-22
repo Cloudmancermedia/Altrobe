@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import type { CharactersResponse } from './api/types'
 import { createCommands } from './commands'
-import { runRemoteCommand } from './session'
+import { runRemoteCommand, waitForDrawn } from './session'
 import { createStore, initialState } from './store'
 
 const characters: CharactersResponse = {
@@ -113,5 +113,24 @@ describe('runRemoteCommand', () => {
     const { run } = setup()
     const r = await run('share_link')
     expect((r.result as { link: string }).link).toMatch(/^http:\/\/app\.test\/#look=/)
+  })
+})
+
+describe('waitForDrawn', () => {
+  test("doesn't stall where animation frames never come, as in a background tab", async () => {
+    // Browsers pause requestAnimationFrame in background tabs, and a command's next step waited on it
+    // until its ticket expired (2026-10-21).
+    const g = globalThis as Record<string, unknown>
+    const saved = { raf: g.requestAnimationFrame, doc: g.document }
+    g.requestAnimationFrame = () => 0
+    g.document = { querySelectorAll: () => [{ dataset: { state: 'ready' } }] }
+    try {
+      const t0 = Date.now()
+      expect(await waitForDrawn(1_000)).toBe(true)
+      expect(Date.now() - t0).toBeLessThan(1_000)
+    } finally {
+      g.requestAnimationFrame = saved.raf
+      g.document = saved.doc
+    }
   })
 })

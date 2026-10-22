@@ -50,7 +50,9 @@ const num = (a: Args, k: string) => a[k] as number
  * notices belong to the change it made. Resolves false after `timeoutMs` without throwing.
  */
 export async function waitForDrawn(timeoutMs = 15_000): Promise<boolean> {
-  const frame = () => new Promise((r) => requestAnimationFrame(r))
+  // Browsers pause animation frames in a background tab, so each wait also ends after 100 ms: a prompt-box
+  // command waited here until its next step's ticket expired (2026-10-21).
+  const frame = () => new Promise((r) => { requestAnimationFrame(r); setTimeout(r, 100) })
   // Two frames let React commit the change, which puts the changed characters back in "loading".
   await frame(); await frame()
   const end = performance.now() + timeoutMs

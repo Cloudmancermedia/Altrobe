@@ -240,9 +240,17 @@ describe('400 bad_request', () => {
     const { next } = await firstStep()
     expectError(await call({ messages: next.messages }), 400, 'bad_request')
     expectError(await call(next, { ip: '203.0.113.7' }), 400, 'bad_request')
-    clock = new Date(clock.getTime() + 121_000)
+    clock = new Date(clock.getTime() + 601_000)
     expectError(await call(next), 400, 'bad_request')
     expect(bedrockCalls).toHaveLength(1)
+  })
+
+  test('a ticket lasts ten minutes, so a step from a tab left in the background still goes through', async () => {
+    // A later step came 2 minutes 4 seconds after the first and failed on a 2-minute ticket (2026-10-21).
+    const { next } = await firstStep()
+    clock = new Date(clock.getTime() + 124_000)
+    bedrockReplies.push(endTurn)
+    expect((await call(next)).status).toBe(200)
   })
 
   test('a ticket for a different conversation', async () => {

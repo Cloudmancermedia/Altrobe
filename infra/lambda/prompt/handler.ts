@@ -17,7 +17,9 @@ export const DAILY_STEPS = 100
 const DAILY_CAP_MICRO_USD = 25_000_000
 // Eleven steps of work, plus start. Nine ran out on ordinary commands (2026-10-21).
 const MAX_STEPS = 12
-const TICKET_SECONDS = 120
+// Each ticket works once, so a long window costs nothing: a step from a tab left in the background came after
+// 2 minutes 4 seconds and failed on a 2-minute ticket (2026-10-21).
+const TICKET_SECONDS = 600
 /** How long a day's spend total is kept after the day ends. */
 const SPEND_KEPT_SECONDS = 7 * 86_400
 
