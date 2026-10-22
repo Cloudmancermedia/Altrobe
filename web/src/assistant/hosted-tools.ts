@@ -7,6 +7,7 @@ import { runRemoteCommand } from '../session'
 import type { TitleInfo } from '../api/types'
 import type { AppState, Store } from '../store'
 import { ARMOR_TYPES, armorFor, buildOutfit, CLASS_NAMES } from './outfit'
+import { tierSetName, TIERS } from './tiers'
 import { batchProblems, pairProblems } from '../identity/name-rules'
 import { FAMOUS_NAMES } from '../identity/famous-names'
 
@@ -107,6 +108,16 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     forCommand()
     if (!foundSets.has(int(setId) ?? NaN)) throw new ToolError(`Set ${setId} is not one search_sets returned. Find the set with search_sets first; never guess set IDs.`)
   }
+  // A class and tier name one set, found by name like search_sets would, so it counts as found.
+  const tierSet = async (cls: unknown, tier: unknown): Promise<number> => {
+    const name = tierSetName(String(cls ?? ''), String(tier ?? ''))
+    if (!name) throw new ToolError(`No tier set for "${cls}" at tier "${tier}". Tiers: ${TIERS.map((t) => `T${t}`).join(', ')}; classes: ${CLASS_NAMES.join(', ')}.`)
+    const set = (await deps.sets()).find((s) => s.name === name)
+    if (!set) throw new ToolError(`${name} is not in this build's sets.`)
+    forCommand()
+    foundSets.add(set.setId)
+    return set.setId
+  }
   // "Orc male", for the notes about who stands beside the main character.
   const named = (cs: { race: number; sex: number }[]) =>
     cs.map((c) => `${store.get().characters?.races.find((r) => r.race === c.race)?.name ?? `race ${c.race}`} ${c.sex === 1 ? 'female' : 'male'}`)
@@ -178,6 +189,7 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     },
 
     async equip_set(a) {
+      if (a.setId === undefined && a.class !== undefined) a = { ...a, setId: await tierSet(a.class, a.tier) }
       checkFound(a.setId)
       const setId = int(a.setId)
       const set = (await deps.sets()).find((s) => s.setId === setId)
@@ -336,7 +348,14 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       return beside.length ? { ...r, besideIt: named(beside), note: 'These still stand beside the main character. If the user named only this race, call compare with an empty list; if they named others, call compare with those.' } : r
     },
     async compare(a) {
-      const characters = Array.isArray(a.characters) ? a.characters as Input[] : []
+      const given = Array.isArray(a.characters) ? a.characters as Input[] : []
+      // A tier names the set: { class, tier } becomes its setId.
+      const characters: Input[] = []
+      for (const c of given) {
+        if (c?.tier === undefined || c.setId !== undefined) { characters.push(c); continue }
+        const { tier, class: cls, ...rest } = c
+        characters.push({ ...rest, setId: await tierSet(cls, tier) })
+      }
       for (const c of characters) if (c?.setId !== undefined) checkFound(c.setId)
       // A set by ID saves the model copying each piece's item ID; its own items go on top.
       const all = characters.some((c) => c?.setId !== undefined) ? await deps.sets() : []
