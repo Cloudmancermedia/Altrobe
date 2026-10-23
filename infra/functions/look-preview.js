@@ -3,9 +3,12 @@
 // path (/l/<base64url look>). This answers with that look's tags, then sends people into the app at
 // /shared/<site>#look=<look> (sharedPath below). Only ES 5.1 globals and atob, which the 2.0 runtime documents; no modules. Under 10 KB.
 var SITE = 'https://altrobe.com'
-// The longest look this reads, in base64url characters; longer links get the plain preview. CloudFront
-// refuses URLs over 8,192 bytes. web/src/look/look.test.ts keeps the largest possible look under this.
-var MAX_LOOK = 6000
+// The longest look this reads for a preview card, in base64url characters. Reading costs compute that grows
+// with the look: 6,450 characters used 56%, 7,915 used up to 79% (test-function, 2026-10-23). A longer look
+// gets the plain preview and still opens, passed on unread, up to MAX_LINK; CloudFront refuses URLs over
+// 8,192 bytes. web/src/look/look.test.ts keeps the largest look the format allows under MAX_LOOK.
+var MAX_LOOK = 6500
+var MAX_LINK = 8000
 var RACES = { 1: ['Human', 'Alliance'], 2: ['Orc', 'Horde'], 3: ['Dwarf', 'Alliance'], 4: ['Night Elf', 'Alliance'],
   5: ['Undead', 'Horde'], 6: ['Tauren', 'Horde'], 7: ['Gnome', 'Alliance'], 8: ['Troll', 'Horde'],
   95: ['High Order Skyborne', 'Alliance'], 96: ['Windshaper Skyborne', 'Horde'] }
@@ -22,8 +25,8 @@ function html(text) {
 // atob gives one character per byte, and JSON.parse takes that as it is: UTF-8 bytes never look like a
 // quote or a backslash, so strings come out with their bytes as characters, and text() turns the few shown
 // ones back into text.
-function decode(payload) {
-  return JSON.parse(atob(payload.split('-').join('+').split('_').join('/') + '==='.slice((payload.length + 3) % 4)))
+function bytes(payload) {
+  return atob(payload.split('-').join('+').split('_').join('/') + '==='.slice((payload.length + 3) % 4))
 }
 
 // A decoded string's UTF-8 bytes as text; the string as it is when it isn't UTF-8. A loop, not a regex:
@@ -71,12 +74,12 @@ function page(card, url, target) {
     + '<meta name="description" content="' + d + '">'
     + '<meta property="og:type" content="website"><meta property="og:site_name" content="Altrobe">'
     + '<meta property="og:title" content="' + t + '"><meta property="og:description" content="' + d + '">'
-    + '<meta property="og:url" content="' + html(url) + '"><meta property="og:image" content="' + html(card.image) + '">'
+    + '<meta property="og:url" content="' + url + '"><meta property="og:image" content="' + html(card.image) + '">'
     + '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
     + '<meta name="twitter:card" content="summary_large_image">'
     + '<meta name="referrer" content="no-referrer">'
-    + '<meta http-equiv="refresh" content="0; url=' + html(target) + '">'
-    + '</head><body><p><a href="' + html(target) + '">Open this look in Altrobe</a></p></body></html>'
+    + '<meta http-equiv="refresh" content="0; url=' + target + '">'
+    + '</head><body><p><a href="' + target + '">Open this look in Altrobe</a></p></body></html>'
 }
 
 // Where a shared look sends people: /shared, then the site the link was opened from (Referer, www.
@@ -94,12 +97,19 @@ function handler(event) {
   var uri = event.request.uri
   var look = uri.slice(0, 3) === '/l/' ? uri.slice(3) : ''
   if (look.slice(-1) === '/') look = look.slice(0, -1)
-  var card = null
-  if (look.length > 0 && look.length <= MAX_LOOK) {
-    try { card = describe(decode(look)) } catch (e) { card = null }
+  // atob takes only base64 characters, so a look it reads holds nothing HTML would take as markup and goes
+  // into the page as it is: escaping it cost compute that grew with its length (2026-10-23). sharedPath
+  // gives letters, digits, dots and dashes.
+  var raw = null, card = null
+  if (look.length > 0 && look.length <= MAX_LINK) {
+    try { raw = bytes(look) } catch (e) { raw = null }
   }
-  var url = card ? SITE + '/l/' + look : SITE + '/'
-  var target = card ? sharedPath(event.request.headers) + '#look=' + look : '/'
+  if (raw !== null && look.length <= MAX_LOOK) {
+    try { card = describe(JSON.parse(raw)) } catch (e) { card = null }
+  }
+  var opens = card !== null || (raw !== null && look.length > MAX_LOOK)
+  var url = opens ? SITE + '/l/' + look : SITE + '/'
+  var target = opens ? sharedPath(event.request.headers) + '#look=' + look : '/'
   return {
     statusCode: 200,
     statusDescription: 'OK',
