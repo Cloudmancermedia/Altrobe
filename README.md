@@ -17,7 +17,7 @@ If Altrobe is useful to you, you can [buy me a coffee](https://buymeacoffee.com/
 - Changes skin, face, hair and the other customization options, and plays the character's
   animations.
 - Puts up to six characters side by side, each in its own outfit, for comparing races or planning a
-  leveling journey.
+  leveling journey. Click a character to change its race, look, gear, name or animation.
 - Saves a look as a link to share, or as a file to open later, and writes it out as a short text
   description to copy.
 

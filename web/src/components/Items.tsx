@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ApiError, getNotableSets, getPopularWeapons, getSetPieces, searchSets, textureUrl } from '../api/client'
 import type { ItemSearchResult, ItemSetResult, SetGroup, WeaponGroup } from '../api/types'
-import { commands, store } from '../app-state'
-import { replacedSetSlots, setPieceSlots } from '../commands'
+import { commands, store, useEditing, useFindClass } from '../app-state'
+import { characterLook, replacedSetSlots, setPieceSlots } from '../commands'
 import { classChoices } from '../identity/identity'
-import { QUALITY_NAMES, SLOT_LABELS } from '../labels'
+import { characterLabel, QUALITY_NAMES, SLOT_LABELS } from '../labels'
 import type { Look } from '../look/look'
 import { rememberItems, setNotices, useStore } from '../store'
 import { otherSlots, SLOT_ORDER, type SlotName } from '../viewer/dress'
@@ -31,6 +31,7 @@ export function ItemSearch({ build }: { build: string }) {
   return (
     <section className="panel search" aria-label="Find">
       <h2>Find {mode}</h2>
+      <EditingNote verb="Equipping on" />
       <div className="segmented find-mode" role="radiogroup" aria-label="Find">
         {(['sets', 'weapons', 'items'] as const).map((m) => (
           <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>{m}</button>
@@ -41,18 +42,32 @@ export function ItemSearch({ build }: { build: string }) {
   )
 }
 
+/** With several characters on screen, who the panel changes; clicking a character on screen picks another. */
+export function EditingNote({ verb }: { verb: string }) {
+  const { look: editing, index } = useEditing()
+  const others = useStore(store, (s) => s.look.compare.length)
+  const characters = useStore(store, (s) => s.characters)
+  if (!others) return null
+  return (
+    <p className="small editing-note">
+      {verb} <strong>{characterLabel(characters, editing.race, editing.sex, editing.models)}</strong>{index === 0 ? ' (main)' : ''}.{' '}
+      {index > 0 && <button type="button" className="link" onClick={() => commands.select(0)}>Edit the main character</button>}
+    </p>
+  )
+}
+
 function SetSearch({ build }: { build: string }) {
   const [q, setQ] = useState('')
   const [sets, setSets] = useState<ItemSetResult[]>([])
   const [groups, setGroups] = useState<SetGroup[]>([])
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
   const [prefs, setPrefsState] = useState(() => readSetPrefs(storage()))
-  const race = useStore(store, (s) => s.look.race)
+  const race = useEditing().look.race
   const characters = useStore(store, (s) => s.characters)
   const anyClass = useStore(store, (s) => s.anyClass)
   const classes = classChoices(characters, race, anyClass)
-  // The character's class (Identity panel) is the filter: one choice for both panels.
-  const classId = useStore(store, (s) => s.look.identity?.classId ?? 0)
+  // The edited character's class (the Identity panel's, for the main one) is the filter: one choice for both panels.
+  const [classId, setClassId] = useFindClass()
   const browsing = q.trim() === '' && prefs.notableFirst
   const setPrefs = (next: SetPrefs) => { setPrefsState(next); writeSetPrefs(storage(), next) }
 
@@ -80,16 +95,17 @@ function SetSearch({ build }: { build: string }) {
     const pieces = s.pieces.map((p) => ({ slot: p.slot, itemId: p.itemId }))
     let clear: string[] = []
     if (prefs.replace) {
-      try { clear = replacedSetSlots(store.get().look.items, pieces, new Set(await getSetPieces())) } catch { /* equip without replacing */ }
+      const { look, selected } = store.get()
+      try { clear = replacedSetSlots(characterLook(look, selected).items, pieces, new Set(await getSetPieces())) } catch { /* equip without replacing */ }
     }
-    commands.equip_items(pieces, clear)
+    commands.edit.equip_items(pieces, clear)
   }
   const others = browsing ? withoutNotable(sets, groups) : sets
   return (
     <>
       <div className="search-controls">
         <input type="search" placeholder="Set name, piece name or set ID" aria-label="Search sets" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select aria-label="Class" value={classId} onChange={(e) => commands.set_identity({ classId: Number(e.target.value) || null })} disabled={!browsing}>
+        <select aria-label="Class" value={classId} onChange={(e) => setClassId(Number(e.target.value))} disabled={!browsing}>
           <option value={0}>All classes</option>
           {classes.map((c) => <option key={c.classId} value={c.classId}>{c.name}</option>)}
         </select>
@@ -142,7 +158,7 @@ function storage(): Storage | null {
 function ItemRow({ build, r }: { build: string; r: ItemSearchResult }) {
   return (
     <li>
-      <button type="button" className="result" onClick={() => commands.equip_item(r.slot, r.itemId)}
+      <button type="button" className="result" onClick={() => commands.edit.equip_item(r.slot, r.itemId)}
         title={`Equip in ${SLOT_LABELS[r.slot as SlotName] ?? r.slot}`}>
         <ItemIcon build={build} fileDataId={r.iconFileDataId} quality={r.quality} />
         <span className="result-text">
@@ -154,7 +170,7 @@ function ItemRow({ build, r }: { build: string; r: ItemSearchResult }) {
         </span>
       </button>
       {otherSlots(r).map((slot) => (
-        <button key={slot} type="button" className="link small" onClick={() => commands.equip_item(slot, r.itemId)}
+        <button key={slot} type="button" className="link small" onClick={() => commands.edit.equip_item(slot, r.itemId)}
           title={`Equip ${r.name} in ${SLOT_LABELS[slot]}`}>
           {SLOT_LABELS[slot]}
         </button>
@@ -167,11 +183,11 @@ function ItemRow({ build, r }: { build: string; r: ItemSearchResult }) {
 function PopularWeapons({ build }: { build: string }) {
   // The lists shown and the class they are for; while the class differs, the new lists are loading.
   const [shown, setShown] = useState<{ classId: number; groups: WeaponGroup[] } | null>(null)
-  const race = useStore(store, (s) => s.look.race)
+  const race = useEditing().look.race
   const characters = useStore(store, (s) => s.characters)
   const anyClass = useStore(store, (s) => s.anyClass)
   const classes = classChoices(characters, race, anyClass)
-  const classId = useStore(store, (s) => s.look.identity?.classId ?? 0)
+  const [classId, setClassId] = useFindClass()
 
   useEffect(() => {
     let live = true
@@ -190,7 +206,7 @@ function PopularWeapons({ build }: { build: string }) {
   return (
     <>
       <div className="search-controls">
-        <select aria-label="Class" value={classId} onChange={(e) => commands.set_identity({ classId: Number(e.target.value) || null })}>
+        <select aria-label="Class" value={classId} onChange={(e) => setClassId(Number(e.target.value))}>
           <option value={0}>All classes</option>
           {classes.map((c) => <option key={c.classId} value={c.classId}>{c.name}</option>)}
         </select>
@@ -285,20 +301,21 @@ function SingleItemSearch({ build }: { build: string }) {
 const WEAPON_SLOTS: SlotName[] = ['mainhand', 'offhand']
 
 /** Quick ways back to a bare character: set pieces, weapons, the animation, or all of them. */
-export function ClearButtons({ look }: { look: Look }) {
+export function ClearButtons({ look, editing }: { look: Look; editing: Look }) {
   const worn = Object.keys(look.items).length > 0
   const clearSetPieces = async () => {
     try {
-      commands.unequip_slots(setPieceSlots(store.get().look.items, new Set(await getSetPieces())))
+      const { look, selected } = store.get()
+      commands.edit.unequip_slots(setPieceSlots(characterLook(look, selected).items, new Set(await getSetPieces())))
     } catch (e) {
       setNotices(store, 'search', [`couldn't load the set pieces: ${e instanceof ApiError ? e.message : String(e)}`])
     }
   }
   return (
     <div className="clear-buttons">
-      <button type="button" disabled={!worn} onClick={clearSetPieces}>Clear set pieces</button>
-      <button type="button" disabled={!WEAPON_SLOTS.some((s) => look.items[s])} onClick={() => commands.unequip_slots(WEAPON_SLOTS)}>Clear weapons</button>
-      <button type="button" disabled={!look.anim} onClick={() => commands.set_animation('Stand')}>Clear animation</button>
+      <button type="button" disabled={!Object.keys(editing.items).length} onClick={clearSetPieces}>Clear set pieces</button>
+      <button type="button" disabled={!WEAPON_SLOTS.some((s) => editing.items[s])} onClick={() => commands.edit.unequip_slots(WEAPON_SLOTS)}>Clear weapons</button>
+      <button type="button" disabled={!editing.anim} onClick={() => commands.edit.set_animation('Stand', [])}>Clear animation</button>
       <button type="button" disabled={!worn && !look.anim && !look.compare.length} onClick={() => commands.clear_all()}>Clear all</button>
     </div>
   )

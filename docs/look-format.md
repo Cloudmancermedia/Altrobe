@@ -29,29 +29,33 @@ A look is a small JSON object that names a character and what it wears, by game 
 | `items` | Slot name to item ID. Slots: `head neck shoulder shirt chest waist legs feet wrist hands back mainhand offhand ranged tabard`. A character holds hand weapons or a ranged one: equipping a bow, gun, crossbow, thrown weapon or wand in `ranged` takes off `mainhand` and `offhand`, and the reverse. |
 | `hide` | Slots whose item is equipped but not drawn. |
 | `cam.view` | `front`, `side`, `back` or `head`. |
-| `anim` | Optional animation name every character plays, such as `"Run"`; absent means `"Stand"`. A character whose body model lacks it stands, with a notice. |
+| `anim` | Optional animation name the characters play, such as `"Run"`; absent means `"Stand"`. A side-by-side character with its own `anim` plays that instead. A character whose body model lacks it stands, with a notice. |
 | `compare` | Up to five more characters shown side by side, in screen order. Each wears the main outfit unless it has its own `items`; see below. |
 
 ### Side-by-side characters
 
-Each `compare` entry has `race`, `sex` and `models`, and may also have:
+Each `compare` entry has `race` and `sex`, and may also have:
 
 | Field | Meaning |
 | --- | --- |
+| `models` | `hd` or `sd`. Absent means `hd`, so canonical JSON leaves `hd` out to keep links short. |
 | `label` | Shown above the character, up to 40 characters, such as `"Level 30"`. |
 | `items` | The character's own outfit, slot name to item ID. Present, even empty, means "wears this"; absent means "wears the main outfit". |
 | `hide` | Hidden slots of the character's own outfit. |
 | `custom` | Customization choices for this character's body model, only those that differ from its defaults. |
+| `identity` | The character's own name, title, guild, level, class and PvP flag, read and checked like the main `identity`. |
+| `anim` | The character's own animation, `"Stand"` included. Absent means it plays the main `anim`. |
 
 ```json
-"compare": [{ "race": 2, "sex": 0, "models": "hd", "label": "Level 30", "items": { "chest": 7418, "legs": 7919 } }]
+"compare": [{ "race": 2, "sex": 0, "label": "Level 30", "items": { "chest": 7418, "legs": 7919 },
+  "identity": { "firstName": "Velka", "guild": "Ashen Vanguard" }, "anim": "Run" }]
 ```
 
 ## Share links
 
 A share link is the app URL plus `#look=` and the base64url encoding of the canonical JSON. The fragment never reaches a server.
 
-On altrobe.com, Copy link gives the preview form instead: `https://altrobe.com/l/` and the same encoding. Chat apps and social sites read a link's Open Graph tags and never see a fragment, so the look goes in the path. A CloudFront Function on `/l/*` (`infra/functions/look-preview.js`) answers with that look's tags: the name, level, race and class as the title, the guild and faction as the description, and a portrait of the race and sex (`web/public/og/<race>-<sex>.jpg`) as the image. It then sends people on to `/shared/<site>#look=` and the same encoding, where `<site>` is the host the link was opened from (or `/shared#look=` without a Referer), so the app opens the look as before and the visit counter can tell shared looks apart (`docs/deployment.md`, "Traffic"). The app also reads a look from a `/l/` path (`lookFromLocation`), for the dev server. Canonical JSON sorts keys at every level and leaves out empty or default fields: `custom` choices equal to the defaults, empty `items`, `hide` and `compare`, and a `front` camera. The same look always encodes to the same link.
+On altrobe.com, Copy link gives the preview form instead: `https://altrobe.com/l/` and the same encoding. Chat apps and social sites read a link's Open Graph tags and never see a fragment, so the look goes in the path. A CloudFront Function on `/l/*` (`infra/functions/look-preview.js`) answers with that look's tags: the name, level, race and class as the title, the guild and faction as the description, and a portrait of the race and sex (`web/public/og/<race>-<sex>.jpg`) as the image. A look longer than the function reads for a card (`MAX_LOOK`, 6,500 characters, set by its CloudFront compute) gets the plain Altrobe preview and is passed on unread, so the link still opens. It then sends people on to `/shared/<site>#look=` and the same encoding, where `<site>` is the host the link was opened from (or `/shared#look=` without a Referer), so the app opens the look as before and the visit counter can tell shared looks apart (`docs/deployment.md`, "Traffic"). The app also reads a look from a `/l/` path (`lookFromLocation`), for the dev server. Canonical JSON sorts keys at every level and leaves out empty or default fields: `custom` choices equal to the defaults, empty `items`, `hide` and `compare`, and a `front` camera. The same look always encodes to the same link.
 
 ## Sheathed weapons
 

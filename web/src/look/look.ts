@@ -8,7 +8,8 @@
 //     cam: { view: "front" | "side" | "back" | "head" },
 //     compare: [{ race, sex, models,        optional, up to 5 more characters shown side by side
 //                 items?, hide?, custom?,   an own outfit; without "items" the entry wears the main one
-//                 label? }] }
+//                 label?, identity?,        identity: its own name, title and guild, as the main one's
+//                 anim? }] }                its own animation ("Stand" too); without, it plays the main one
 // A share link carries it in the URL fragment, which browsers never send to a server:
 //   /#look=<base64url(canonical JSON)>
 // docs/look-format.md describes the format, including the "compare" addition.
@@ -57,6 +58,10 @@ export interface CompareCharacter {
   hide?: SlotName[]
   /** Customization choices for this character's own body model. */
   custom?: Record<string, number>
+  /** Who this character is, over its head and in its tooltip, as the main character's identity. */
+  identity?: Identity
+  /** Its own animation, "Stand" included. Without it, the character plays the look's animation. */
+  anim?: string
 }
 
 export interface Look {
@@ -153,6 +158,10 @@ export function normalizeLook(input: unknown, { characters }: { characters?: Kno
       if (c.items !== undefined) entry.items = readItems(c.items, notices)
       if (c.hide !== undefined) entry.hide = readHide(c.hide, notices)
       if (c.custom !== undefined) entry.custom = readCustom(c.custom, notices)
+      const identity = readIdentity(c.identity, notices)
+      if (identity) entry.identity = identity
+      if (typeof c.anim === 'string' && c.anim.trim()) entry.anim = c.anim.trim().slice(0, 40)
+      else if (c.anim !== undefined) notices.push(`dropped animation ${JSON.stringify(c.anim)} in compare: not a name`)
       look.compare.push(entry)
     }
   }
@@ -244,12 +253,16 @@ export function canonicalLook(look: Look, { defaults = {} }: { defaults?: Record
   if (look.sheatheOnBack) out.sheatheOnBack = true
   // Order matters here (it is the order on screen), so the list is not sorted.
   if (look.compare?.length) out.compare = look.compare.map((c) => {
-    const e: Json = { models: c.models, race: c.race, sex: c.sex }
+    // HD is what a reader assumes, so it is left out: links stay short with six characters (look.test.ts).
+    const e: Json = { race: c.race, sex: c.sex }
+    if (c.models !== 'hd') e.models = c.models
     if (c.label) e.label = c.label
     // An own outfit is kept even when empty: it means "wears nothing", not "wears the main outfit".
     if (c.items) e.items = sortKeys(c.items)
     if (c.hide?.length) e.hide = [...new Set(c.hide)].sort()
     if (c.custom && Object.keys(c.custom).length) e.custom = sortKeys(c.custom)
+    if (c.identity && Object.keys(c.identity).length) e.identity = sortKeys({ ...c.identity })
+    if (c.anim) e.anim = c.anim
     return sortKeys(e)
   })
   return sortKeys(out)

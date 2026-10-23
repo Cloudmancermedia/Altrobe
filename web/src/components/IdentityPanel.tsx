@@ -11,6 +11,7 @@ import { addToShortlist, MAX_LETTERS, MAX_STYLE, nameProblems, removeFromShortli
 import { TOOLTIP_MODES, type TooltipMode } from '../viewer/tooltip'
 import { MAX_GUILD, MAX_LEVEL, type Look } from '../look/look'
 import { AiStatus, AiTag } from './Ai'
+import { EditingNote } from './Items'
 
 /**
  * A text box over a look field. The look keeps the text trimmed (share links drop end spaces), so the box
@@ -50,7 +51,7 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
   const titles = titlesFor(useTitles(), race?.faction)
   // A rank from the other faction (after a race change) can't be held, so it goes.
   const titleOk = !look.identity?.titleId || titles.length === 0 || titles.some((t) => t.titleId === look.identity!.titleId)
-  useEffect(() => { if (!titleOk) commands.set_identity({ titleId: null }) }, [titleOk])
+  useEffect(() => { if (!titleOk) commands.edit.set_identity({ titleId: null }) }, [titleOk])
   const [names, setNames] = useState<Record<string, RaceNames>>({})
   useEffect(() => { getNames().then(setNames, () => setNames({})) }, [])
   const [more, setMore] = useState<Record<string, RaceNames>>({})
@@ -65,7 +66,7 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
   const classes = classChoices(characters, look.race, anyClass)
   // A class the race can't be (after a race change) goes, unless any class is allowed.
   const classOk = !look.identity?.classId || classes.some((c) => c.classId === look.identity!.classId)
-  useEffect(() => { if (!classOk) commands.set_identity({ classId: null }) }, [classOk])
+  useEffect(() => { if (!classOk) commands.edit.set_identity({ classId: null }) }, [classOk])
   const wording = (t: TitleInfo) => (look.sex === 1 ? t.female : t.male).replace('%s', '…')
   const shortlist = useStore(store, (s) => s.shortlist)
   const ideas = useStore(store, (s) => s.nameIdeas)
@@ -76,7 +77,7 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
   // The request this panel sent to the prompt box and is waiting on, with the style it carried.
   const [waiting, setWaiting] = useState<{ n: number; styled: boolean } | null>(null)
   const pair = id.firstName && id.lastName ? { firstName: id.firstName, lastName: id.lastName } : null
-  const use = (p: NamePair) => commands.set_identity({ firstName: p.firstName, lastName: p.lastName })
+  const use = (p: NamePair) => commands.edit.set_identity({ firstName: p.firstName, lastName: p.lastName })
   const save = (p: NamePair) => setShortlist(store, addToShortlist(store.get().shortlist, p))
   // The lists' five, when there's no AI here or the prompt box couldn't answer; or the rest, when the AI
   // gave fewer than five.
@@ -110,14 +111,15 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
   return (
     <section className="panel" aria-labelledby="identity-heading">
       <h2 id="identity-heading">Identity</h2>
+      <EditingNote verb="Naming" />
       <div className="picker">
         <label htmlFor="id-first">First name</label>
-        <TextField id="id-first" maxLength={MAX_LETTERS} value={id.firstName ?? ''} describedBy="id-first-hint" onChange={(v) => commands.set_identity({ firstName: v })} />
+        <TextField id="id-first" maxLength={MAX_LETTERS} value={id.firstName ?? ''} describedBy="id-first-hint" onChange={(v) => commands.edit.set_identity({ firstName: v })} />
       </div>
       <NameHint id="id-first-hint" name={id.firstName ?? ''} />
       <div className="picker">
         <label htmlFor="id-last">Last name</label>
-        <TextField id="id-last" maxLength={MAX_LETTERS} value={id.lastName ?? ''} describedBy="id-last-hint" onChange={(v) => commands.set_identity({ lastName: v })} />
+        <TextField id="id-last" maxLength={MAX_LETTERS} value={id.lastName ?? ''} describedBy="id-last-hint" onChange={(v) => commands.edit.set_identity({ lastName: v })} />
       </div>
       <NameHint id="id-last-hint" name={id.lastName ?? ''} />
       {raceNames && (
@@ -125,7 +127,7 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
           <button type="button" onClick={() => {
             const next = seed + 1
             setSeed(next)
-            commands.set_identity(generateName(raceNames, look.sex, next, {
+            commands.edit.set_identity(generateName(raceNames, look.sex, next, {
               ...(keep.first && id.firstName ? { firstName: id.firstName } : {}),
               ...(keep.last && id.lastName ? { lastName: id.lastName } : {}),
             }, moreNames))
@@ -167,28 +169,28 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
       )}
       <div className="picker">
         <label htmlFor="id-title">Title</label>
-        <select id="id-title" value={id.titleId ?? ''} onChange={(e) => commands.set_identity({ titleId: e.target.value ? Number(e.target.value) : null })}>
+        <select id="id-title" value={id.titleId ?? ''} onChange={(e) => commands.edit.set_identity({ titleId: e.target.value ? Number(e.target.value) : null })}>
           <option value="">No title</option>
           {titles.map((t) => <option key={t.titleId} value={t.titleId}>{wording(t)}</option>)}
         </select>
       </div>
       <div className="picker">
         <label htmlFor="id-guild">Guild</label>
-        <TextField id="id-guild" maxLength={MAX_GUILD} value={id.guild ?? ''} onChange={(v) => commands.set_identity({ guild: v })} />
+        <TextField id="id-guild" maxLength={MAX_GUILD} value={id.guild ?? ''} onChange={(v) => commands.edit.set_identity({ guild: v })} />
       </div>
       <div className="picker">
         <label htmlFor="id-level">Level</label>
         <input id="id-level" type="number" min={1} max={MAX_LEVEL} value={id.level ?? ''}
           onChange={(e) => {
             const n = Number(e.target.value)
-            if (e.target.value === '') commands.set_identity({ level: null })
-            else if (Number.isInteger(n) && n >= 1 && n <= MAX_LEVEL) commands.set_identity({ level: n })
+            if (e.target.value === '') commands.edit.set_identity({ level: null })
+            else if (Number.isInteger(n) && n >= 1 && n <= MAX_LEVEL) commands.edit.set_identity({ level: n })
           }} />
       </div>
       {classes.length > 0 && (
         <div className="picker">
           <label htmlFor="id-class">Class</label>
-          <select id="id-class" value={id.classId ?? ''} onChange={(e) => commands.set_identity({ classId: e.target.value ? Number(e.target.value) : null })}>
+          <select id="id-class" value={id.classId ?? ''} onChange={(e) => commands.edit.set_identity({ classId: e.target.value ? Number(e.target.value) : null })}>
             <option value="">No class</option>
             {classes.map((c) => <option key={c.classId} value={c.classId}>{c.name}</option>)}
           </select>
@@ -198,7 +200,7 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
         <input type="checkbox" checked={anyClass} onChange={(e) => setAnyClass(store, e.target.checked)} /> Any class
       </label>
       <label className="small">
-        <input type="checkbox" checked={id.pvp ?? false} onChange={(e) => commands.set_identity({ pvp: e.target.checked || null })} /> PvP
+        <input type="checkbox" checked={id.pvp ?? false} onChange={(e) => commands.edit.set_identity({ pvp: e.target.checked || null })} /> PvP
       </label>
       <div className="picker">
         <label htmlFor="id-tooltip">Tooltip</label>
