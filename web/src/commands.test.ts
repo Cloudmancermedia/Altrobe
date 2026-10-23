@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { CharactersResponse, CustomizationOption, ItemSearchResult } from './api/types'
-import { createCommands, replacedSetSlots, setPieceSlots, transitions } from './commands'
+import { characterLook, createCommands, replacedSetSlots, setPieceSlots, transitions } from './commands'
 import { decodeLook, emptyLook } from './look/look'
 import { createStore, initialState } from './store'
 
@@ -108,6 +108,55 @@ describe('transitions', () => {
     expect(transitions.wearMainOutfit(r, 3).error).toMatch(/no side-by-side character 4/)
   })
 
+  test('characterLook shows a side-by-side character as a look of its own, in the main outfit when it has none', () => {
+    const main = { ...bare, items: { head: 1 }, hide: ['head' as const], custom: { '7': 70 }, identity: { firstName: 'Zorak' },
+      compare: [{ race: 5, sex: 1 as const, models: 'hd' as const, custom: { '9': 90 } }, { race: 2, sex: 1 as const, models: 'hd' as const, items: { chest: 2 } }] }
+    expect(characterLook(main, 0)).toBe(main)
+    expect(characterLook(main, 1)).toMatchObject({ race: 5, sex: 1, items: { head: 1 }, hide: ['head'], custom: { '9': 90 }, compare: [] })
+    expect(characterLook(main, 1).identity).toBeUndefined()
+    expect(characterLook(main, 2)).toMatchObject({ race: 2, sex: 1, items: { chest: 2 }, hide: [], custom: {} })
+  })
+
+  test('editCharacter changes the main character, or one side-by-side character and no other', () => {
+    const main = { ...bare, items: { head: 1 }, compare: [{ race: 5, sex: 1 as const, models: 'hd' as const }, { race: 2, sex: 1 as const, models: 'hd' as const }] }
+    expect(transitions.editCharacter(main, 0, (l) => transitions.equipItem(l, 'chest', 2)).look!.items).toEqual({ head: 1, chest: 2 })
+    // Gear on a character in the main outfit gives it its own: the main outfit with the change.
+    const own = transitions.editCharacter(main, 1, (l) => transitions.equipItem(l, 'chest', 2)).look!
+    expect(own.items).toEqual({ head: 1 })
+    expect(own.compare).toEqual([{ race: 5, sex: 1, models: 'hd', items: { head: 1, chest: 2 } }, main.compare[1]])
+    // Customization alone keeps it in the main outfit.
+    const custom = transitions.editCharacter(main, 1, (l) => transitions.setCustomization(l, 9, 90)).look!
+    expect(custom.compare[0]).toEqual({ race: 5, sex: 1, models: 'hd', custom: { '9': 90 } })
+    // Another race drops the customization, which belongs to one body model.
+    const race = transitions.editCharacter(custom, 1, (l) => transitions.setCharacter(l, 2, 0, 'hd', characters)).look!
+    expect(race.compare[0]).toEqual({ race: 2, sex: 0, models: 'hd' })
+    expect(transitions.editCharacter(main, 3, (l) => ({ look: l })).error).toMatch(/no side-by-side character 3/)
+    expect(transitions.editCharacter(main, 1, (l) => transitions.equipItem(l, 'ring', 2)).error).toMatch(/unknown slot/)
+  })
+
+  test('a side-by-side character has its own name, and plays the main animation until it gets its own', () => {
+    const main = { ...bare, anim: 'Run', identity: { firstName: 'Zorak' }, compare: [{ race: 5, sex: 1 as const, models: 'hd' as const, identity: { firstName: 'Velka' } }] }
+    expect(characterLook(main, 1)).toMatchObject({ identity: { firstName: 'Velka' }, anim: 'Run' })
+    const named = transitions.editCharacter(main, 1, (l) => transitions.setIdentity(l, { guild: 'Ashen Vanguard' })).look!
+    expect(named.identity).toEqual({ firstName: 'Zorak' })
+    expect(named.compare[0]).toEqual({ race: 5, sex: 1, models: 'hd', identity: { firstName: 'Velka', guild: 'Ashen Vanguard' } })
+    // Another animation on a character playing the main one gives it its own; Stand is one too.
+    const own = transitions.editCharacter(main, 1, (l) => transitions.setAnimation(l, 'Stand', [])).look!
+    expect([own.anim, own.compare[0].anim]).toEqual(['Run', 'Stand'])
+    expect(characterLook(own, 1).anim).toBeUndefined()
+    expect(transitions.mainAnimation(own, 0).look!.compare[0].anim).toBeUndefined()
+    expect(transitions.ownAnimation(main, 0).look!.compare[0].anim).toBe('Run')
+    expect(transitions.ownAnimation(bare, 0).error).toMatch(/no side-by-side character 1/)
+    // compare keeps each character's name and animation, so adding one leaves the others as they were.
+    expect(transitions.compare(own, [...own.compare, { race: 2, sex: 0 }], characters).look!.compare[0]).toEqual(own.compare[0])
+  })
+
+  test('ownOutfit gives a side-by-side character a copy of the main outfit to change', () => {
+    const main = { ...bare, items: { head: 1, chest: 2 }, hide: ['head' as const], compare: [{ race: 5, sex: 1 as const, models: 'hd' as const }] }
+    expect(transitions.ownOutfit(main, 0).look!.compare[0]).toEqual({ race: 5, sex: 1, models: 'hd', items: { head: 1, chest: 2 }, hide: ['head'] })
+    expect(transitions.ownOutfit(main, 1).error).toMatch(/no side-by-side character 2/)
+  })
+
   test('set_animation takes a name from the list, any case; Stand clears it', () => {
     const anims = [{ id: 0, name: 'Stand' }, { id: 5, name: 'Run' }]
     expect(transitions.setAnimation(bare, 'run', anims).look!.anim).toBe('Run')
@@ -202,6 +251,24 @@ describe('createCommands', () => {
     expect(look.hide).toEqual(['head'])
   })
 
+  test('edit commands change the selected character; the others always change the main one', () => {
+    // The prompt box and MCP commands dress the main character whatever the panels have selected.
+    const { store, cmd } = setup()
+    cmd.compare([{ race: 5, sex: 1, models: 'hd' }])
+    store.set({ selected: 1 })
+    cmd.edit.equip_item('head', 12640)
+    cmd.edit.set_character(2, 1, 'hd')
+    expect(store.get().look.items).toEqual({})
+    expect(store.get().look.compare).toEqual([{ race: 2, sex: 1, models: 'hd', items: { head: 12640 } }])
+    cmd.equip_item('chest', 4)
+    expect(store.get().look.items).toEqual({ chest: 4 })
+    // A selection that no longer exists goes back to the main character.
+    cmd.compare([])
+    expect(store.get().selected).toBe(0)
+    cmd.edit.unequip('chest')
+    expect(store.get().look.items).toEqual({})
+  })
+
   test('a rejected command leaves the look alone and raises a notice', () => {
     const { store, cmd } = setup()
     const before = store.get().look
@@ -218,7 +285,7 @@ describe('createCommands', () => {
     cmd.equip_item('chest', 220794)
     cmd.set_customization(20, 384) // the default: left out of the canonical form
     cmd.compare([{ race: 5, sex: 1, models: 'hd' }])
-    expect(cmd.get_look()).toEqual({ build: 'b2', compare: [{ models: 'hd', race: 5, sex: 1 }], game: 'forever', items: { chest: 220794 }, models: 'hd', race: 2, sex: 0, v: 1 })
+    expect(cmd.get_look()).toEqual({ build: 'b2', compare: [{ race: 5, sex: 1 }], game: 'forever', items: { chest: 220794 }, models: 'hd', race: 2, sex: 0, v: 1 })
     const link = cmd.share_link()
     expect(link.startsWith('http://app.test/#look=')).toBe(true)
     const back = decodeLook(link.split('#look=')[1]).look!

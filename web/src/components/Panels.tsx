@@ -4,8 +4,7 @@ import type { CharactersResponse, Status } from '../api/types'
 import { commands, store } from '../app-state'
 import { characterLabel, pickCharacter } from '../labels'
 import { MAX_COMPARE, canonicalJSON, previewUrl, type Look } from '../look/look'
-import { setNotices } from '../store'
-import { CharacterPicker } from './CharacterPanel'
+import { setNotices, useStore } from '../store'
 import { copyText } from './clipboard'
 import { installChoices } from './install-choice'
 
@@ -16,39 +15,51 @@ export function ComparePanel({ characters, look }: { characters: CharactersRespo
     for (const r of characters.races) for (const s of r.sexes) {
       if ((s.hd || s.sd) && !used.has(`${r.race}:${s.sex}`)) {
         commands.compare([...look.compare, { race: r.race, sex: s.sex, models: s.hd ? 'hd' : 'sd' }])
+        commands.select(look.compare.length + 1)
         return
       }
     }
     const p = pickCharacter(characters.races.find((r) => r.race === look.race)!, look.sex, look.models)
-    if (p) commands.compare([...look.compare, { race: look.race, ...p }])
+    if (p) { commands.compare([...look.compare, { race: look.race, ...p }]); commands.select(look.compare.length + 1) }
   }
+  const selected = useStore(store, (s) => s.selected)
+  // Removing a character moves the ones after it up, so the selection follows the character it was on.
+  const remove = (i: number) => {
+    commands.compare(look.compare.filter((_, j) => j !== i))
+    if (selected > i + 1) commands.select(selected - 1)
+    else if (selected === i + 1) commands.select(0)
+  }
+  const rows = [{ c: look, i: -1 }, ...look.compare.map((c, i) => ({ c, i }))]
   return (
     <section className="panel" aria-labelledby="compare-heading">
       <h2 id="compare-heading">Side by side</h2>
-      <p className="muted small">Up to {MAX_COMPARE + 1} characters. Each wears the main outfit unless it has its own.</p>
-      <ol className="compare-list">
-        <li className="muted small">{characterLabel(characters, look.race, look.sex, look.models)} (main)</li>
-        {look.compare.map((c, i) => (
-          <li key={i}>
-            {(c.label || c.items) && (
-              <p className="small compare-own">
-                {c.label && <strong>{c.label}</strong>}
-                {c.items && <> {c.label ? '· ' : ''}own outfit ({Object.keys(c.items).length} items){' '}
-                  <button type="button" className="link" onClick={() => commands.wear_main_outfit(i)}>Wear the main outfit</button></>}
-              </p>
-            )}
-            <CharacterPicker characters={characters} race={c.race} sex={c.sex} models={c.models} idPrefix={`cmp${i}`}
-              onChange={(race, sex, models) => commands.compare(look.compare.map((x, j) => {
-                if (j !== i) return x
-                // Customization choices belong to one body model, so they do not carry over.
-                const same = x.race === race && x.sex === sex && x.models === models
-                return { ...x, race, sex, models, custom: same ? x.custom : undefined }
-              }))} />
-            <button type="button" onClick={() => commands.compare(look.compare.filter((_, j) => j !== i))}
-              aria-label={`Remove ${characterLabel(characters, c.race, c.sex, c.models)}`}>Remove</button>
-          </li>
-        ))}
-      </ol>
+      <p className="muted small">Up to {MAX_COMPARE + 1} characters. Pick one here or on screen to change its race, look, gear, name or animation.</p>
+      <ul className="compare-list" role="radiogroup" aria-label="Character to edit">
+        {rows.map(({ c, i }) => {
+          const name = characterLabel(characters, c.race, c.sex, c.models)
+          const own = i >= 0 && !!look.compare[i].items
+          return (
+            <li key={i} className={selected === i + 1 ? 'selected' : undefined}>
+              <button type="button" role="radio" className="compare-pick" aria-checked={selected === i + 1} onClick={() => commands.select(i + 1)}>
+                {i >= 0 && look.compare[i].label && <strong>{look.compare[i].label} · </strong>}{name}{i < 0 ? ' (main)' : ''}
+              </button>
+              {i >= 0 && (
+                <span className="compare-row small">
+                  <span className="compare-shares">
+                    <label title="Unchecked, it wears its own outfit, starting from a copy of the main one">
+                      <input type="checkbox" checked={!own} onChange={(e) => (e.target.checked ? commands.wear_main_outfit(i) : commands.own_outfit(i))} /> Wear the main outfit
+                    </label>
+                    <label title="Unchecked, it plays its own animation, starting from the main one">
+                      <input type="checkbox" checked={!look.compare[i].anim} onChange={(e) => (e.target.checked ? commands.main_animation(i) : commands.own_animation(i))} /> Play the main animation
+                    </label>
+                  </span>
+                  <button type="button" className="link" onClick={() => remove(i)} aria-label={`Remove ${name}`}>Remove</button>
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
       <button type="button" onClick={add} disabled={look.compare.length >= MAX_COMPARE}>Add character</button>
     </section>
   )

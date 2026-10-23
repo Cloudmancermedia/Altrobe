@@ -113,6 +113,20 @@ describe('the look preview function', () => {
     }
   })
 
+  test('a look too long for a preview card still opens: the plain preview, and the look passed on unread', () => {
+    // Reading a look costs CloudFront compute that grows with its length: a 5,996-character look used 100%
+    // (test-function, 2026-10-23). Past MAX_LOOK the card is the plain one, but the link must still open.
+    const max = Number(/var MAX_LOOK = (\d+)/.exec(source)?.[1])
+    const long = { ...look, compare: Array.from({ length: 5 }, (_, i) => ({ race: 2, sex: 0, label: 'x'.repeat(40), items: Object.fromEntries(Array.from({ length: 15 }, (_, j) => [`s${j}`, 100000 + i * 100 + j])) })) }
+    // Base64 makes 4 characters of every 3 bytes, so this lands just past MAX_LOOK.
+    const payload = encode({ ...long, pad: 'p'.repeat(Math.ceil((max - encode(long).length) * 3 / 4) + 30) })
+    expect(payload.length).toBeGreaterThan(max)
+    expect(payload.length).toBeLessThan(max + 100)
+    const html = handler(event(`/l/${payload}`, 'https://www.reddit.com/')).body.data
+    expect(meta(html, 'og:image')).toBe('https://altrobe.com/og-image.png')
+    expect(html).toContain(`url=/shared/reddit.com#look=${payload}"`)
+  })
+
   test('fits CloudFront Functions: under 10 KB, and only globals the 2.0 runtime documents', () => {
     expect(statSync(path).size).toBeLessThan(10 * 1024)
     expect(source).not.toMatch(/\brequire\(|\bBuffer\b|\bTextDecoder\b|\bimport\b|\bexport\b/)

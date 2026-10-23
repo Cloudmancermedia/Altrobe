@@ -306,3 +306,57 @@ test('a Human Mage sees new-in-Forever sets after the classic groups, and one dr
   await first.click()
   await settled(page, 1, (h: Hooks, look: string) => JSON.stringify(h.commands.get_look()) !== look, before)
 })
+
+test('a side-by-side character picked on screen gets its own set; the main one keeps its outfit', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await settled(page, 2)
+  // A new character is the one the panels edit.
+  await expect(page.locator('[data-cell="compare0"]')).toHaveClass(/selected/)
+  await expect(page.getByRole('region', { name: 'Find' }).locator('.editing-note')).not.toContainText('(main)')
+
+  await page.getByLabel('Search sets').fill('warlord')
+  await page.locator('.results li button').first().click()
+  await settled(page, 2, (h: Hooks) => h.attached(1).length > 0 && h.attached(0).length === 0)
+  const own = page.getByRole('checkbox', { name: 'Wear the main outfit' })
+  await expect(own).not.toBeChecked()
+
+  // A click on the main character's view picks it; its slots are still empty.
+  await page.locator('[data-cell="main"]').click()
+  await expect(page.locator('[data-cell="main"]')).toHaveClass(/selected/)
+  await expect(page.locator('.doll .doll-actions')).toHaveCount(0)
+  // A drag turns the camera and picks no one.
+  const box = (await page.locator('[data-cell="compare0"]').boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await expect(page.locator('[data-cell="main"]')).toHaveClass(/selected/)
+
+  // Back in the main outfit, the side-by-side character wears nothing again.
+  await own.check()
+  await settled(page, 2, (h: Hooks) => h.attached(1).length === 0)
+})
+
+test('a side-by-side character keeps its own name and animation through the share link', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await settled(page, 2)
+  await page.locator('#id-first').fill('Velka')
+  await page.locator('#id-guild').fill('Ashen Vanguard')
+  await page.getByRole('group', { name: 'Quick animations' }).getByRole('button', { name: 'Run' }).click()
+  const look = () => call(page, (h) => h.commands.get_look() as { anim?: string; identity?: unknown; compare: { anim?: string; identity?: { firstName?: string; guild?: string } }[] })
+  let l = await look()
+  expect([l.anim, l.identity, l.compare[0].anim, l.compare[0].identity]).toEqual([undefined, undefined, 'Run', { firstName: 'Velka', guild: 'Ashen Vanguard' }])
+  await expect(page.getByRole('checkbox', { name: 'Play the main animation' })).not.toBeChecked()
+  await expect(page.locator('[data-cell="compare0"] .nameplate')).toContainText('Velka')
+  await expect(page.locator('[data-cell="main"] .nameplate')).toHaveCount(0)
+
+  // The share link (a /l/ preview link on the site) opens both, in a new page.
+  const link = await page.getByLabel('Share link').inputValue()
+  await page.goto(link.replace(/^https?:\/\/[^/]+/, appUrl().replace(/\/$/, '')))
+  await settled(page, 2)
+  l = await look()
+  expect([l.anim, l.compare[0].anim, l.compare[0].identity]).toEqual([undefined, 'Run', { firstName: 'Velka', guild: 'Ashen Vanguard' }])
+  await expect(page.locator('[data-cell="compare0"] .nameplate')).toContainText('Velka')
+})

@@ -168,7 +168,8 @@ describe('compare (side by side) addition', () => {
     const look = norm({ ...outfitA, compare: [{ race: 5, sex: 1, models: 'sd' }, { race: 1, sex: 0, models: 'hd' }] })
     expect(look.compare).toEqual([{ race: 5, sex: 1, models: 'sd' }, { race: 1, sex: 0, models: 'hd' }])
     expect(decodeLook(encodeLook(look)).look).toEqual(look)
-    expect(JSON.parse(canonicalJSON(look)).compare).toEqual([{ models: 'sd', race: 5, sex: 1 }, { models: 'hd', race: 1, sex: 0 }])
+    // HD, the default, is left out of the link.
+    expect(JSON.parse(canonicalJSON(look)).compare).toEqual([{ models: 'sd', race: 5, sex: 1 }, { race: 1, sex: 0 }])
     expect(JSON.parse(canonicalJSON(norm(outfitA))).compare).toBeUndefined()
   })
 
@@ -191,8 +192,8 @@ describe('compare (side by side) addition', () => {
     const look = r.look!
     expect(decodeLook(encodeLook(look)).look).toEqual(look)
     expect(JSON.parse(canonicalJSON(look)).compare).toEqual([
-      { custom: { 20: 390 }, hide: ['chest'], items: { chest: 4071 }, label: 'Level 30', models: 'hd', race: 2, sex: 0 },
-      { items: {}, models: 'hd', race: 5, sex: 1 },
+      { custom: { 20: 390 }, hide: ['chest'], items: { chest: 4071 }, label: 'Level 30', race: 2, sex: 0 },
+      { items: {}, race: 5, sex: 1 },
     ])
   })
 
@@ -229,6 +230,25 @@ describe('identity addition', () => {
       'dropped title -3: not a title ID', 'dropped level 61: not 1 to 60', 'dropped class "mage": not a class ID', 'dropped pvp "yes": not true or false',
     ])
     expect(normalizeLook({ ...outfitA, identity: 'Asher' }).notices).toEqual(['dropped "identity": not an object'])
+  })
+
+  test('a side-by-side character carries its own identity, read and written like the main one', () => {
+    const look = norm({ ...outfitA, compare: [{ race: 5, sex: 1, models: 'hd', identity }, { race: 6, sex: 0, identity: { firstName: '  ', guild: 7 } }] })
+    expect(look.compare[0].identity).toEqual(identity)
+    expect(look.compare[1].identity).toBeUndefined()
+    const back = decodeLook(encodeLook(look))
+    expect(back.notices).toEqual([])
+    expect(back.look!.compare[0].identity).toEqual(identity)
+    expect(JSON.parse(canonicalJSON(look)).compare[1]).toEqual({ race: 6, sex: 0 })
+    expect(normalizeLook({ ...outfitA, compare: [{ race: 5, sex: 1, identity: 'Asher' }] }).notices).toEqual(['dropped "identity": not an object'])
+  })
+
+  test('a side-by-side character can play its own animation, Stand included; the HD default is left out of the link', () => {
+    const look = norm({ ...outfitA, anim: 'Run', compare: [{ race: 5, sex: 1, models: 'hd', anim: 'Stand' }, { race: 6, sex: 0, models: 'sd', anim: 7 }] })
+    expect(look.compare.map((c) => c.anim)).toEqual(['Stand', undefined])
+    const json = JSON.parse(canonicalJSON(look))
+    expect(json.compare).toEqual([{ anim: 'Stand', race: 5, sex: 1 }, { models: 'sd', race: 6, sex: 0 }])
+    expect(decodeLook(encodeLook(look)).look!.compare).toEqual(look.compare)
   })
 
   test('pvp false and blank text are not stored', () => {
@@ -274,6 +294,27 @@ describe('preview links', () => {
   })
 })
 
+describe('links shared before side-by-side names and animations', () => {
+  // The r/wowforever launch post's link (2026-10-22), as shared: every side-by-side character carries
+  // "models": "hd", which links now leave out. It must open the same, with no notices.
+  const R1 = 'eyJ2IjoxLCJnYW1lIjoiZm9yZXZlciIsImJ1aWxkIjoiMS42MC4xLjcwNDUwIiwibW9kZWxzIjoiaGQiLCJyYWNlIjo1LCJzZXgiOjAsIml0ZW1zIjp7IndhaXN0IjoxNjk1Miwid3Jpc3QiOjE2OTUxLCJjaGVzdCI6MTY5NTgsImhlYWQiOjE2OTU1LCJoYW5kcyI6MTY5NTYsImxlZ3MiOjE2OTU0LCJmZWV0IjoxNjk1Nywic2hvdWxkZXIiOjE2OTUzLCJtYWluaGFuZCI6MTcxODJ9LCJpZGVudGl0eSI6eyJmaXJzdE5hbWUiOiJBbGRyaWMiLCJ0aXRsZUlkIjoxMjg0LCJndWlsZCI6IkFzaGVuIFZhbmd1YXJkIiwibGV2ZWwiOjYwLCJjbGFzc0lkIjoyfSwiY29tcGFyZSI6W3sicmFjZSI6Miwic2V4IjowLCJtb2RlbHMiOiJoZCIsImxhYmVsIjoiT3JjIE1hZ2U_IiwiaXRlbXMiOnsid2Fpc3QiOjE2ODE4LCJ3cmlzdCI6MTY5MTgsImZlZXQiOjE2OTEyLCJoZWFkIjoxNjkxNCwic2hvdWxkZXIiOjE2OTE3LCJoYW5kcyI6MTY5MTMsImxlZ3MiOjE2OTE1LCJjaGVzdCI6MTY5MTYsIm1haW5oYW5kIjoyMjU4OX19LHsicmFjZSI6Niwic2V4IjoxLCJtb2RlbHMiOiJoZCIsImxhYmVsIjoiVGF1cmVuIERydWlkPyIsIml0ZW1zIjp7IndhaXN0IjoxNjkwMywiZmVldCI6MTY4OTgsIndyaXN0IjoxNjkwNCwiY2hlc3QiOjE2ODk3LCJoZWFkIjoxNjkwMCwiaGFuZHMiOjE2ODk5LCJsZWdzIjoxNjkwMSwic2hvdWxkZXIiOjE2OTAyLCJtYWluaGFuZCI6MTg4NDJ9fSx7InJhY2UiOjk1LCJzZXgiOjAsIm1vZGVscyI6ImhkIiwibGFiZWwiOiJTa3lib3JuZSBIdW50ZXI_IiwiaXRlbXMiOnsid2Fpc3QiOjE2OTM2LCJ3cmlzdCI6MTY5MzUsImNoZXN0IjoxNjk0MiwiaGFuZHMiOjE2OTQwLCJmZWV0IjoxNjk0MSwiaGVhZCI6MTY5MzksImxlZ3MiOjE2OTM4LCJzaG91bGRlciI6MTY5MzcsIm1haW5oYW5kIjoxOTM2NH19XX0'
+
+  test('open as they did, with HD side-by-side characters, their own outfits, and no new fields', () => {
+    const r = decodeLook(R1)
+    expect(r.notices).toEqual([])
+    const look = r.look!
+    expect([look.race, look.sex, look.identity?.firstName, look.identity?.guild]).toEqual([5, 0, 'Aldric', 'Ashen Vanguard'])
+    expect(look.compare.map((c) => [c.race, c.sex, c.models, c.label, Object.keys(c.items ?? {}).length])).toEqual([
+      [2, 0, 'hd', 'Orc Mage?', 9], [6, 1, 'hd', 'Tauren Druid?', 9], [95, 0, 'hd', 'Skyborne Hunter?', 9],
+    ])
+    expect(look.compare.every((c) => c.identity === undefined && c.anim === undefined)).toBe(true)
+    // Written again, the same look gives a shorter link that reads back the same.
+    const again = encodeLook(look)
+    expect(again.length).toBeLessThan(R1.length)
+    expect(decodeLook(again).look).toEqual(look)
+  })
+})
+
 describe('share link length', () => {
   // The guard against creep: every field a feature adds to the look makes every share link longer. The
   // preview function (infra/functions/look-preview.js) reads looks up to MAX_LOOK characters, and CloudFront
@@ -284,11 +325,13 @@ describe('share link length', () => {
     const items = Object.fromEntries(SLOT_ORDER.map((s, i) => [s, 240000 + i * 137]))
     const custom = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [String(30000 + i), 400000 + i]))
     const hide = ['head', 'back', 'tabard'] as SlotName[]
-    const char = (race: number) => ({ race, sex: 1 as const, models: 'hd' as const, label: 'Ü'.repeat(MAX_LABEL), items, hide, custom })
-    const look: Look = { ...emptyLook(5, 1),  items, hide, custom, anim: 'AttackTwoHand',
-      identity: { firstName: 'Ü'.repeat(12), lastName: 'Ü'.repeat(12), guild: 'Ü'.repeat(MAX_GUILD), titleId: 1284, level: MAX_LEVEL, classId: 2, pvp: true },
+    const identity = { firstName: 'Ü'.repeat(12), lastName: 'Ü'.repeat(12), guild: 'Ü'.repeat(MAX_GUILD), titleId: 1284, level: MAX_LEVEL, classId: 2, pvp: true }
+    const char = (race: number) => ({ race, sex: 1 as const, models: 'hd' as const, label: 'Ü'.repeat(MAX_LABEL), items, hide, custom, identity, anim: 'AttackTwoHand' })
+    const look: Look = { ...emptyLook(5, 1),  items, hide, custom, anim: 'AttackTwoHand', identity,
       compare: [2, 6, 95, 1, 4].slice(0, MAX_COMPARE).map(char) }
     const payload = encodeLook(look)
+    // Every field above must be in the link, or the test measures less than the format allows.
+    expect(decodeLook(payload).look!.compare.every((c) => c.identity?.guild === identity.guild)).toBe(true)
     expect(payload.length).toBeLessThanOrEqual(max)
   })
 })

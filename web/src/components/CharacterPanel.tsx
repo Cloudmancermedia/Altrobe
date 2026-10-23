@@ -1,11 +1,11 @@
-import type { CharactersResponse, ModelSet } from '../api/types'
-import { commands, store } from '../app-state'
-import { useStore } from '../store'
+import type { AnimationInfo, CharactersResponse, ModelSet } from '../api/types'
+import { commands, useEditing } from '../app-state'
 import { useBaseLook, useItemSubclass } from '../hooks'
 import { animationPresets } from '../presets'
 import { ANIMATION_GROUPS, animationGroup, animationLabel, animationOrder, pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
 import { VIEWS, type Look } from '../look/look'
 import { panelOptions } from '../viewer/customize'
+import { EditingNote } from './Items'
 
 const FACTION_LABELS: Record<Faction, string> = { alliance: 'Alliance', horde: 'Horde', neutral: 'Other' }
 
@@ -66,13 +66,16 @@ export function CharacterPicker({ characters, race, sex, models, onChange, idPre
 }
 
 export function CharacterPanel({ characters, look }: { characters: CharactersResponse; look: Look }) {
-  const race = characters.races.find((r) => r.race === look.race)
-  const animations = useStore(store, (s) => s.animations)
+  // Race, sex, models and animation are the edited character's; the camera view is for everyone.
+  const editing = useEditing().look
+  const race = characters.races.find((r) => r.race === editing.race)
+  const animations = useBaseLook(editing.race, editing.sex, editing.models)?.animations ?? []
   return (
     <section className="panel" aria-labelledby="character-heading">
       <h2 id="character-heading">Character</h2>
-      <CharacterPicker characters={characters} race={look.race} sex={look.sex} models={look.models} idPrefix="main"
-        onChange={(r, s, m) => commands.set_character(r, s, m)} />
+      <EditingNote verb="Editing" />
+      <CharacterPicker characters={characters} race={editing.race} sex={editing.sex} models={editing.models} idPrefix="main"
+        onChange={(r, s, m) => commands.edit.set_character(r, s, m)} />
       {race && race.classes.length > 0 && (
         <p className="muted small">Classes: {race.classes.map((c) => c.name).join(', ')}</p>
       )}
@@ -85,7 +88,7 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
       {animations.length > 0 && (
         <div className="picker">
           <label htmlFor="anim">Animation</label>
-          <select id="anim" value={look.anim ?? 'Stand'} onChange={(e) => commands.set_animation(e.target.value)}>
+          <select id="anim" value={editing.anim ?? 'Stand'} onChange={(e) => commands.edit.set_animation(e.target.value, animations)}>
             {ANIMATION_GROUPS.map((group) => {
               const inGroup = animations.filter((a) => animationGroup(a.name) === group)
                 .sort((x, y) => animationOrder(x.name) - animationOrder(y.name) || animationLabel(x.name).localeCompare(animationLabel(y.name)))
@@ -98,14 +101,13 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
           </select>
         </div>
       )}
-      <AnimationPresets look={look} />
+      <AnimationPresets look={editing} animations={animations} />
     </section>
   )
 }
 
-/** One-click animations for every character. The playing one shows pressed; pressing it again stands. */
-function AnimationPresets({ look }: { look: Look }) {
-  const animations = useStore(store, (s) => s.animations)
+/** One-click animations for the edited character. The playing one shows pressed; pressing it again stands. */
+function AnimationPresets({ look, animations }: { look: Look; animations: AnimationInfo[] }) {
   const subclass = useItemSubclass(look.items.mainhand, look.race, look.sex, look.models)
   const rangedSubclass = useItemSubclass(look.items.ranged, look.race, look.sex, look.models)
   const presets = animationPresets(animations, subclass, rangedSubclass)
@@ -116,7 +118,7 @@ function AnimationPresets({ look }: { look: Look }) {
         // Stand is on when nothing else plays; pressing any pressed button stands.
         const on = p.animation === 'Stand' ? !look.anim || look.anim === 'Stand' : look.anim === p.animation
         return (
-          <button key={p.animation} type="button" aria-pressed={on} onClick={() => commands.set_animation(on ? 'Stand' : p.animation)}>
+          <button key={p.animation} type="button" aria-pressed={on} onClick={() => commands.edit.set_animation(on ? 'Stand' : p.animation, animations)}>
             {p.label}
           </button>
         )
@@ -125,20 +127,23 @@ function AnimationPresets({ look }: { look: Look }) {
   )
 }
 
-export function CustomizationPanel({ look }: { look: Look }) {
+export function CustomizationPanel() {
+  const look = useEditing().look
   const changed = Object.keys(look.custom).length > 0
   const baseLook = useBaseLook(look.race, look.sex, look.models)
   if (!baseLook) return null
+  // Checked against the edited character's own options, which differ by race and sex.
+  const choices = baseLook.options ?? null
   const options = panelOptions(baseLook)
 
   return (
     <section className="panel" aria-labelledby="custom-heading">
       <h2 id="custom-heading">Customization</h2>
       <div className="actions">
-        <button type="button" onClick={() => commands.randomize_customization()} title="Pick a random choice for every option">
+        <button type="button" onClick={() => commands.edit.randomize_customization(choices)} title="Pick a random choice for every option">
           <span aria-hidden="true">🎲</span> Randomize
         </button>
-        <button type="button" onClick={() => commands.reset_customization()} disabled={!changed}>Reset to defaults</button>
+        <button type="button" onClick={() => commands.edit.reset_customization()} disabled={!changed}>Reset to defaults</button>
       </div>
       {options.map((o) => {
         const value = look.custom[String(o.optionId)] ?? o.defaultChoiceId ?? o.choices[0].choiceId
@@ -149,7 +154,7 @@ export function CustomizationPanel({ look }: { look: Look }) {
             <label htmlFor={id}>{o.name}</label>
             <div className="choice">
               {current?.swatch && <span className="swatch" style={{ background: current.swatch }} aria-hidden="true" />}
-              <select id={id} value={value} onChange={(e) => commands.set_customization(o.optionId, Number(e.target.value))}>
+              <select id={id} value={value} onChange={(e) => commands.edit.set_customization(o.optionId, Number(e.target.value), choices)}>
                 {o.choices.map((c, i) => (
                   <option key={c.choiceId} value={c.choiceId}>
                     {c.name || `#${i + 1}`}{c.choiceId === o.defaultChoiceId ? ' (default)' : ''}
