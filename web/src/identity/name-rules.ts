@@ -48,9 +48,11 @@ export function removeFromShortlist(list: NamePair[], pair: NamePair): NamePair[
 // Launch day, November 4, ends at midnight Pacific: UTC-8, since daylight saving time ended on November 1.
 const LAUNCH_DAY_ENDS = Date.parse('2026-11-05T08:00:00Z')
 
-// Blizzard's times (news.blizzard.com, read 2026-10-21): North America's name reservation opens October 27
-// at 1 p.m. PDT, Europe's at 18:00 CET; the game launches worldwide November 4 at 3 p.m. PST. The regions
-// open reservation at different moments, so the banner states the times rather than converting them.
+// Blizzard's times (news.blizzard.com, read 2026-10-22): North America's name reservation opens October 27
+// at 1 p.m. PDT, Europe's at 18:00 CET, Korea's October 28 at 07:00 KST and Taiwan's at 07:00 CST; the game
+// launches worldwide November 4 at 3 p.m. PST. The regions open reservation at different moments (17:00 to
+// 23:00 UTC), so the banner states the times rather than converting them, and switches to "open" with
+// North America.
 const RESERVATION_OPENS = Date.parse('2026-10-27T20:00:00Z')
 const LAUNCH = Date.parse('2026-11-04T23:00:00Z')
 
@@ -62,7 +64,7 @@ export function launchBanner(now: Date): string | null {
   const launch = 'WoW Forever launches worldwide November 4 at 3 p.m. PST.'
   return t >= RESERVATION_OPENS
     ? `Name reservation is open through November 3. ${launch}`
-    : `Name reservation opens October 27 at 1 p.m. PDT in North America and 18:00 CET in Europe. ${launch}`
+    : `Name reservation opens October 27 at 1 p.m. PDT in North America and 18:00 CET in Europe, and October 28 at 07:00 KST in Korea and 07:00 CST in Taiwan. ${launch}`
 }
 
 export const MAX_STYLE = 120
