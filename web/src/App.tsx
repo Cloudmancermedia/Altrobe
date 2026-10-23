@@ -42,8 +42,8 @@ const itemSpeedParam = Number(new URLSearchParams(location.search).get('itemspee
 const startPath = typeof location === 'undefined' ? '/' : location.pathname
 if (startPath.startsWith('/l/')) history.replaceState(null, '', `/${location.search}${location.hash}`)
 
-// New with the times (2026-10-21), so a banner dismissed before shows once more.
-const BANNER_KEY = 'altrobe.bannerDismissed.foreverLaunchTimes'
+// New with Korea's and Taiwan's times (2026-10-22), so a banner dismissed before shows once more.
+const BANNER_KEY = 'altrobe.bannerDismissed.foreverLaunchTimes2'
 // Matches the fold's transition in App.css.
 const BANNER_FOLD_MS = 250
 
