@@ -6,10 +6,10 @@ import { Match, Template } from 'aws-cdk-lib/assertions'
 import { describe, expect, test } from 'vitest'
 import { CiStack, DEPLOY_ROLE_NAME, DIFF_ROLE_NAME, GITHUB_SUBJECT, PUBLISH_ROLE_NAME } from '../src/ci-stack.js'
 import { DnsStack } from '../src/dns-stack.js'
-import { BEDROCK_MONTHLY_LIMIT_USD, BudgetStack } from '../src/budget-stack.js'
+import { BEDROCK_MONTHLY_LIMIT_USD, BudgetStack, SPEND_ALARM_MICRO_USD_PER_HOUR } from '../src/budget-stack.js'
 import { PromptStack } from '../src/prompt-stack.js'
 import { SiteStack } from '../src/site-stack.js'
-import { API_DOMAIN_PARAMETER, PROMPT_ROLE_NAME, SWITCH_PARAMETER } from '../src/prompt-api.js'
+import { API_DOMAIN_PARAMETER, PROMPT_METRICS, PROMPT_METRICS_NAMESPACE, PROMPT_ROLE_NAME, SWITCH_PARAMETER } from '../src/prompt-api.js'
 
 const env = { account: '123456789012', region: 'us-east-1' }
 // The repository's immutable OIDC subject, as app.ts deploys it: owner and repository, each with its ID.
@@ -345,6 +345,22 @@ describe('AltrobeBudget', () => {
     })
   })
 
+  test("emails the prompt API's alarms: the day's cap reached, an hour's spend past a quarter of it, a spend left uncounted", () => {
+    const t = budget()
+    const topics = Object.keys(t.findResources('AWS::SNS::Topic'))
+    expect(topics).toHaveLength(1)
+    t.hasResourceProperties('AWS::SNS::Subscription', { Protocol: 'email', Endpoint: 'owner@example.com', TopicArn: { Ref: topics[0] } })
+    const alarm = (metric: string, period: number, threshold: number, operator: string) => t.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      Namespace: PROMPT_METRICS_NAMESPACE, MetricName: metric, Statistic: 'Sum', Period: period, EvaluationPeriods: 1,
+      Threshold: threshold, ComparisonOperator: operator, TreatMissingData: 'notBreaching', AlarmActions: [{ Ref: topics[0] }],
+    })
+    alarm(PROMPT_METRICS.dailyCap, 300, 1, 'GreaterThanOrEqualToThreshold')
+    alarm(PROMPT_METRICS.spend, 3600, SPEND_ALARM_MICRO_USD_PER_HOUR, 'GreaterThanThreshold')
+    alarm(PROMPT_METRICS.spendErrors, 300, 1, 'GreaterThanOrEqualToThreshold')
+    expect(SPEND_ALARM_MICRO_USD_PER_HOUR).toBe(6_250_000)
+    expect(Object.keys(t.findResources('AWS::CloudWatch::Alarm'))).toHaveLength(3)
+  })
+
   test('the budget action role trusts only Budgets in this account, and may attach only the deny policy to only that role', () => {
     const t = budget()
     const [trust] = Object.values(t.findResources('AWS::IAM::Role'))
@@ -394,6 +410,29 @@ describe('the prompt API (AltrobePrompt)', () => {
     const { prompt } = stacks()
     const text = JSON.stringify(Object.values(prompt.findResources('AWS::IAM::Policy')).filter((p) => JSON.stringify(p.Properties.Roles).includes('PromptApiRole')))
     for (const a of ['dynamodb:UpdateItem', 'dynamodb:GetItem', 'ssm:GetParameter', 'secretsmanager:GetSecretValue']) expect(text).toContain(a)
+  })
+
+  test("counts the day's cap reached, spend and uncounted spend from the Lambda's log lines", () => {
+    const { prompt } = stacks()
+    const filters = Object.values(prompt.findResources('AWS::Logs::MetricFilter')).map((f) => f.Properties)
+    expect(filters).toHaveLength(3)
+    const by = (metric: string) => filters.find((f) => f.MetricTransformations[0].MetricName === metric)
+    expect(by(PROMPT_METRICS.dailyCap)?.FilterPattern).toBe('{ ($.event = "prompt") && ($.outcome = "daily_cap") }')
+    expect(by(PROMPT_METRICS.spend)?.FilterPattern).toBe('{ ($.event = "prompt") && ($.outcome = "ok") }')
+    expect(by(PROMPT_METRICS.spend)?.MetricTransformations[0].MetricValue).toBe('$.microUsd')
+    expect(by(PROMPT_METRICS.spendErrors)?.FilterPattern).toBe('{ ($.event = "prompt") && ($.spendError = "*") }')
+    for (const f of filters) {
+      expect(f.MetricTransformations[0].MetricNamespace).toBe(PROMPT_METRICS_NAMESPACE)
+      expect(JSON.stringify(f.LogGroupName)).toContain('PromptApiLogs')
+    }
+  })
+
+  test('the metric filters read fields the handler logs (lambda/prompt/handler.ts)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const handler = readFileSync(new URL('../lambda/prompt/handler.ts', import.meta.url), 'utf8')
+    const index = readFileSync(new URL('../lambda/prompt/index.ts', import.meta.url), 'utf8')
+    expect(index).toContain("event: 'prompt'")
+    for (const s of ["outcome: 'ok'", 'outcome: code', "'daily_cap'", 'microUsd: cost', 'entry.spendError =']) expect(handler, s).toContain(s)
   })
 
   test('counters expire through a TTL, on demand', () => {

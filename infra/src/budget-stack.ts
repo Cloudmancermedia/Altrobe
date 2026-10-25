@@ -1,5 +1,10 @@
-import { Stack, type StackProps } from 'aws-cdk-lib'
+import { Duration, Stack, type StackProps } from 'aws-cdk-lib'
 import { CfnBudget, CfnBudgetsAction } from 'aws-cdk-lib/aws-budgets'
+import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch'
+import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions'
+import { Topic } from 'aws-cdk-lib/aws-sns'
+import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions'
+import { PROMPT_METRICS, PROMPT_METRICS_NAMESPACE } from './prompt-api.js'
 import { Effect, ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam'
 import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from 'aws-cdk-lib/custom-resources'
 import type { Construct } from 'constructs'
@@ -9,6 +14,9 @@ import type { Construct } from 'constructs'
 // the real control; this catches the cap failing, and leaves room for about twelve full-cap days a
 // month before it cuts Bedrock off.
 export const BEDROCK_MONTHLY_LIMIT_USD = 300
+// A quarter of the daily cap in one hour: at that rate the box closes for everyone within four hours, so
+// the alarm comes while there is time to act (the kill switch, or a lower per-IP limit).
+export const SPEND_ALARM_MICRO_USD_PER_HOUR = 6_250_000
 
 export interface BudgetStackProps extends StackProps {
   /** Where the alerts go. Comes from the deploy environment, never the repository. */
@@ -110,5 +118,25 @@ export class BudgetStack extends Stack {
     })
     // The budget and the role's policy must exist before Budgets checks it can run the action.
     action.node.addDependency(bedrockBudget, actionRole)
+
+    // The prompt API's alarms, on the metrics AltrobePrompt counts from its logs (prompt-api.ts), by name.
+    // Budgets lag by hours; these come within minutes. AWS emails once to confirm the subscription.
+    const topic = new Topic(this, 'PromptAlarms', { displayName: 'Altrobe prompt box' })
+    topic.addSubscription(new EmailSubscription(email))
+    const alarm = (id: string, metricName: string, period: Duration, threshold: number, comparisonOperator: ComparisonOperator, description: string) => {
+      const a = new Alarm(this, id, {
+        metric: new Metric({ namespace: PROMPT_METRICS_NAMESPACE, metricName, statistic: 'Sum', period }),
+        threshold, comparisonOperator, evaluationPeriods: 1,
+        treatMissingData: TreatMissingData.NOT_BREACHING,
+        alarmDescription: description,
+      })
+      a.addAlarmAction(new SnsAction(topic))
+    }
+    alarm('DailyCapAlarm', PROMPT_METRICS.dailyCap, Duration.minutes(5), 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      "The prompt box reached the day's spend cap and is closed for everyone until 13:00 UTC.")
+    alarm('SpendAlarm', PROMPT_METRICS.spend, Duration.hours(1), SPEND_ALARM_MICRO_USD_PER_HOUR, ComparisonOperator.GREATER_THAN_THRESHOLD,
+      "The prompt box spent over a quarter of the day's cap in an hour.")
+    alarm('SpendErrorAlarm', PROMPT_METRICS.spendErrors, Duration.minutes(5), 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      "A prompt box step's spend failed to save, so the daily cap undercounts.")
   }
 }

@@ -8,7 +8,7 @@ import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam'
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
+import { FilterPattern, LogGroup, RetentionDays, type JsonPattern } from 'aws-cdk-lib/aws-logs'
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager'
 import { StringParameter } from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
@@ -31,6 +31,9 @@ export const FOUNDATION_MODEL = 'amazon.nova-2-lite-v1:0'
 export const LAMBDA_TIMEOUT_SECONDS = 30
 /** Most commands running at once. Requests past it are throttled. */
 export const RESERVED_CONCURRENCY = 5
+/** Metrics counted from the Lambda's log lines, which AltrobeBudget alarms on by name. */
+export const PROMPT_METRICS_NAMESPACE = 'Altrobe/Prompt'
+export const PROMPT_METRICS = { dailyCap: 'DailyCapReached', spend: 'SpendMicroUsd', spendErrors: 'SpendWriteErrors' }
 
 export interface PromptApiProps {
   /** The hostnames a Turnstile token may come from. */
@@ -75,6 +78,7 @@ export class PromptApi extends Construct {
       managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')],
     })
     const infraDir = fileURLToPath(new URL('..', import.meta.url))
+    const logGroup = new LogGroup(this, 'Logs', { retention: RetentionDays.TWO_WEEKS, removalPolicy: RemovalPolicy.DESTROY })
     this.fn = new NodejsFunction(this, 'Function', {
       entry: fileURLToPath(new URL('../lambda/prompt/index.ts', import.meta.url)),
       projectRoot: infraDir,
@@ -85,7 +89,7 @@ export class PromptApi extends Construct {
       timeout: Duration.seconds(LAMBDA_TIMEOUT_SECONDS),
       reservedConcurrentExecutions: RESERVED_CONCURRENCY,
       role,
-      logGroup: new LogGroup(this, 'Logs', { retention: RetentionDays.TWO_WEEKS, removalPolicy: RemovalPolicy.DESTROY }),
+      logGroup,
       // The AWS SDK is bundled, not taken from the runtime, so the deployed version is the tested one.
       bundling: { externalModules: [], minify: true, sourceMap: false },
       environment: {
@@ -102,6 +106,15 @@ export class PromptApi extends Construct {
     this.table.grantReadWriteData(this.fn)
     killSwitch.grantRead(this.fn)
     for (const s of [turnstile, hmacKey, origin]) s.grantRead(this.fn)
+    // From the one log line per request (lambda/prompt/handler.ts): the box closing for the day, the spend of
+    // each answered step, and a step whose spend failed to save, so the daily cap undercounts.
+    const prompt = FilterPattern.stringValue('$.event', '=', 'prompt')
+    const count = (id: string, metricName: string, pattern: JsonPattern, metricValue = '1') =>
+      logGroup.addMetricFilter(id, { filterPattern: FilterPattern.all(prompt, pattern), metricNamespace: PROMPT_METRICS_NAMESPACE, metricName, metricValue })
+    count('DailyCapMetric', PROMPT_METRICS.dailyCap, FilterPattern.stringValue('$.outcome', '=', 'daily_cap'))
+    count('SpendMetric', PROMPT_METRICS.spend, FilterPattern.stringValue('$.outcome', '=', 'ok'), '$.microUsd')
+    count('SpendErrorMetric', PROMPT_METRICS.spendErrors, FilterPattern.exists('$.spendError'))
+
     // Converse needs bedrock:InvokeModel on the inference profile and on the model in every Region it routes to.
     this.fn.addToRolePolicy(new PolicyStatement({
       actions: ['bedrock:InvokeModel'],
