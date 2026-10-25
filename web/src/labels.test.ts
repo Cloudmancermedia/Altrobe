@@ -66,6 +66,17 @@ describe('animation labels', () => {
   })
 })
 
+// BundleBaker.FormAnimations on 2026-10-25: every one has a label and a group.
+const BAKED_FORMS = ['Stand', 'Walk', 'Run', 'Walkbackwards', 'ShuffleLeft', 'ShuffleRight', 'Sprint', 'JumpStart', 'Jump', 'JumpEnd', 'JumpLandRun',
+  'StealthStand', 'StealthWalk', 'ReadyUnarmed', 'AttackUnarmed', 'DruidCatClaw', 'DruidCatRake', 'DruidCatRip', 'DruidCatPounce', 'DruidCatRavage',
+  'DruidBearMaul', 'DruidBearSwipe', 'DruidBearBite', 'DruidBearBash', 'BattleRoar', 'SpellCastDirected', 'SpellCastOmni', 'EmoteRoar', 'EmoteDance']
+
+test('every animation baked for druid forms has plain words and a group', () => {
+  for (const name of BAKED_FORMS) expect(animationGroup(name), name).not.toBe('Other')
+  expect([animationLabel('DruidCatRake'), animationLabel('DruidBearMaul'), animationLabel('EmoteRoar')]).toEqual(['Rake', 'Maul', 'Roar'])
+  expect(animationGroup('DruidCatRake')).toBe('Druid forms')
+})
+
 // BundleBaker.AnimationList on 2026-10-15.
 const BAKED = ['Stand', 'Walk', 'Run', 'Walkbackwards', 'ShuffleLeft', 'ShuffleRight', 'Sprint', 'JumpStart', 'Jump', 'JumpEnd', 'JumpLandRun',
   'StealthStand', 'StealthWalk', 'Spell', 'SpellPrecast', 'SpellCast', 'SpellCastArea', 'ReadySpellDirected', 'ReadySpellOmni', 'SpellCastDirected',

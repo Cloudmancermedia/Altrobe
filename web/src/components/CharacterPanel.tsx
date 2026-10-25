@@ -125,7 +125,7 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
 function AnimationPresets({ look, animations }: { look: Look; animations: AnimationInfo[] }) {
   const subclass = useItemSubclass(look.items.mainhand, look.race, look.sex, look.models)
   const rangedSubclass = useItemSubclass(look.items.ranged, look.race, look.sex, look.models)
-  const presets = animationPresets(animations, subclass, rangedSubclass)
+  const presets = animationPresets(animations, subclass, rangedSubclass, look.form)
   if (!presets.length) return null
   return (
     <div className="actions presets" role="group" aria-label="Quick animations">

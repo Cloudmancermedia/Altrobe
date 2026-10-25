@@ -73,9 +73,13 @@ const ANIMATIONS: [group: string, labels: Record<string, string>][] = [
     ReadyBow: 'Ready (bow)', AttackBow: 'Shoot (bow)', ReadyRifle: 'Ready (gun or crossbow)', AttackRifle: 'Shoot (gun or crossbow)',
     ReadyThrown: 'Ready (thrown)', AttackThrown: 'Throw or shoot a wand',
   }],
+  ['Druid forms', {
+    DruidCatClaw: 'Claw', DruidCatRake: 'Rake', DruidCatRip: 'Rip', DruidCatPounce: 'Pounce', DruidCatRavage: 'Ravage',
+    DruidBearMaul: 'Maul', DruidBearSwipe: 'Swipe', DruidBearBite: 'Bite', DruidBearBash: 'Bash',
+  }],
   ['Stealth', { StealthStand: 'Stealth', StealthWalk: 'Stealth (walk)' }],
   ['Mounted and emotes', {
-    Mount: 'Mounted', MountSpecial: 'Mounted (special)', EmoteWave: 'Wave', EmoteCheer: 'Cheer', EmoteDance: 'Dance', EmoteLaugh: 'Laugh',
+    Mount: 'Mounted', MountSpecial: 'Mounted (special)', EmoteWave: 'Wave', EmoteCheer: 'Cheer', EmoteDance: 'Dance', EmoteLaugh: 'Laugh', EmoteRoar: 'Roar',
   }],
 ]
 
