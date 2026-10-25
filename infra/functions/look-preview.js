@@ -3,10 +3,9 @@
 // path (/l/<base64url look>). This answers with that look's tags, then sends people into the app at
 // /shared/<site>#look=<look> (sharedPath below). Only ES 5.1 globals and atob, which the 2.0 runtime documents; no modules. Under 10 KB.
 var SITE = 'https://altrobe.com'
-// The longest look this reads for a preview card, in base64url characters. Reading costs compute that grows
-// with the look: 6,450 characters used 56%, 7,915 used up to 79% (test-function, 2026-10-23). A longer look
-// gets the plain preview and still opens, passed on unread, up to MAX_LINK; CloudFront refuses URLs over
-// 8,192 bytes. web/src/look/look.test.ts keeps the largest look the format allows under MAX_LOOK.
+// Reading a look for its card costs compute that grows with its length (6,450 characters used 56%, 7,915 up to
+// 79% in test-function, 2026-10-23). Longer looks get the plain card and are passed on unread, up to MAX_LINK
+// (CloudFront refuses URLs over 8,192 bytes). web/src/look/look.test.ts keeps the largest look under MAX_LOOK.
 var MAX_LOOK = 6500
 var MAX_LINK = 8000
 var RACES = { 1: ['Human', 'Alliance'], 2: ['Orc', 'Horde'], 3: ['Dwarf', 'Alliance'], 4: ['Night Elf', 'Alliance'],
@@ -97,9 +96,8 @@ function handler(event) {
   var uri = event.request.uri
   var look = uri.slice(0, 3) === '/l/' ? uri.slice(3) : ''
   if (look.slice(-1) === '/') look = look.slice(0, -1)
-  // atob takes only base64 characters, so a look it reads holds nothing HTML would take as markup and goes
-  // into the page as it is: escaping it cost compute that grew with its length (2026-10-23). sharedPath
-  // gives letters, digits, dots and dashes.
+  // A look atob accepts holds only base64 characters, so it goes into the page unescaped; escaping cost
+  // compute that grew with its length. sharedPath yields only letters, digits, dots and dashes.
   var raw = null, card = null
   if (look.length > 0 && look.length <= MAX_LINK) {
     try { raw = bytes(look) } catch (e) { raw = null }

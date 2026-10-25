@@ -209,7 +209,6 @@ public class PopularWeaponsTests
             c.Value.TwoHand.Concat(c.Value.OneHand).Concat(c.Value.OffHand ?? []).Concat(c.Value.Ranged).Distinct().Count()));
         // Expanded on 2026-10-15: every class has at least 15 weapons, and Forever's own weapons are listed.
         Assert.All(list.Classes, c => Assert.True(c.Value.TwoHand.Count + c.Value.OneHand.Count + c.Value.Ranged.Count >= 15, $"class {c.Key}"));
-        // Expanded on 2026-10-24 to every new-in-Forever weapon, shield and held item with a look Classic never had.
         Assert.True(list.NewInForever.Count >= 60);
         Assert.Equal(list.NewInForever.Count, list.NewInForever.Distinct().Count());
     }

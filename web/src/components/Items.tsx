@@ -66,7 +66,6 @@ function SetSearch({ build }: { build: string }) {
   const characters = useStore(store, (s) => s.characters)
   const anyClass = useStore(store, (s) => s.anyClass)
   const classes = classChoices(characters, race, anyClass)
-  // The edited character's class (the Identity panel's, for the main one) is the filter: one choice for both panels.
   const [classId, setClassId] = useFindClass()
   const browsing = q.trim() === '' && prefs.notableFirst
   const setPrefs = (next: SetPrefs) => { setPrefsState(next); writeSetPrefs(storage(), next) }
@@ -202,7 +201,6 @@ function PopularWeapons({ build }: { build: string }) {
   }, [classId])
 
   const busy = shown?.classId !== classId
-  // Classic and Forever's own weapons on two sides of a switch, so neither list runs on forever.
   const [view, setView] = useState<WeaponView>('classic')
   const groups = weaponView(shown?.groups ?? [], view)
   return (

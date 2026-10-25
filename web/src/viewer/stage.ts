@@ -27,7 +27,6 @@ export class StageView {
   readonly controls: OrbitControls
   readonly element: HTMLElement
   character: Character | null = null
-  /** Turning slowly (the Auto-rotate button), on this view's own. */
   autoRotate = false
   /** The nameplate element to keep over the character's head, if it has one. */
   nameplate: HTMLElement | null = null

@@ -65,7 +65,6 @@ export function characterLook(look: Look, index: number): Look {
   if (!c) return look
   const { identity: _, anim: mainAnim, sheathed: mainSheathed, sheatheOnBack: mainOnBack, autoRotate: mainRotate, ...rest } = look
   const anim = c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : mainAnim
-  // Sheathing is its own once its outfit or animation is; until then it is the main character's.
   const sheathed = ownSheathing(c) ? c.sheathed : mainSheathed, onBack = ownSheathing(c) ? c.sheatheOnBack : mainOnBack
   const autoRotate = ownSheathing(c) ? c.autoRotate : mainRotate
   return {
@@ -79,7 +78,7 @@ export function ownSheathing(c: CompareCharacter): boolean {
   return !!(c.items || c.anim)
 }
 
-/** Drops a character's own sheathing once neither its outfit nor its animation is its own. */
+/** Drops a character's own sheathing and auto-rotate once neither its outfit nor its animation is its own. */
 function bindSheathing(c: CompareCharacter): CompareCharacter {
   if (ownSheathing(c)) return c
   const next = { ...c }
@@ -157,7 +156,6 @@ export const transitions = {
     return { look: next }
   },
 
-  /** Turns the character slowly (on screen only; share links leave it out). */
   setAutoRotate(look: Look, on: boolean): Result {
     const next = { ...look }
     if (on) next.autoRotate = true
@@ -418,7 +416,6 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
     }
     const build = store.get().status?.active?.build
     const look = build ? { ...r.look, build } : r.look
-    // A side-by-side character that is gone can't stay selected.
     store.set((s) => ({ look, notices: { ...s.notices, commands: [] }, ...(s.selected > look.compare.length ? { selected: 0 } : {}) }))
     return { look }
   }

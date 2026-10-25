@@ -7,7 +7,6 @@ describe('aboutLinks', () => {
   test('the About dialog links to the source, a GitHub issue for problems and rights concerns, and the licences', () => {
     const links = aboutLinks({ installs: true, session: true, assistant: true })
     expect(links.map((l) => l.label)).toEqual(['Watch the tutorial', 'Source code', 'Report a problem or rights concern', 'Licenses', 'Item names: cmangos'])
-    // The maintainer's walkthrough on YouTube (2026-10-23), also linked under the tagline.
     expect(links[0].href).toBe(TUTORIAL.href)
     expect(TUTORIAL.href).toBe('https://www.youtube.com/watch?v=Ij51rZt48V8')
     expect(links.find((l) => l.label.startsWith('Report'))?.href).toBe('https://github.com/Cloudmancermedia/altrobe/issues/new')
