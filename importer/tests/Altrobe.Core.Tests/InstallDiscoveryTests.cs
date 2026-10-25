@@ -69,10 +69,22 @@ public class InstallDiscoveryTests : IDisposable
     [Fact]
     public void ForeverIsIdentifiedFromTheBuildNameNotTheProductCode()
     {
-        Assert.True(WowProduct.LooksLikeForever("WOW-80000patch1.61.0_Forever"));
-        Assert.True(WowProduct.LooksLikeForever("WOW-70009patch1.60.1_ForeverBeta"));
-        Assert.False(WowProduct.LooksLikeForever("WOW-69933patch12.1.0_Retail"));
-        Assert.False(WowProduct.LooksLikeForever(null));
+        Assert.True(WowProduct.LooksLikeForever("WOW-80000patch1.61.0_Forever", "1.61.0.80000"));
+        Assert.True(WowProduct.LooksLikeForever("WOW-70009patch1.60.1_ForeverBeta", "1.60.1.70009"));
+        Assert.False(WowProduct.LooksLikeForever("WOW-69933patch12.1.0_Retail", "12.1.0.69933"));
+        Assert.False(WowProduct.LooksLikeForever(null, ""));
+    }
+
+    // From 1.60.1.70532 the beta's build name dropped "Forever" (WOW-70532patch1.60.1_Beta), so the
+    // patch line counts too: Forever is 1.60 on, where Classic Era is 1.15 and Anniversary 2.5.
+    [Fact]
+    public void ForeverIsAlsoIdentifiedByItsPatchLine()
+    {
+        Assert.True(WowProduct.LooksLikeForever("WOW-70532patch1.60.1_Beta", "1.60.1.70532"));
+        Assert.True(WowProduct.LooksLikeForever(null, "1.61.0.80000"));
+        Assert.False(WowProduct.LooksLikeForever("WOW-70003patch1.15.9_ClassicRetail", "1.15.9.70003"));
+        Assert.False(WowProduct.LooksLikeForever("WOW-70006patch2.5.6_Anniversary", "2.5.6.70006"));
+        Assert.False(WowProduct.LooksLikeForever(null, "not a version"));
     }
 
     [Fact]

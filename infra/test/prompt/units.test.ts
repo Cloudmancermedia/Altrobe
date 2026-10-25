@@ -130,6 +130,17 @@ describe('the instructions', () => {
   })
 })
 
+describe('the tool result limit', () => {
+  test('matches the website, which trims each result to fit (MAX_RESULT_CHARS in web/src/assistant/hosted.ts)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { MAX_RESULT_CHARS } = await import('../../lambda/prompt/validate.js')
+    const web = readFileSync(new URL('../../../web/src/assistant/hosted.ts', import.meta.url), 'utf8')
+    const match = web.match(/export const MAX_RESULT_CHARS = ([\d_]+)/)
+    expect(match).not.toBeNull()
+    expect(Number(match![1].replaceAll('_', ''))).toBe(MAX_RESULT_CHARS)
+  })
+})
+
 describe('the time budget', () => {
   test('one Bedrock attempt, Turnstile and the store calls fit inside the Lambda timeout', async () => {
     const { BEDROCK_CLIENT, TURNSTILE_TIMEOUT_MS } = await import('../../lambda/prompt/model.js')

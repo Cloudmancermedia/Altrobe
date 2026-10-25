@@ -2,7 +2,7 @@
 
 These `.dbd` files describe the column layout of the DB2 tables Altrobe reads. They are copied
 unchanged from [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) at commit
-`e989e99e6f5f97c57b2e138d4d28b16066b4ee9c` (2026-09-25). `manifest.json` is WoWDBDefs'
+`12ce70d5fef13370f0edf08889f01c05321d2e28` (2026-10-23). `manifest.json` is WoWDBDefs'
 `manifest.json` trimmed to these tables; it maps each table to its DB2 FileDataID.
 
 They are community-written format descriptions, not Blizzard content. The definitions are licensed
