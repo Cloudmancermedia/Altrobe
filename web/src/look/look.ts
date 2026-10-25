@@ -66,6 +66,8 @@ export interface CompareCharacter {
   /** With its own outfit or animation, its own sheathing; otherwise it sheathes as the main character does. */
   sheathed?: boolean
   sheatheOnBack?: boolean
+  /** Turning slowly, on screen only: never in a share link or saved look, so those open facing front. */
+  autoRotate?: boolean
 }
 
 export interface Look {
@@ -87,6 +89,8 @@ export interface Look {
   sheathed?: boolean
   /** Hip weapons go on the back when sheathed, as Forever's option allows; absent means the hip. */
   sheatheOnBack?: boolean
+  /** Turning slowly, on screen only: never in a share link or saved look, so those open facing front. */
+  autoRotate?: boolean
 }
 
 export interface LookResult {

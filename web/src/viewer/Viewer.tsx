@@ -21,6 +21,8 @@ export interface ViewerCell {
   custom?: Record<string, number>
   /** The animation this character plays; none stands. */
   anim?: string
+  /** Turning slowly; when it stops, the view goes back to the look's camera view. */
+  autoRotate?: boolean
   /** The nameplate over the head and the tooltip lines (the first is the name). */
   identity?: { plate: { name: string; guild?: string; pvp: boolean } | null; tooltip: string[]; pvp: boolean; tooltipMode: TooltipMode }
 }
@@ -34,13 +36,11 @@ interface ViewerProps {
   onStage?: (stage: Stage | null) => void
   /** The character the panels edit, by position (0 the main one); clicking a view picks it. */
   selected?: number
-  /** Turn every character slowly. */
-  autoRotate?: boolean
   onSelect?: (index: number) => void
 }
 
 /** Hosts the shared three.js stage and one view per character. */
-export function Viewer({ cells, look, itemSpeed, onNotices, onResolved, onStage, selected = 0, onSelect, autoRotate = false }: ViewerProps) {
+export function Viewer({ cells, look, itemSpeed, onNotices, onResolved, onStage, selected = 0, onSelect }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [stage, setStage] = useState<Stage | null>(null)
 
@@ -52,7 +52,6 @@ export function Viewer({ cells, look, itemSpeed, onNotices, onResolved, onStage,
     // The stage lives as long as the component; onStage is a notification only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  useEffect(() => { if (stage) stage.autoRotate = autoRotate }, [stage, autoRotate])
 
   return (
     <div className="stage">
@@ -138,6 +137,19 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved,
     // look is read through outfitKey (part of loadKey); the callbacks are notifications only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loadKey])
+
+  // Auto-rotate on and off. Turned off, the view goes back to where a fresh page load puts it, wherever the
+  // turn had got to.
+  const turning = !!cell.autoRotate
+  const wasTurning = useRef(turning)
+  useEffect(() => {
+    if (!view) return
+    view.autoRotate = turning
+    // frame() updates the controls itself, so they stop first or it turns one frame's worth past the front.
+    view.controls.autoRotate = turning
+    if (wasTurning.current && !turning) view.frame(camViewRef.current)
+    wasTurning.current = turning
+  }, [view, turning])
 
   // A new camera view, or a new cell size when characters are added or removed, frames again. The
   // frame after layout has the new size.

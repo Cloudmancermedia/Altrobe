@@ -27,6 +27,8 @@ export class StageView {
   readonly controls: OrbitControls
   readonly element: HTMLElement
   character: Character | null = null
+  /** Turning slowly (the Auto-rotate button), on this view's own. */
+  autoRotate = false
   /** The nameplate element to keep over the character's head, if it has one. */
   nameplate: HTMLElement | null = null
   /** Where the nameplate's bottom goes, from the skull in the character's first animated frame, frozen so it never bobs. */
@@ -126,8 +128,6 @@ export class Stage {
   private readonly canvas: HTMLCanvasElement
   private readonly clock = new THREE.Clock()
   paused = false
-  /** Turns every character slowly (the Auto-rotate button). */
-  autoRotate = false
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -168,7 +168,7 @@ export class Stage {
       if (!this.paused) v.character?.update(dt)
       v.camera.aspect = r.width / r.height
       v.camera.updateProjectionMatrix()
-      v.controls.autoRotate = this.autoRotate
+      v.controls.autoRotate = v.autoRotate
       v.controls.autoRotateSpeed = AUTO_ROTATE_SPEED
       // The frame time keeps the turn the same speed on every screen; without it, it turns once a frame.
       v.controls.update(dt)
