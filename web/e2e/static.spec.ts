@@ -473,3 +473,29 @@ test('Copy shortlist puts the shortlist on the clipboard, numbered, first choice
   // The newest addition goes to the top of the shortlist.
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('1. Zorak Darksoul\n2. Velka Mirebloom')
 })
+
+test('on a desktop window the page never scrolls, and the side panels never scroll sideways', async ({ page }) => {
+  // The AI label's hidden text sat outside the left panel, so the page grew below it (2026-10-24), and the
+  // Off hand link pushed weapon rows past the right panel's edge.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openApp(page)
+  await page.getByRole('region', { name: 'Find' }).getByRole('radio', { name: 'weapons' }).click()
+  await expect(page.locator('.results .qname').first()).toBeVisible()
+  // This build has no prompt box, so put a hidden label like its AI one at the foot of a left panel taller
+  // than the window, as the live one is.
+  await page.evaluate(() => {
+    const section = document.createElement('section')
+    section.style.paddingTop = '1500px'
+    const s = document.createElement('span')
+    s.className = 'visually-hidden'
+    s.textContent = 'Uses the daily AI allowance'
+    section.append(s)
+    document.querySelector('aside.side.left')!.append(section)
+  })
+  const size = () => page.evaluate(() => {
+    const doc = document.documentElement
+    const sides = [...document.querySelectorAll('aside.side')].map((a) => a.scrollWidth - a.clientWidth)
+    return { page: [doc.scrollWidth - innerWidth, doc.scrollHeight - innerHeight], sides }
+  })
+  expect(await size()).toEqual({ page: [0, 0], sides: [0, 0] })
+})
