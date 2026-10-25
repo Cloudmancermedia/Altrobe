@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { getBaseLook, getResolvedItem, getTitles } from './api/client'
-import type { BaseLook, ModelSet, TitleInfo } from './api/types'
+import { getBaseLook, getForms, getResolvedItem, getTitles } from './api/client'
+import type { AnimationInfo, BaseLook, FormsResponse, ModelSet, TitleInfo } from './api/types'
+import type { Look } from './look/look'
+import { formChoiceFor } from './viewer/form'
 
 /** The base look for a character, or null while it loads or when it cannot be loaded. */
 export function useBaseLook(race: number, sex: number, models: ModelSet, enabled = true): BaseLook | null {
@@ -37,3 +39,22 @@ export function useTitles(): TitleInfo[] {
   useEffect(() => { getTitles().then(setTitles, () => setTitles([])) }, [])
   return titles
 }
+
+/** The build's druid forms, loaded once; null until they arrive or when they cannot be loaded. */
+export function useForms(): FormsResponse | null {
+  const [forms, setForms] = useState<FormsResponse | null>(null)
+  useEffect(() => { getForms().then(setForms, () => setForms(null)) }, [])
+  return forms
+}
+
+/** A character's animations: its body model's, or in a druid form the form model's. */
+export function useAnimations(look: Pick<Look, 'race' | 'sex' | 'models' | 'form' | 'formChoice'>, enabled = true): AnimationInfo[] | null {
+  const base = useBaseLook(look.race, look.sex, look.models, enabled && !look.form)
+  const forms = useForms()
+  if (!look.form) return base?.animations ?? null
+  const found = forms && formChoiceFor(forms, look)
+  return found ? forms.animations[found.choice.modelFileDataId] ?? NO_ANIMATIONS : null
+}
+
+// One empty list, so a form model without animations doesn't hand effects a new array every render.
+const NO_ANIMATIONS: AnimationInfo[] = []

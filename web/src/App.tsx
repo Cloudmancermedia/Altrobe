@@ -13,7 +13,7 @@ import { HostedPromptPanel, PromptPanel } from './components/PromptPanel'
 import { ItemSearch } from './components/Items'
 import { PaperDoll } from './components/PaperDoll'
 import { ComparePanel, InstallPicker, Notices, SharePanel } from './components/Panels'
-import { useBaseLook, useTitles } from './hooks'
+import { useAnimations, useBaseLook, useTitles } from './hooks'
 import { nameplate, titlesFor, tooltipLines } from './identity/identity'
 import { characterLabel } from './labels'
 import { defaultsFrom, emptyLook, lookFromFragment, lookFromLocation, type KnownCharacters, type Look } from './look/look'
@@ -157,10 +157,16 @@ export default function App() {
     return () => removeEventListener('hashchange', onHash)
   }, [characters])
 
-  const mainBase = useBaseLook(look.race, look.sex, look.models, phase === 'ready')
+  // A druid form has no customization options; its animations are the form model's.
+  const mainBase = useBaseLook(look.race, look.sex, look.models, phase === 'ready' && !look.form)
+  const mainAnimations = useAnimations(look, phase === 'ready')
   useEffect(() => {
-    if (mainBase) store.set({ defaults: defaultsFrom(mainBase), options: mainBase.options ?? [], animations: mainBase.animations ?? [] })
-  }, [mainBase])
+    if (look.form) store.set({ defaults: {}, options: [] })
+    else if (mainBase) store.set({ defaults: defaultsFrom(mainBase), options: mainBase.options ?? [] })
+  }, [mainBase, look.form])
+  useEffect(() => {
+    if (mainAnimations) store.set({ animations: mainAnimations })
+  }, [mainAnimations])
 
   const allTitles = useTitles()
   const titles = useMemo(() => titlesFor(allTitles, characters?.races.find((r) => r.race === look.race)?.faction), [allTitles, characters, look.race])
@@ -177,20 +183,21 @@ export default function App() {
   const [panelTab, setPanelTab] = useState<'find' | 'character'>('find')
   const cells: ViewerCell[] = useMemo(() => [
     {
-      key: 'main', main: true, spec: { race: look.race, sex: look.sex, models: look.models }, label: characterLabel(characters, look.race, look.sex, look.models),
+      key: 'main', main: true, spec: { race: look.race, sex: look.sex, models: look.models, form: look.form, formChoice: look.formChoice },
+      label: characterLabel(characters, look.race, look.sex, look.models, look.form),
       identity: identityFor(look.identity, look.race, look.sex, titles), anim: look.anim, sheathed: look.sheathed, sheatheOnBack: look.sheatheOnBack, autoRotate: look.autoRotate,
     },
     ...look.compare.map((c, i): ViewerCell => ({
-      key: `compare${i}`, main: false, spec: { race: c.race, sex: c.sex, models: c.models }, custom: c.custom,
+      key: `compare${i}`, main: false, spec: { race: c.race, sex: c.sex, models: c.models, form: c.form, formChoice: c.formChoice }, custom: c.custom,
       outfit: c.items ? { items: c.items, hide: c.hide ?? [] } : undefined,
       sheathed: ownSheathing(c) ? c.sheathed : look.sheathed, sheatheOnBack: ownSheathing(c) ? c.sheatheOnBack : look.sheatheOnBack,
       autoRotate: ownSheathing(c) ? c.autoRotate : look.autoRotate,
-      label: `${c.label ? `${c.label} · ` : ''}${characterLabel(characters, c.race, c.sex, c.models)}`,
+      label: `${c.label ? `${c.label} · ` : ''}${characterLabel(characters, c.race, c.sex, c.models, c.form)}`,
       identity: identityFor(c.identity, c.race, c.sex, titlesFor(allTitles, characters?.races.find((r) => r.race === c.race)?.faction)),
       // Its own "Stand" means stand still, not play the main animation.
       anim: c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : look.anim,
     })),
-  ], [look.race, look.sex, look.models, look.compare, look.identity, look.anim, look.sheathed, look.sheatheOnBack, look.autoRotate, titles, allTitles, characters, identityFor])
+  ], [look.race, look.sex, look.models, look.form, look.formChoice, look.compare, look.identity, look.anim, look.sheathed, look.sheatheOnBack, look.autoRotate, titles, allTitles, characters, identityFor])
 
   // Drop notices from characters no longer on screen.
   const cellKeys = cells.map((c) => c.key).join()

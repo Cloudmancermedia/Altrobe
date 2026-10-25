@@ -59,6 +59,8 @@ export interface Character {
   setTime(t: number): void
   /** Turns the items' billboard bones to `camera`. Call once per frame, after update and camera moves. */
   faceCamera(camera: THREE.Camera): void
+  /** A druid form, framed from the side facing the camera (frameDistance). */
+  form: boolean
   /** The race and sex it was built as, for the nameplate's clearance. */
   race: number
   sex: number
@@ -304,7 +306,7 @@ export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.
   root.traverse((o) => { if (o.userData.keyBoneId === HEAD_KEY_BONE) headBone ??= o })
 
   return {
-    root, box, attached, notices, mixer, itemMixers, race: baseLook.race, sex: baseLook.sex,
+    root, box, attached, notices, mixer, itemMixers, race: baseLook.race, sex: baseLook.sex, form: !!baseLook.form,
     drawn: { geosets: look.geosets, layerFiles: look.layers.map((l) => l.fileDataId) },
     update(dt) {
       for (const b of billboards) b.bone.quaternion.copy(b.rest)

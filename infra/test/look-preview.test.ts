@@ -48,6 +48,13 @@ describe('the look preview function', () => {
     expect(meta(handler(event(`/l/${encode({ ...look, identity: { firstName: 'Zoë', level: 12 } })}`)).body.data, 'og:title')).toBe('Zoë · Level 12 Undead')
   })
 
+  test('a druid form is named by its form, not the sex it has no say in', () => {
+    const cat = { ...look, race: 4, form: 'cat', identity: undefined }
+    expect(meta(handler(event(`/l/${encode(cat)}`)).body.data, 'og:title')).toBe('Night Elf Cat Form')
+    expect(meta(handler(event(`/l/${encode({ ...cat, form: 'moonkin', identity: { level: 60, classId: 11 } })}`)).body.data, 'og:title')).toBe('Level 60 Night Elf Moonkin Form')
+    expect(meta(handler(event(`/l/${encode({ ...cat, form: 'flight' })}`)).body.data, 'og:title')).toBe('Night Elf female')
+  })
+
   test('previews a look with four characters side by side without per-byte work in JavaScript', () => {
     // CloudFront stopped the old decode, which percent-encoded every byte in a loop, with "RangeError:
     // Instruction limit exceeded" from two side-by-side characters on (aws cloudfront test-function,
