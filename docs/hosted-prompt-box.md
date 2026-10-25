@@ -33,6 +33,9 @@ One request is one model step. A command takes one to twelve steps (about four o
   - user text: `{ "role": "user", "content": [{ "text": "put this Undead in Judgement" }] }`
   - model reply: `{ "role": "assistant", "content": [{ "text": "..." }, { "toolUse": { "toolUseId": "...", "name": "search_sets", "input": { ... } } }] }`
   - tool results: `{ "role": "user", "content": [{ "toolResult": { "toolUseId": "...", "content": [{ "json": { ... } }], "status": "success" | "error" } }] }`
+    Each tool result holds exactly one `json` block, of at most 4,000 characters as JSON (`MAX_RESULT_CHARS`
+    in `infra/lambda/prompt/validate.ts`). The website trims each result to fit (`fitResult` in
+    `web/src/assistant/hosted.ts`), so only a hand-built request breaks this, to send the model text of its own.
 - `turnstileToken`: required on the first step only (one user message). Cloudflare tokens work once
   and last 300 seconds.
 - `creative`: optional; `true` on every step of a name request (the Identity panel's Suggest names),
@@ -76,7 +79,7 @@ Never 403 or 404: the app distribution rewrites those to `index.html` for the br
 
 | Status | `error` | When |
 | --- | --- | --- |
-| 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 25), typed text over 500 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
+| 400 | `bad_request` | Malformed body, too large (over 64 KB), too many messages (over 25), typed text over 500 characters, a tool result that isn't one `json` block of at most 4,000 characters, a ticket for a different conversation, or a ticket already used (each step's ticket works once) |
 | 400 | `turnstile` | The first step's Turnstile token fails Cloudflare's check |
 | 429 | `ip_limit` | This IP address has used its 100 model steps today; `resetAt` says when they come back. Checked only on a command's first step |
 | 429 | `daily_cap` | Today's spend reached the global cap ($25); `resetAt` says when the box reopens |

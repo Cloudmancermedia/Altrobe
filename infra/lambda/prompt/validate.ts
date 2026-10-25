@@ -3,6 +3,9 @@ export const MAX_BODY_BYTES = 64 * 1024
 // The typed text, then a model message and its tool results for each of up to 12 steps after the first.
 export const MAX_MESSAGES = 25
 export const MAX_TEXT = 500
+// The most one tool result may hold, in characters of JSON: the website trims each to fit (MAX_RESULT_CHARS in
+// web/src/assistant/hosted.ts), so only a hand-built request goes over, to send the model text of its own.
+export const MAX_RESULT_CHARS = 4_000
 const MAX_TOKEN = 2048
 
 export type Message = { role: 'user' | 'assistant'; content: Record<string, any>[] }
@@ -59,6 +62,7 @@ export function parseRequest(body: string): PromptRequest | { invalid: string } 
   if (!results.every(isToolResult)) return { invalid: 'tool_results' }
   const answered = results.map((r) => r.toolResult.toolUseId)
   if (asked.length !== answered.length || [...asked].sort().join('\n') !== [...answered].sort().join('\n')) return { invalid: 'tool_results' }
+  if (results.some((r) => JSON.stringify(r.toolResult.content[0].json).length > MAX_RESULT_CHARS)) return { invalid: 'tool_result_too_large' }
   return { kind: 'later', messages: typed, step: (typed.length + 1) / 2, ticket, creative, tools }
 }
 
@@ -67,6 +71,7 @@ function isToolResult(c: Record<string, any>): boolean {
   const r = c.toolResult
   if (!onlyKeys(r, ['toolUseId', 'content', 'status']) || typeof r.toolUseId !== 'string') return false
   if (r.status !== undefined && r.status !== 'success' && r.status !== 'error') return false
-  return Array.isArray(r.content) && r.content.every((b: unknown) => isObject(b) && onlyKeys(b, ['json', 'text'])
-    && Object.keys(b).length === 1 && (typeof b.text === 'string' || (typeof b.json === 'object' && b.json !== null)))
+  // One json block, as the website sends it: a text block would let a hand-built request write to the model.
+  return Array.isArray(r.content) && r.content.length === 1 && isObject(r.content[0]) && onlyKeys(r.content[0], ['json'])
+    && isObject(r.content[0].json)
 }
