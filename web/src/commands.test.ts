@@ -151,6 +151,39 @@ describe('transitions', () => {
     expect(transitions.compare(own, [...own.compare, { race: 2, sex: 0 }], characters).look!.compare[0]).toEqual(own.compare[0])
   })
 
+  test('a character in its own outfit sheathes on its own; one in the main outfit sheathes with the main one', () => {
+    const main = { ...bare, compare: [{ race: 5, sex: 1 as const, models: 'hd' as const }, { race: 2, sex: 1 as const, models: 'hd' as const, items: { mainhand: 3 } }] }
+    const shared = transitions.editCharacter(main, 1, (l) => transitions.setSheathed(l, true)).look!
+    expect([shared.sheathed, shared.compare[0].sheathed, shared.compare[0].items]).toEqual([true, undefined, undefined])
+    const own = transitions.editCharacter(main, 2, (l) => transitions.setSheatheOnBack(transitions.setSheathed(l, true).look!, true)).look!
+    expect([own.sheathed, own.compare[1].sheathed, own.compare[1].sheatheOnBack]).toEqual([undefined, true, true])
+    expect(characterLook(own, 2)).toMatchObject({ sheathed: true, sheatheOnBack: true })
+    expect(characterLook(shared, 1).sheathed).toBe(true)
+    // An own outfit starts with its weapons drawn, whatever the main one does; back in the main outfit, it
+    // sheathes with it again.
+    expect(transitions.ownOutfit(shared, 0).look!.compare[0].sheathed).toBeUndefined()
+    expect(transitions.wearMainOutfit(own, 1).look!.compare[1]).toEqual({ race: 2, sex: 1, models: 'hd' })
+    // Its own animation unbinds it too; back on the main animation and outfit, it sheathes with the main one.
+    const dancing = { ...main, compare: [{ ...main.compare[0], anim: 'Dance' }, main.compare[1]] }
+    const alone = transitions.editCharacter(dancing, 1, (l) => transitions.setSheathed(l, true)).look!
+    expect([alone.sheathed, alone.compare[0].sheathed, alone.compare[0].items]).toEqual([undefined, true, undefined])
+    expect(transitions.mainAnimation(alone, 0).look!.compare[0].sheathed).toBeUndefined()
+  })
+
+  test('the clear buttons reach every character: set pieces and weapons off every outfit, and everyone stands', () => {
+    const main = { ...bare, items: { head: 1, mainhand: 3 }, anim: 'Run', compare: [
+      { race: 5, sex: 1 as const, models: 'hd' as const, items: { head: 2, chest: 4, offhand: 5 }, anim: 'Stand' },
+      { race: 2, sex: 1 as const, models: 'hd' as const, anim: 'Dance' },
+    ] }
+    const off = transitions.unequipEveryone(main, ['head', 'mainhand', 'offhand']).look!
+    expect([off.items, off.compare[0].items, off.compare[1].items]).toEqual([{}, { chest: 4 }, undefined])
+    const still = transitions.standEveryone(main).look!
+    expect([still.anim, still.compare[0].anim, still.compare[1].anim]).toEqual([undefined, undefined, undefined])
+    // Back on the main animation and outfit, a character's own sheathing goes with its animation.
+    const sheathed = { ...main, compare: [main.compare[0], { ...main.compare[1], sheathed: true }] }
+    expect(transitions.standEveryone(sheathed).look!.compare[1].sheathed).toBeUndefined()
+  })
+
   test('ownOutfit gives a side-by-side character a copy of the main outfit to change', () => {
     const main = { ...bare, items: { head: 1, chest: 2 }, hide: ['head' as const], compare: [{ race: 5, sex: 1 as const, models: 'hd' as const }] }
     expect(transitions.ownOutfit(main, 0).look!.compare[0]).toEqual({ race: 5, sex: 1, models: 'hd', items: { head: 1, chest: 2 }, hide: ['head'] })

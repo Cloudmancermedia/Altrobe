@@ -157,9 +157,18 @@ describe('apparentHeight', () => {
 describe('clearanceFor', () => {
   test('is the shared clearance for most models, and more where hair or horns crowd the name', () => {
     expect(clearanceFor(1, 0)).toBe(CLEARANCE) // Human male
-    expect(clearanceFor(3, 1)).toBe(CLEARANCE) // Dwarf female: already roomy (gap 1.8x the text, 2026-10-21)
     // The tightest by measurement on 2026-10-21 (gap between the guild line and the head, in text heights):
     // Troll male 0.67, Tauren male 0.74, Orc female 0.82, Skyborne males 1.02, Undead female 1.1.
     for (const [race, sex] of [[8, 0], [6, 0], [2, 1], [95, 0], [96, 0], [5, 1]]) expect(clearanceFor(race, sex)).toBeGreaterThan(CLEARANCE)
+  })
+
+  test('gives Orcs, Undead, Trolls, Tauren and Dwarves half again their room, both sexes', () => {
+    // The maintainer found their names too close to the head (2026-10-24); each gets 1.5 times what it had.
+    const had: Record<string, number> = { '2-0': 1.4, '2-1': 2.0, '5-0': 1.4, '5-1': 1.7, '8-0': 2.3, '8-1': 1.4, '6-0': 1.8, '6-1': 1.4, '3-0': 1.4, '3-1': 1.4 }
+    for (const [model, before] of Object.entries(had)) {
+      const [race, sex] = model.split('-').map(Number)
+      expect(clearanceFor(race, sex), model).toBeCloseTo(before * 1.5)
+    }
+    expect(clearanceFor(4, 1)).toBe(CLEARANCE) // Night Elf female: unchanged
   })
 })

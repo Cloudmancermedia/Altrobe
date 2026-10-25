@@ -62,12 +62,28 @@ export function setPieceSlots(items: Look['items'], setPieces: ReadonlySet<numbe
 export function characterLook(look: Look, index: number): Look {
   const c = index > 0 ? look.compare[index - 1] : undefined
   if (!c) return look
-  const { identity: _, anim: mainAnim, ...rest } = look
+  const { identity: _, anim: mainAnim, sheathed: mainSheathed, sheatheOnBack: mainOnBack, ...rest } = look
   const anim = c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : mainAnim
+  // Sheathing is its own once its outfit or animation is; until then it is the main character's.
+  const sheathed = ownSheathing(c) ? c.sheathed : mainSheathed, onBack = ownSheathing(c) ? c.sheatheOnBack : mainOnBack
   return {
     ...rest, race: c.race, sex: c.sex, models: c.models, custom: c.custom ?? {}, items: c.items ?? look.items, hide: c.items ? c.hide ?? [] : look.hide, compare: [],
-    ...(c.identity ? { identity: c.identity } : {}), ...(anim ? { anim } : {}),
+    ...(c.identity ? { identity: c.identity } : {}), ...(anim ? { anim } : {}), ...(sheathed ? { sheathed } : {}), ...(onBack ? { sheatheOnBack: onBack } : {}),
   }
+}
+
+/** Whether a side-by-side character sheathes on its own: once its outfit or its animation is its own. */
+export function ownSheathing(c: CompareCharacter): boolean {
+  return !!(c.items || c.anim)
+}
+
+/** Drops a character's own sheathing once neither its outfit nor its animation is its own. */
+function bindSheathing(c: CompareCharacter): CompareCharacter {
+  if (ownSheathing(c)) return c
+  const next = { ...c }
+  delete next.sheathed
+  delete next.sheatheOnBack
+  return next
 }
 
 export const transitions = {
@@ -242,9 +258,37 @@ export const transitions = {
       const next = { ...c }
       delete next.items
       delete next.hide
-      return next
+      return bindSheathing(next)
     })
     return { look: { ...look, compare } }
+  },
+
+  /**
+   * Empties slots on every outfit: the main one and each side-by-side character's own. `slots` may be a
+   * function of an outfit's items, for slots that differ by outfit (its set pieces).
+   */
+  unequipEveryone(look: Look, slots: string[] | ((items: Look['items']) => string[])): Result {
+    const of = (items: Look['items']) => (typeof slots === 'function' ? slots(items) : slots)
+    const r = transitions.unequipSlots(look, of(look.items))
+    if (r.error !== undefined) return r
+    const compare: CompareCharacter[] = []
+    for (const c of look.compare) {
+      if (!c.items) { compare.push(c); continue }
+      const own = transitions.unequipSlots({ ...look, items: c.items, hide: c.hide ?? [] }, of(c.items))
+      if (own.error !== undefined) return own
+      const next: CompareCharacter = { ...c, items: own.look.items }
+      if (own.look.hide.length) next.hide = own.look.hide
+      else delete next.hide
+      compare.push(next)
+    }
+    return { look: { ...r.look, compare } }
+  },
+
+  /** Every character stands: the main animation stops and no side-by-side character keeps its own. */
+  standEveryone(look: Look): Result {
+    const next = { ...look, compare: look.compare.map((c) => { const x = { ...c }; delete x.anim; return bindSheathing(x) }) }
+    delete next.anim
+    return { look: next }
   },
 
   /** A side-by-side character (0-based) gets its own animation, starting from the main one. */
@@ -256,13 +300,15 @@ export const transitions = {
   /** A side-by-side character (0-based) plays the main animation again. */
   mainAnimation(look: Look, index: number): Result {
     if (!Number.isInteger(index) || index < 0 || index >= look.compare.length) return { error: `no side-by-side character ${index + 1}` }
-    return { look: { ...look, compare: look.compare.map((c, i) => { if (i !== index) return c; const next = { ...c }; delete next.anim; return next }) } }
+    return { look: { ...look, compare: look.compare.map((c, i) => { if (i !== index) return c; const next = { ...c }; delete next.anim; return bindSheathing(next) }) } }
   },
 
   /** A side-by-side character (0-based) gets a copy of the main outfit as its own, to change. */
   ownOutfit(look: Look, index: number): Result {
     if (!Number.isInteger(index) || index < 0 || index >= look.compare.length) return { error: `no side-by-side character ${index + 1}` }
-    const compare = look.compare.map((c, i) => (i === index ? { ...c, items: { ...look.items }, ...(look.hide.length ? { hide: [...look.hide] } : {}) } : c))
+    const compare = look.compare.map((c, i) => (i === index
+      ? { ...c, items: { ...look.items }, ...(look.hide.length ? { hide: [...look.hide] } : {}) }
+      : c))
     return { look: { ...look, compare } }
   },
 
@@ -285,12 +331,26 @@ export const transitions = {
     else delete next.identity
     // Like the outfit: another animation on a character playing the main one gives it its own.
     if (c.anim || after.anim !== before.anim) next.anim = after.anim ?? 'Stand'
+    let main = look
     if (c.items || after.items !== before.items || after.hide !== before.hide) {
       next.items = after.items
       if (after.hide.length) next.hide = after.hide
       else delete next.hide
     }
-    return { look: { ...look, compare: look.compare.map((x, i) => (i === index - 1 ? next : x)) } }
+    if (ownSheathing(next)) {
+      if (after.sheathed) next.sheathed = true
+      else delete next.sheathed
+      if (after.sheatheOnBack) next.sheatheOnBack = true
+      else delete next.sheatheOnBack
+    } else if (after.sheathed !== before.sheathed || after.sheatheOnBack !== before.sheatheOnBack) {
+      // In the main outfit and animation, a character sheathes with the main one.
+      main = { ...look }
+      if (after.sheathed) main.sheathed = true
+      else delete main.sheathed
+      if (after.sheatheOnBack) main.sheatheOnBack = true
+      else delete main.sheatheOnBack
+    }
+    return { look: { ...main, compare: look.compare.map((x, i) => (i === index - 1 ? next : x)) } }
   },
 
   setVisibility(look: Look, slot: string, visible: boolean): Result {
@@ -366,6 +426,8 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
     wear_main_outfit: (index: number) => apply(transitions.wearMainOutfit(look(), index)),
     own_outfit: (index: number) => apply(transitions.ownOutfit(look(), index)),
     own_animation: (index: number) => apply(transitions.ownAnimation(look(), index)),
+    unequip_everyone: (slots: string[] | ((items: Look['items']) => string[])) => apply(transitions.unequipEveryone(look(), slots)),
+    stand_everyone: () => apply(transitions.standEveryone(look())),
     main_animation: (index: number) => apply(transitions.mainAnimation(look(), index)),
     /** Which character the panels edit: 0 the main one, n the nth side-by-side one. */
     select: (index: number) => store.set({ selected: Number.isInteger(index) && index >= 0 && index <= look().compare.length ? index : 0 }),
@@ -381,6 +443,8 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
       randomize_customization: (options: CustomizationOption[] | null) => onSelected((l) => transitions.randomizeCustomization(l, options)),
       reset_customization: () => onSelected((l) => transitions.resetCustomization(l)),
       set_identity: (change: Parameters<typeof transitions.setIdentity>[1]) => onSelected((l) => transitions.setIdentity(l, change)),
+      set_sheathed: (sheathed: boolean) => onSelected((l) => transitions.setSheathed(l, sheathed)),
+      set_sheathe_on_back: (onBack: boolean) => onSelected((l) => transitions.setSheatheOnBack(l, onBack)),
       /** `animations` are the selected character's, from its base look. */
       set_animation: (name: string, animations: AnimationInfo[]) => onSelected((l) => transitions.setAnimation(l, name, animations)),
     },

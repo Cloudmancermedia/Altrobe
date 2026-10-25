@@ -374,3 +374,43 @@ test("Skyborne customization: no placeholder names, an empty tattoo color reads 
   const custom = await call(page, (h) => (h.commands.get_look() as { custom?: Record<string, number> }).custom ?? {})
   expect(Object.keys(custom)).toHaveLength(2)
 })
+
+test('the header links to the tutorial video under the tagline, in a new tab', async ({ page }) => {
+  await openApp(page)
+  const link = page.locator('.brand').getByRole('link', { name: 'Watch the tutorial' })
+  await expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=Ij51rZt48V8')
+  await expect(link).toHaveAttribute('target', '_blank')
+})
+
+test('a character in its own outfit sheathes on its own, and Clear weapons empties every outfit', async ({ page }) => {
+  await openApp(page)
+  const panel = page.getByRole('region', { name: 'Find' })
+  await panel.getByRole('radio', { name: 'items' }).click()
+  await panel.getByRole('searchbox').fill(String(THUNDERFURY))
+  await panel.locator('.results li button').first().click()
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await settled(page, 2)
+  await page.getByRole('checkbox', { name: 'Wear the main outfit' }).uncheck()
+  type Out = { sheathed?: boolean; items?: Record<string, number>; compare: { sheathe?: string; items?: Record<string, number> }[] }
+  const look = () => call(page, (h) => h.commands.get_look() as Out)
+  expect((await look()).compare[0].items?.mainhand).toBe(THUNDERFURY)
+
+  await page.getByRole('button', { name: 'Sheathe weapons' }).click()
+  let l = await look()
+  expect([l.sheathed, l.compare[0].sheathe]).toEqual([undefined, 'hip'])
+  // The main character still draws its weapons.
+  await page.locator('[data-cell="main"]').click()
+  await expect(page.getByRole('button', { name: 'Sheathe weapons' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Clear weapons' }).click()
+  l = await look()
+  expect([l.items?.mainhand, l.compare[0].items?.mainhand]).toEqual([undefined, undefined])
+
+  // Its own animation unbinds it too: a new character, back in the main outfit but on its own animation.
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await settled(page, 3)
+  await page.getByRole('checkbox', { name: 'Play the main animation' }).nth(1).uncheck()
+  await page.getByRole('button', { name: 'Sheathe weapons' }).click()
+  l = await look()
+  expect([l.sheathed, l.compare[1].sheathe, l.compare[1].items]).toEqual([undefined, 'hip', undefined])
+})

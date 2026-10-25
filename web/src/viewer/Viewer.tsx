@@ -14,6 +14,9 @@ export interface ViewerCell {
   main: boolean
   /** The character's own outfit; without it, the cell wears the look's main outfit. */
   outfit?: Pick<Look, 'items' | 'hide'>
+  /** Its weapons put away, and one-handers on the back rather than the hip. */
+  sheathed?: boolean
+  sheatheOnBack?: boolean
   /** Customization choices for this cell's body model. The main cell uses the look's own. */
   custom?: Record<string, number>
   /** The animation this character plays; none stands. */
@@ -101,7 +104,7 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved,
   // Only what changes the dressed result; camera moves do not rebuild the character.
   const worn = cell.outfit ?? look
   const custom = cell.main ? look.custom : cell.custom ?? {}
-  const outfitKey = JSON.stringify([worn.items, worn.hide, custom, cell.main ? look.build : null, cell.anim ?? null, look.sheathed ?? false, look.sheatheOnBack ?? false])
+  const outfitKey = JSON.stringify([worn.items, worn.hide, custom, cell.main ? look.build : null, cell.anim ?? null, cell.sheathed ?? false, cell.sheatheOnBack ?? false])
   const loadKey = `${specKey}|${outfitKey}|${itemSpeed}`
   const state = done?.key === loadKey ? done.state : 'loading'
 
@@ -109,7 +112,7 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved,
     if (!view) return
     let cancelled = false
     ;(async () => {
-      const prepared = await prepareCharacter(cell.spec, { ...look, items: worn.items, hide: worn.hide, custom }, cell.main)
+      const prepared = await prepareCharacter(cell.spec, { ...look, items: worn.items, hide: worn.hide, sheathed: cell.sheathed, sheatheOnBack: cell.sheatheOnBack, custom }, cell.main)
       if (cancelled) return
       onResolved?.(prepared.resolved)
       // The look names an animation; each character plays it if its body model has it, else stands.

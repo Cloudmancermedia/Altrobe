@@ -28,19 +28,20 @@ export function PaperDoll({ look, build, children }: { look: Look; build: string
       <div className="doll-bottom">
         <div className="doll-weapons" aria-label="Weapons">
           {DOLL.bottom.map((s) => <Slot key={s.slot} s={s} look={editing} build={build} />)}
-          <button type="button" className="sheathe" aria-pressed={!!look.sheathed} onClick={() => commands.set_sheathed(!look.sheathed)}
-            title={look.sheathed ? 'Take weapons out' : 'Put weapons away: on the back or hip (a ranged weapon is not shown)'}>
-            {look.sheathed ? 'Draw weapons' : 'Sheathe weapons'}
+          {/* The edited character's: its own in its own outfit, everyone's in the main outfit. */}
+          <button type="button" className="sheathe" aria-pressed={!!editing.sheathed} onClick={() => commands.edit.set_sheathed(!editing.sheathed)}
+            title={editing.sheathed ? 'Take weapons out' : 'Put weapons away: on the back or hip (a ranged weapon is not shown)'}>
+            {editing.sheathed ? 'Draw weapons' : 'Sheathe weapons'}
           </button>
-          {look.sheathed && (
+          {editing.sheathed && (
             <div className="segmented sheathe-where" role="radiogroup" aria-label="Sheathe one-handers on" title="Where one-hand weapons go when sheathed, as in Forever's options">
               {([[false, 'Hip'], [true, 'Back']] as const).map(([onBack, label]) => (
-                <button key={label} type="button" role="radio" aria-checked={!!look.sheatheOnBack === onBack} onClick={() => commands.set_sheathe_on_back(onBack)}>{label}</button>
+                <button key={label} type="button" role="radio" aria-checked={!!editing.sheatheOnBack === onBack} onClick={() => commands.edit.set_sheathe_on_back(onBack)}>{label}</button>
               ))}
             </div>
           )}
         </div>
-        <ClearButtons look={look} editing={editing} />
+        <ClearButtons look={look} />
       </div>
     </div>
   )

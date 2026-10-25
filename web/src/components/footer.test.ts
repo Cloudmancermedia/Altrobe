@@ -1,12 +1,15 @@
 import { describe, expect, test } from 'vitest'
-import { ANALYTICS_PRIVACY, aboutLinks, copyrightLine, gameDataLine, PROMPT_PRIVACY, SUPPORT, TAGLINE } from './footer'
+import { ANALYTICS_PRIVACY, aboutLinks, copyrightLine, gameDataLine, PROMPT_PRIVACY, SUPPORT, TAGLINE, TUTORIAL } from './footer'
 
 const LOCAL_APP = 'Download the local app'
 
 describe('aboutLinks', () => {
   test('the About dialog links to the source, a GitHub issue for problems and rights concerns, and the licences', () => {
     const links = aboutLinks({ installs: true, session: true, assistant: true })
-    expect(links.map((l) => l.label)).toEqual(['Source code', 'Report a problem or rights concern', 'Licenses', 'Item names: cmangos'])
+    expect(links.map((l) => l.label)).toEqual(['Watch the tutorial', 'Source code', 'Report a problem or rights concern', 'Licenses', 'Item names: cmangos'])
+    // The maintainer's walkthrough on YouTube (2026-10-23), also linked under the tagline.
+    expect(links[0].href).toBe(TUTORIAL.href)
+    expect(TUTORIAL.href).toBe('https://www.youtube.com/watch?v=Ij51rZt48V8')
     expect(links.find((l) => l.label.startsWith('Report'))?.href).toBe('https://github.com/Cloudmancermedia/altrobe/issues/new')
     // The licence and the notices for the code the site sends to browsers (dev/licence-files.ts).
     expect(links.find((l) => l.label === 'Licenses')?.href).toBe('/THIRD_PARTY_NOTICES.txt')
