@@ -121,6 +121,18 @@ public class PopularWeaponsTests
     }
 
     [Fact]
+    public void NewInForeverHeldItemsShowForEveryClassAndShieldsForShieldClasses()
+    {
+        // 300010: a new shield; 300011: a new held off-hand item, which needs no proficiency.
+        var items = Arsenal().OffHand(300010, "Evergreen Shield", Shield).OffHand(300011, "Fermented Restoration Potion", HeldInOffHand).Items();
+        var weapons = new PopularWeapons(items, List(newInForever: [300010, 300011]));
+        Assert.Empty(weapons.Problems());
+        Assert.Equal("Evergreen Shield,Fermented Restoration Potion", string.Join(',', weapons.For(7)[^1].Items.Select(i => i.Name))); // shaman
+        Assert.Equal("Fermented Restoration Potion", string.Join(',', weapons.For(8)[^1].Items.Select(i => i.Name))); // mage
+        Assert.Equal("Fermented Restoration Potion", string.Join(',', weapons.For(4)[^1].Items.Select(i => i.Name))); // rogue
+    }
+
+    [Fact]
     public void ShieldsAndHeldItemsShowAsTheOffHandGroupBeforeRanged()
     {
         var items = Arsenal().OffHand(20, "Drillborer Disk", Shield).OffHand(21, "Tome of Shadow Force", HeldInOffHand).Items();
@@ -197,7 +209,8 @@ public class PopularWeaponsTests
             c.Value.TwoHand.Concat(c.Value.OneHand).Concat(c.Value.OffHand ?? []).Concat(c.Value.Ranged).Distinct().Count()));
         // Expanded on 2026-10-15: every class has at least 15 weapons, and Forever's own weapons are listed.
         Assert.All(list.Classes, c => Assert.True(c.Value.TwoHand.Count + c.Value.OneHand.Count + c.Value.Ranged.Count >= 15, $"class {c.Key}"));
-        Assert.True(list.NewInForever.Count >= 10);
+        // Expanded on 2026-10-24 to every new-in-Forever weapon, shield and held item with a look Classic never had.
+        Assert.True(list.NewInForever.Count >= 60);
         Assert.Equal(list.NewInForever.Count, list.NewInForever.Distinct().Count());
     }
 }

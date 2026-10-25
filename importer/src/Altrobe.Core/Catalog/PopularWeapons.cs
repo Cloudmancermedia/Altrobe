@@ -63,8 +63,9 @@ public sealed class PopularWeapons(ItemCatalog items, PopularWeaponsList? list =
     public IReadOnlyList<WeaponGroup> For(int? classId)
     {
         if (classId is not { } c) return Groups((Popular, _list.All), (NewInForever, _list.NewInForever));
-        // Forever's weapons for this class: the ones its proficiencies allow.
-        var forever = _list.NewInForever.Where(id => items.Get(id) is { Weapon: not null } i && CanUse(c, i) && MadeFor(c, i)).ToList();
+        // Forever's weapons, shields and held items for this class: the ones its proficiencies allow. A held
+        // item needs none, so every class sees those.
+        var forever = _list.NewInForever.Where(id => items.Get(id) is { } i && (i.Weapon != null || IsOffHandItem(i)) && CanUse(c, i) && MadeFor(c, i)).ToList();
         var own = _list.Classes.TryGetValue(c, out var w) ? new[] { (TwoHand, w.TwoHand), (OneHand, w.OneHand), (OffHand, w.OffHand ?? []), (Ranged, w.Ranged) } : [];
         return Groups([.. own, (NewInForever, forever)]);
     }
