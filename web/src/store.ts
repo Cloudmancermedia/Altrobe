@@ -12,6 +12,8 @@ export interface ItemInfo {
 
 export interface AppState {
   look: Look
+  /** The character the panels edit: 0 the main one, n the nth side-by-side one. Not part of the look. */
+  selected: number
   /** Notices by source (e.g. "link", "cell:0"), so each source replaces only its own. */
   notices: Record<string, string[]>
   status: Status | null
@@ -73,6 +75,7 @@ export function createStore<T extends object>(initial: T): Store<T> {
 
 export const initialState = (): AppState => ({
   look: emptyLook(2, 0),
+  selected: 0,
   notices: {},
   status: null,
   characters: null,
@@ -116,7 +119,9 @@ export function setShortlist(store: Store<AppState>, shortlist: NamePair[]) {
 }
 
 export function useStore<T, R>(store: Store<T>, select: (s: T) => R): R {
-  return useSyncExternalStore(store.subscribe, () => select(store.get()))
+  const get = () => select(store.get())
+  // The same snapshot for a static render (the panel tests), where there is no server state.
+  return useSyncExternalStore(store.subscribe, get, get)
 }
 
 export function rememberItems(store: Store<AppState>, items: (ItemSearchResult | { itemId: number; name: string })[]) {

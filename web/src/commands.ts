@@ -23,6 +23,8 @@ export interface CompareInput {
   items?: Record<string, number>
   hide?: string[]
   custom?: Record<string, number>
+  identity?: Identity
+  anim?: string
 }
 
 const isId = (x: unknown): x is number => Number.isInteger(x) && (x as number) > 0
@@ -51,6 +53,21 @@ export function replacedSetSlots(items: Look['items'], pieces: { slot: string; i
 /** Slots wearing a piece of some set (`setPieces`, from /sets/pieces). Loose items and weapons outside sets stay. */
 export function setPieceSlots(items: Look['items'], setPieces: ReadonlySet<number>): SlotName[] {
   return (Object.entries(items) as [SlotName, number][]).filter(([, id]) => setPieces.has(id)).map(([slot]) => slot)
+}
+
+/**
+ * The character the panels edit, as a look of its own: 0 is the main character, n the nth side-by-side
+ * one, in the main outfit when it has none. The name and the side-by-side list belong to the main one.
+ */
+export function characterLook(look: Look, index: number): Look {
+  const c = index > 0 ? look.compare[index - 1] : undefined
+  if (!c) return look
+  const { identity: _, anim: mainAnim, ...rest } = look
+  const anim = c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : mainAnim
+  return {
+    ...rest, race: c.race, sex: c.sex, models: c.models, custom: c.custom ?? {}, items: c.items ?? look.items, hide: c.items ? c.hide ?? [] : look.hide, compare: [],
+    ...(c.identity ? { identity: c.identity } : {}), ...(anim ? { anim } : {}),
+  }
 }
 
 export const transitions = {
@@ -205,6 +222,13 @@ export const transitions = {
         for (const [o, ch] of Object.entries(c.custom)) if (!isId(Number(o)) || !isId(ch)) return { error: `not an option ID and choice ID: ${o}, ${ch}` }
         entry.custom = { ...c.custom }
       }
+      if (c.identity !== undefined) {
+        const notices: string[] = []
+        const identity = readIdentity(c.identity, notices)
+        if (notices.length) return { error: notices.join('; ') }
+        if (identity) entry.identity = identity
+      }
+      if (typeof c.anim === 'string' && c.anim.trim()) entry.anim = c.anim.trim()
       list.push(entry)
     }
     return { look: { ...look, compare: list } }
@@ -221,6 +245,52 @@ export const transitions = {
       return next
     })
     return { look: { ...look, compare } }
+  },
+
+  /** A side-by-side character (0-based) gets its own animation, starting from the main one. */
+  ownAnimation(look: Look, index: number): Result {
+    if (!Number.isInteger(index) || index < 0 || index >= look.compare.length) return { error: `no side-by-side character ${index + 1}` }
+    return { look: { ...look, compare: look.compare.map((c, i) => (i === index ? { ...c, anim: look.anim ?? 'Stand' } : c)) } }
+  },
+
+  /** A side-by-side character (0-based) plays the main animation again. */
+  mainAnimation(look: Look, index: number): Result {
+    if (!Number.isInteger(index) || index < 0 || index >= look.compare.length) return { error: `no side-by-side character ${index + 1}` }
+    return { look: { ...look, compare: look.compare.map((c, i) => { if (i !== index) return c; const next = { ...c }; delete next.anim; return next }) } }
+  },
+
+  /** A side-by-side character (0-based) gets a copy of the main outfit as its own, to change. */
+  ownOutfit(look: Look, index: number): Result {
+    if (!Number.isInteger(index) || index < 0 || index >= look.compare.length) return { error: `no side-by-side character ${index + 1}` }
+    const compare = look.compare.map((c, i) => (i === index ? { ...c, items: { ...look.items }, ...(look.hide.length ? { hide: [...look.hide] } : {}) } : c))
+    return { look: { ...look, compare } }
+  },
+
+  /**
+   * Applies a change to one character (see characterLook): 0 the main one, n the nth side-by-side one. A
+   * change to the gear of a character in the main outfit gives it its own; the main outfit stays.
+   */
+  editCharacter(look: Look, index: number, change: (character: Look) => Result): Result {
+    if (index === 0) return change(look)
+    const c = Number.isInteger(index) && index > 0 ? look.compare[index - 1] : undefined
+    if (!c) return { error: `no side-by-side character ${index}` }
+    const before = characterLook(look, index)
+    const r = change(before)
+    if (r.error !== undefined) return r
+    const after = r.look
+    const next: CompareCharacter = { ...c, race: after.race, sex: after.sex, models: after.models }
+    if (Object.keys(after.custom).length) next.custom = after.custom
+    else delete next.custom
+    if (after.identity && Object.keys(after.identity).length) next.identity = after.identity
+    else delete next.identity
+    // Like the outfit: another animation on a character playing the main one gives it its own.
+    if (c.anim || after.anim !== before.anim) next.anim = after.anim ?? 'Stand'
+    if (c.items || after.items !== before.items || after.hide !== before.hide) {
+      next.items = after.items
+      if (after.hide.length) next.hide = after.hide
+      else delete next.hide
+    }
+    return { look: { ...look, compare: look.compare.map((x, i) => (i === index - 1 ? next : x)) } }
   },
 
   setVisibility(look: Look, slot: string, visible: boolean): Result {
@@ -272,10 +342,13 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
     }
     const build = store.get().status?.active?.build
     const look = build ? { ...r.look, build } : r.look
-    store.set((s) => ({ look, notices: { ...s.notices, commands: [] } }))
+    // A side-by-side character that is gone can't stay selected.
+    store.set((s) => ({ look, notices: { ...s.notices, commands: [] }, ...(s.selected > look.compare.length ? { selected: 0 } : {}) }))
     return { look }
   }
   const look = () => store.get().look
+  // The panels edit the character selected on screen; the prompt box and MCP commands always the main one.
+  const onSelected = (change: (character: Look) => Result) => apply(transitions.editCharacter(look(), store.get().selected, change))
   const characters = () => store.get().characters
   const allTitles = async () => (await titles?.().catch(() => undefined)) ?? []
 
@@ -291,6 +364,26 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
     reset_customization: () => apply(transitions.resetCustomization(look())),
     compare: (list: CompareInput[]) => apply(transitions.compare(look(), list, characters())),
     wear_main_outfit: (index: number) => apply(transitions.wearMainOutfit(look(), index)),
+    own_outfit: (index: number) => apply(transitions.ownOutfit(look(), index)),
+    own_animation: (index: number) => apply(transitions.ownAnimation(look(), index)),
+    main_animation: (index: number) => apply(transitions.mainAnimation(look(), index)),
+    /** Which character the panels edit: 0 the main one, n the nth side-by-side one. */
+    select: (index: number) => store.set({ selected: Number.isInteger(index) && index >= 0 && index <= look().compare.length ? index : 0 }),
+    /** The same changes, on the selected character. `options` are that character's, from its base look. */
+    edit: {
+      equip_item: (slot: SlotName | string, itemId: number) => onSelected((l) => transitions.equipItem(l, slot, itemId)),
+      equip_items: (items: { slot: SlotName | string; itemId: number }[], clear?: string[]) => onSelected((l) => transitions.equipItems(l, items, clear)),
+      unequip: (slot: SlotName | string) => onSelected((l) => transitions.unequip(l, slot)),
+      unequip_slots: (slots: (SlotName | string)[]) => onSelected((l) => transitions.unequipSlots(l, slots)),
+      set_visibility: (slot: SlotName | string, visible: boolean) => onSelected((l) => transitions.setVisibility(l, slot, visible)),
+      set_character: (race: number, sex: number, models?: ModelSet) => onSelected((l) => transitions.setCharacter(l, race, sex, models ?? l.models, characters())),
+      set_customization: (optionId: number, choiceId: number, options: CustomizationOption[] | null) => onSelected((l) => transitions.setCustomization(l, optionId, choiceId, options)),
+      randomize_customization: (options: CustomizationOption[] | null) => onSelected((l) => transitions.randomizeCustomization(l, options)),
+      reset_customization: () => onSelected((l) => transitions.resetCustomization(l)),
+      set_identity: (change: Parameters<typeof transitions.setIdentity>[1]) => onSelected((l) => transitions.setIdentity(l, change)),
+      /** `animations` are the selected character's, from its base look. */
+      set_animation: (name: string, animations: AnimationInfo[]) => onSelected((l) => transitions.setAnimation(l, name, animations)),
+    },
     set_visibility: (slot: SlotName | string, visible: boolean) => apply(transitions.setVisibility(look(), slot, visible)),
     set_view: (view: View | string) => apply(transitions.setView(look(), view)),
     unequip_slots: (slots: (SlotName | string)[]) => apply(transitions.unequipSlots(look(), slots)),

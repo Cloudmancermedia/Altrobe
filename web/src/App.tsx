@@ -4,8 +4,8 @@ import { AboutDialog } from './components/AboutDialog'
 import { AiCounter } from './components/Ai'
 import { copyrightLine, gameDataLine, SUPPORT, TAGLINE } from './components/footer'
 import { launchBanner } from './identity/name-rules'
-import type { CharactersResponse, ResolvedItem, Status } from './api/types'
-import { commands, store } from './app-state'
+import type { CharactersResponse, ResolvedItem, Status, TitleInfo } from './api/types'
+import { commands, store, useEditing } from './app-state'
 import { CharacterPanel, CustomizationPanel } from './components/CharacterPanel'
 import { IdentityPanel } from './components/IdentityPanel'
 import { HostedPromptPanel, PromptPanel } from './components/PromptPanel'
@@ -15,7 +15,7 @@ import { ComparePanel, InstallPicker, Notices, SharePanel } from './components/P
 import { useBaseLook, useTitles } from './hooks'
 import { nameplate, titlesFor, tooltipLines } from './identity/identity'
 import { characterLabel } from './labels'
-import { defaultsFrom, emptyLook, lookFromFragment, lookFromLocation, type KnownCharacters } from './look/look'
+import { defaultsFrom, emptyLook, lookFromFragment, lookFromLocation, type KnownCharacters, type Look } from './look/look'
 import { rememberItems, setNotices, useStore } from './store'
 import type { Stage } from './viewer/stage'
 import { Viewer, type ViewerCell } from './viewer/Viewer'
@@ -165,25 +165,30 @@ export default function App() {
   const titles = useMemo(() => titlesFor(allTitles, characters?.races.find((r) => r.race === look.race)?.faction), [allTitles, characters, look.race])
   // The tooltip is off by default on touch screens, where a tap leaves a hover stuck on.
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>(() => defaultTooltipMode(typeof matchMedia === 'function' && matchMedia('(hover: hover)').matches))
+  // Who a character is, over its head and in its tooltip; each side-by-side character has its own.
+  const identityFor = useCallback((identity: Look['identity'], race: number, sex: 0 | 1, own: TitleInfo[]) => ({
+    plate: nameplate(identity, own, sex),
+    tooltip: identity ? tooltipLines(identity, own, sex, characters?.races.find((r) => r.race === race)) : [],
+    pvp: identity?.pvp ?? false,
+    tooltipMode,
+  }), [characters, tooltipMode])
   const [aboutOpen, setAboutOpen] = useState(false)
   // Narrow screens show one side panel at a time, picked by the tabs under the character screen.
   const [panelTab, setPanelTab] = useState<'find' | 'character'>('find')
   const cells: ViewerCell[] = useMemo(() => [
     {
       key: 'main', main: true, spec: { race: look.race, sex: look.sex, models: look.models }, label: characterLabel(characters, look.race, look.sex, look.models),
-      identity: {
-        plate: nameplate(look.identity, titles, look.sex),
-        tooltip: look.identity ? tooltipLines(look.identity, titles, look.sex, characters?.races.find((r) => r.race === look.race)) : [],
-        pvp: look.identity?.pvp ?? false,
-        tooltipMode,
-      },
+      identity: identityFor(look.identity, look.race, look.sex, titles), anim: look.anim,
     },
     ...look.compare.map((c, i): ViewerCell => ({
       key: `compare${i}`, main: false, spec: { race: c.race, sex: c.sex, models: c.models }, custom: c.custom,
       outfit: c.items ? { items: c.items, hide: c.hide ?? [] } : undefined,
       label: `${c.label ? `${c.label} · ` : ''}${characterLabel(characters, c.race, c.sex, c.models)}`,
+      identity: identityFor(c.identity, c.race, c.sex, titlesFor(allTitles, characters?.races.find((r) => r.race === c.race)?.faction)),
+      // Its own animation, Stand included, or the main one.
+      anim: c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : look.anim,
     })),
-  ], [look.race, look.sex, look.models, look.compare, look.identity, titles, tooltipMode, characters])
+  ], [look.race, look.sex, look.models, look.compare, look.identity, look.anim, titles, allTitles, characters, identityFor])
 
   // Drop notices from characters no longer on screen.
   const cellKeys = cells.map((c) => c.key).join()
@@ -197,6 +202,8 @@ export default function App() {
   const onNotices = useCallback((key: string, list: string[]) => setNotices(store, `cell:${key}`, list), [])
   const onResolved = useCallback((items: ResolvedItem[]) => rememberItems(store, items), [])
   const build = status?.active?.build ?? look.build
+  const selected = useStore(store, (s) => s.selected)
+  const editing = useEditing().look
 
   return (
     <div className="app">
@@ -229,17 +236,19 @@ export default function App() {
       {phase === 'ready' && characters && (
         <main className="layout">
           <aside className={`side left${panelTab === 'character' ? '' : ' narrow-hidden'}`} aria-label="Character">
+            {/* Side by side first: who is picked there decides what the panels below change. */}
+            <ComparePanel characters={characters} look={look} />
             <CharacterPanel characters={characters} look={look} />
             {/* The AI comes first after the character: Ask, then Identity, whose AI buttons share Ask's daily AI allowance. */}
             {features.assistant && <PromptPanel />}
             {hostedPrompt && <HostedPromptPanel />}
-            <IdentityPanel characters={characters} look={look} tooltipMode={tooltipMode} onTooltipMode={setTooltipMode} />
-            <CustomizationPanel look={look} />
-            <ComparePanel characters={characters} look={look} />
+            <IdentityPanel characters={characters} look={editing} tooltipMode={tooltipMode} onTooltipMode={setTooltipMode} />
+            <CustomizationPanel />
           </aside>
           <PaperDoll look={look} build={build}>
             <Viewer cells={cells} look={look} itemSpeed={itemSpeedParam > 0 ? itemSpeedParam : undefined}
-              onNotices={onNotices} onResolved={onResolved} onStage={(s) => { stageRef.current = s }} />
+              onNotices={onNotices} onResolved={onResolved} onStage={(s) => { stageRef.current = s }}
+              selected={selected} onSelect={commands.select} />
           </PaperDoll>
           <div className="segmented panel-tabs" role="radiogroup" aria-label="Panels">
             {([['find', 'Find'], ['character', 'Character']] as const).map(([tab, label]) => (

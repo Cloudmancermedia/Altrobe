@@ -91,14 +91,19 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
   // Set IDs search_sets returned in the running command: Nova guesses set IDs from the tier list
   // otherwise (benchmarked 2026-10-20).
   let foundSets = new Set<number>()
+  // Item IDs search_items or build_outfit returned in the running command: Nova put guessed IDs in compare,
+  // 18832 Brutality Blade for Sulfuras (benchmarked 2026-10-23).
+  let foundItems = new Set<number>()
   // Slots equip_item filled in the running command: build_outfit leaves them, so a named item survives it.
   let namedSlots = new Set<string>()
   // Whether start cleared the screen in the running command.
   let freshStart = false
+  // Whether the running command dressed the main character, so it is part of the lineup asked for.
+  let mainDressed = false
   // The command of the tool call running now (runHostedCommand numbers them).
   let current: number | undefined
   const forCommand = () => {
-    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set(); namedSlots = new Set(); freshStart = false }
+    if (current !== callsFor) { callsFor = current; calls = {}; foundSets = new Set(); foundItems = new Set(); namedSlots = new Set(); freshStart = false; mainDressed = false }
   }
   const callCount = (name: string) => {
     forCommand()
@@ -107,6 +112,19 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
   const checkFound = (setId: unknown) => {
     forCommand()
     if (!foundSets.has(int(setId) ?? NaN)) throw new ToolError(`Set ${setId} is not one search_sets returned. Find the set with search_sets first; never guess set IDs.`)
+  }
+  const found = <T extends { itemId: number }>(items: T[]): T[] => {
+    forCommand()
+    for (const i of items) foundItems.add(i.itemId)
+    return items
+  }
+  // An item on screen came from an earlier command's search, so it needs no new one.
+  const checkItem = (itemId: unknown) => {
+    forCommand()
+    const id = int(itemId) ?? NaN
+    const { look } = store.get()
+    const onScreen = [look.items, ...look.compare.map((c) => c.items ?? {})].some((items) => Object.values(items).includes(id))
+    if (!foundItems.has(id) && !onScreen) throw new ToolError(`Item ${itemId} is not one search_items returned. Find the item with search_items first; never guess item IDs.`)
   }
   // A class and tier name one set, found by name like search_sets would, so it counts as found.
   const tierSet = async (cls: unknown, tier: unknown): Promise<number> => {
@@ -156,7 +174,7 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       }
       const search = (loose: boolean, filtered: boolean) => searchItemsIn(catalog, { q, limit, includeInternal: false, loose, ...(filtered ? filters : {}) })
       const page = search(false, true)
-      if (page.total || !q?.trim()) return { total: page.total, items: page.items.map(summary) }
+      if (page.total || !q?.trim()) return { total: page.total, items: found(page.items).map(summary) }
       // The user's wording ("green iron helmet" for Green Iron Helm) or a wrong filter (leather for a mail
       // helm) hid an item they named (2026-10-21), so each gets a second try, saying what was relaxed.
       const tries: [boolean, boolean, string][] = [
@@ -166,7 +184,7 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       ]
       for (const [loose, filtered, note] of tries) {
         const r = search(loose, filtered)
-        if (r.total) return { total: r.total, items: r.items.map(summary), note: `${note} Use one only if it is the item the user named.` }
+        if (r.total) return { total: r.total, items: found(r.items).map(summary), note: `${note} Use one only if it is the item the user named.` }
       }
       return { total: 0, items: [] }
     },
@@ -198,6 +216,7 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       // By default, take off pieces of the set worn before in slots this set does not fill (McpTools.EquipSet).
       const clear = a.replace === false ? [] : replacedSetSlots(store.get().look.items, items, new Set(await deps.setPieces()))
       const look = await command('equip_items', { items, clear })
+      mainDressed = true
       const catalog = await deps.catalog()
       const skipped = set.skipped.map((s) => ({ itemId: s.itemId, name: catalog.find((i) => i.itemId === s.itemId)?.name ?? null, reason: s.reason }))
       return { set: set.name, skipped, look }
@@ -229,7 +248,9 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
         newInForever: i.newInForever ?? false,
       }]))
       // Equip it on the main character, as the hosted tool list says; an empty outfit changes nothing.
+      found(picked.map(([, i]) => i))
       const look = picked.length ? await command('equip_items', { items: picked.map(([slot, i]) => ({ slot, itemId: i.itemId })) }) : undefined
+      if (look) mainDressed = true
       return { level, armor: armor ?? null, items, missing: outfit.missing, ...(kept.length ? { kept } : {}), ...(look ? { look } : {}) }
     },
 
@@ -328,8 +349,10 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
       // An item goes in its own slot: the model put a bow in the main hand, and the app dropped it.
       const own = (await deps.catalog()).find((i) => i.itemId === int(a.itemId))?.slot
       if (own) a = { ...a, slot: own }
+      checkItem(a.itemId)
       const r = await command('equip_item', { slot: a.slot, itemId: int(a.itemId) })
       forCommand()
+      mainDressed = true
       if (typeof a.slot === 'string') namedSlots.add(a.slot.toLowerCase())
       return r
     },
@@ -349,6 +372,7 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
     },
     async compare(a) {
       const given = Array.isArray(a.characters) ? a.characters as Input[] : []
+      for (const c of given) for (const id of Object.values(c?.items && typeof c.items === 'object' ? c.items : {})) checkItem(id)
       // A tier names the set: { class, tier } becomes its setId.
       const characters: Input[] = []
       for (const c of given) {
@@ -381,10 +405,11 @@ export function createHostedTools(deps: ToolDeps): (name: string, input: Input, 
         return { ...rest, items: { ...Object.fromEntries(set.pieces.map((p) => [p.slot, p.item.itemId])), ...(c.items as object ?? {}) } }
       })
       // After a fresh start the main character is a leftover, so the first character named becomes it, as the
-      // instructions ask: "compare an undead and an orc warlock" had put both beside it (2026-10-21).
+      // instructions ask: "compare an undead and an orc warlock" had put both beside it (2026-10-21). A main
+      // character this command dressed is part of the lineup, so it stays (2026-10-23).
       forCommand()
       let promoted = false
-      if (freshStart && !calls.set_character && list.length) {
+      if (freshStart && !calls.set_character && !mainDressed && list.length) {
         const [first, ...others] = list
         callCount('set_character')
         await command('set_character', { race: int(first?.race), sex: int(first?.sex) })

@@ -95,6 +95,7 @@ describe('hosted tools', () => {
   test('equip_set replaces the set worn before, keeps loose items, and can keep the old pieces', async () => {
     const { run, store } = setup()
     await run('search_sets', {})
+    await run('search_items', { query: 'Worn Cloak' })
     await run('equip_item', { slot: 'back', itemId: 5 })
     await run('equip_set', { setId: 218 })
     expect(store.get().look.items).toEqual({ back: 5, head: 3, legs: 4 })
@@ -136,6 +137,7 @@ describe('hosted tools', () => {
     // "my undead and orc warrior in the green iron helm" could end in a leather helm: an outfit built after
     // the helm was equipped dressed the head too (2026-10-21).
     const { run, store, command } = setup()
+    await run('search_items', { query: 'Wrath Helm' })
     await run('equip_item', { slot: 'head', itemId: 3 })
     const r = await run('build_outfit', { level: 22, class: 'Warrior' })
     expect(store.get().look.items.head).toBe(3)
@@ -157,12 +159,14 @@ describe('hosted tools', () => {
   test("build_outfit's ranged weapon leaves a hand weapon named earlier in the command, and the other way round", async () => {
     // Equipping a ranged weapon takes off both hands, and a hand weapon the ranged one (commands.ts equipItem).
     const { run, store, command } = setup()
+    await run('search_items', { query: 'Hand Axe' })
     await run('equip_item', { slot: 'mainhand', itemId: 8 })
     const r = await run('build_outfit', { level: 30, class: 'Hunter' })
     expect(store.get().look.items.mainhand).toBe(8)
     expect(store.get().look.items.ranged).toBeUndefined()
     expect(r.json).toMatchObject({ kept: ['ranged'] })
     command.n = 2
+    await run('search_items', { query: 'Hunting Bow' })
     await run('equip_item', { slot: 'ranged', itemId: 9 })
     await run('build_outfit', { level: 22, armor: 'mail', weapons: ['axe'] })
     expect(store.get().look.items.ranged).toBe(9)
@@ -189,6 +193,7 @@ describe('hosted tools', () => {
 
   test('start with new_look clears the screen to one character in no gear, keeping race and name; without it keeps everything', async () => {
     const { run, store } = setup()
+    await run('search_items', { query: 'Judgement Crown' })
     await run('equip_item', { slot: 'head', itemId: 1 })
     await run('compare', { characters: [{ race: 5, sex: 1 }] })
     await run('set_animation', { name: 'Run' })
@@ -211,6 +216,7 @@ describe('hosted tools', () => {
   test("equip_item puts an item in its own slot whatever slot the model names", async () => {
     // The model put a hunter's Balanced Long Bow in the main hand, and the app dropped it (2026-10-21).
     const { run, store } = setup()
+    await run('search_items', { query: 'Judgement Crown' })
     expect((await run('equip_item', { slot: 'chest', itemId: 1 })).status).toBe('success')
     expect(store.get().look.items).toEqual({ head: 1 })
   })
@@ -237,7 +243,8 @@ describe('hosted tools', () => {
     // Without a fresh start, the main character stays.
     command.n = 2
     await run('start', { new_look: false })
-    await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 3 } }] })
+    await run('search_items', { query: 'Wrath Helm' })
+    expect((await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 3 } }] })).status).toBe('success')
     expect(store.get().look.race).toBe(5)
   })
 
@@ -278,6 +285,7 @@ describe('hosted tools', () => {
     expect((await run('set_animation', { name: 'Run' })).json).toMatchObject({ animation: 'Run' })
     expect((await run('compare', { characters: [{ race: 2, sex: 0 }] })).status).toBe('success')
     expect((await run('get_look', {})).json).toMatchObject({ race: 5, compare: [{ character: expect.any(String) }] })
+    await run('search_items', { query: 'Judgement Crown' })
     expect((await run('equip_item', { slot: 'head', itemId: 1 })).json).toMatchObject({ items: { head: { itemId: 1 } } })
     expect((await run('unequip', { slot: 'head' })).json).toMatchObject({ items: {} })
   })
@@ -286,6 +294,7 @@ describe('hosted tools', () => {
     const { run, store } = setup()
     await run('search_sets', { query: 'judgement' })
     await run('search_sets', { query: 'wrath' })
+    await run('search_items', { query: 'Mail Coif' })
     expect((await run('compare', { characters: [{ race: 5, sex: 1, setId: 217 }, { race: 2, sex: 0, setId: 218, items: { head: 7 } }] })).status).toBe('success')
     expect(store.get().look.compare.map((c) => c.items)).toEqual([{ head: 1, chest: 2 }, { head: 7, legs: 4 }])
     expect(await run('compare', { characters: [{ race: 2, sex: 0, setId: 999 }] })).toMatchObject({ status: 'error', json: { error: expect.stringContaining('search_sets') } })
@@ -373,6 +382,7 @@ describe('hosted tools', () => {
   test('compare replaces the characters beside the main one and names the ones it removed; add keeps them', async () => {
     const { run, store } = setup()
     // An Orc in its own helmet: the main character is an Orc too, so one in the same outfit would be a copy.
+    await run('search_items', { query: 'Wrath Helm' })
     await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 3 } }] })
     const added = await run('compare', { add: true, characters: [{ race: 5, sex: 1 }] })
     expect(store.get().look.compare.map((c) => c.race)).toEqual([2, 5])
@@ -401,6 +411,36 @@ describe('hosted tools', () => {
     expect((await run('equip_set', { setId: 217 })).status).toBe('error')
   })
 
+  test('equip_item and compare take only an item ID that search_items returned in this command, or one on screen', async () => {
+    // "an Undead Paladin in tier 2 with Sulfuras..." put guessed IDs in compare: 18832 Brutality Blade for
+    // Sulfuras (benchmarked 2026-10-23).
+    const { run, store, command } = setup()
+    expect(await run('equip_item', { slot: 'head', itemId: 7 })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/search_items first/) } })
+    expect(await run('compare', { characters: [{ race: 5, sex: 1, items: { head: 7 } }] })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/search_items first/) } })
+    expect(store.get().look.items).toEqual({})
+    expect(store.get().look.compare).toEqual([])
+    await run('search_items', { query: 'Mail Coif' })
+    expect((await run('equip_item', { slot: 'head', itemId: 7 })).status).toBe('success')
+    expect((await run('compare', { characters: [{ race: 5, sex: 1, items: { head: 7 } }] })).status).toBe('success')
+    // A new command may reuse an item on screen, but not one it only found before.
+    command.n = 2
+    expect((await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 7 } }] })).status).toBe('success')
+    expect((await run('equip_item', { slot: 'mainhand', itemId: 8 })).status).toBe('error')
+  })
+
+  test('after a fresh start, compare keeps a main character this command already dressed', async () => {
+    // With an Undead male already on screen, "an Undead Paladin in tier 2 with Sulfuras, and beside him an Orc
+    // Mage..." dressed the Undead, then compare made the Orc the main character and dropped him (2026-10-23).
+    const { run, store } = setup()
+    await run('start', { new_look: true })
+    await run('equip_set', { class: 'Warrior', tier: 'T2' })
+    const r = await run('compare', { characters: [{ race: 5, sex: 1, class: 'Paladin', tier: 'T2' }] })
+    expect(r.status).toBe('success')
+    const look = store.get().look
+    expect([look.race, look.sex, look.items.head]).toEqual([2, 0, 3])
+    expect(look.compare.map((c) => [c.race, c.items?.head])).toEqual([[5, 1]])
+  })
+
   test('a second set_character in one command is refused, so the first race named stays the main character', async () => {
     // "an orc warrior and an undead warrior side by side" switched the main character to Orc, then to
     // Undead, then put both beside it: three characters (live, 2026-10-21).
@@ -414,6 +454,7 @@ describe('hosted tools', () => {
 
   test('compare leaves out a copy of the main character: same race, sex and outfit', async () => {
     const { run, store } = setup()
+    await run('search_items', { slot: 'head' })
     await run('equip_item', { slot: 'head', itemId: 1 })
     const r = await run('compare', { characters: [{ race: 2, sex: 0, items: { head: 1 } }, { race: 5, sex: 1 }, { race: 2, sex: 0 }] })
     expect(store.get().look.compare.map((c) => c.race)).toEqual([5])
@@ -442,8 +483,8 @@ describe('hosted tools', () => {
 
   test('errors and tools outside the hosted list come back as errors', async () => {
     const { run } = setup()
-    // An item not in the catalog keeps the slot it was given, so a made-up slot is still an error.
-    expect(await run('equip_item', { slot: 'nose', itemId: 999 })).toMatchObject({ status: 'error', json: { error: 'unknown slot "nose"' } })
+    // An item search_items never returned is refused before its slot is read.
+    expect(await run('equip_item', { slot: 'nose', itemId: 999 })).toMatchObject({ status: 'error', json: { error: expect.stringMatching(/search_items first/) } })
     expect(await run('share_link', {})).toMatchObject({ status: 'error', json: { error: expect.stringContaining('share_link') } })
     expect(await run('toString', {})).toMatchObject({ status: 'error' })
   })
