@@ -35,6 +35,11 @@
   "db2FileDataID": 3450554
  },
  {
+  "tableName": "ChrCustomizationDisplayInfo",
+  "tableHash": "EE1BAF5C",
+  "db2FileDataID": 3593032
+ },
+ {
   "tableName": "ChrCustomizationElement",
   "tableHash": "D6D051EC",
   "db2FileDataID": 3512765
