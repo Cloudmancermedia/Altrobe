@@ -231,3 +231,4 @@ button.link:hover:not(:disabled) { background: none; color: var(--forever); }
 .stage-cell.selected .cell-label { color: var(--gold); }
 .editing-note { margin: 4px 0 8px; color: var(--gold); }
 .compare-shares { display: flex; flex-direction: column; gap: 2px; }
+.tutorial-link { color: var(--gold); white-space: nowrap; }

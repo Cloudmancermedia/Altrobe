@@ -374,3 +374,10 @@ test("Skyborne customization: no placeholder names, an empty tattoo color reads 
   const custom = await call(page, (h) => (h.commands.get_look() as { custom?: Record<string, number> }).custom ?? {})
   expect(Object.keys(custom)).toHaveLength(2)
 })
+
+test('the header links to the tutorial video under the tagline, in a new tab', async ({ page }) => {
+  await openApp(page)
+  const link = page.locator('.brand').getByRole('link', { name: 'Watch the tutorial' })
+  await expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=Ij51rZt48V8')
+  await expect(link).toHaveAttribute('target', '_blank')
+})

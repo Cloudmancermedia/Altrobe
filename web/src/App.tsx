@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, clearCache, features, getCharacters, getStatus, hostedPrompt, selectInstall } from './api/client'
 import { AboutDialog } from './components/AboutDialog'
 import { AiCounter } from './components/Ai'
-import { copyrightLine, gameDataLine, SUPPORT, TAGLINE } from './components/footer'
+import { copyrightLine, gameDataLine, SUPPORT, TAGLINE, TUTORIAL } from './components/footer'
 import { launchBanner } from './identity/name-rules'
 import type { CharactersResponse, ResolvedItem, Status, TitleInfo } from './api/types'
 import { commands, store, useEditing } from './app-state'
@@ -210,7 +210,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1>Altrobe</h1>
-          <span className="muted small">{TAGLINE}</span>
+          <span className="muted small">{TAGLINE} · <a className="tutorial-link" href={TUTORIAL.href} target="_blank" rel="noreferrer">{TUTORIAL.label}</a></span>
         </div>
         <div className="topbar-end">
           {hostedPrompt && <AiCounter />}

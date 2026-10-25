@@ -14,6 +14,9 @@ export const TAGLINE = 'WoW: Forever model viewer and character planner'
 
 export const SUPPORT = { label: 'Buy me a coffee', href: 'https://buymeacoffee.com/cloudmancer' }
 
+/** The maintainer's walkthrough of the site on YouTube (2026-10-23): under the tagline and in About. */
+export const TUTORIAL = { label: 'Watch the tutorial', href: 'https://www.youtube.com/watch?v=Ij51rZt48V8' }
+
 export interface AboutLink { label: string; href: string; note?: string }
 
 /**
@@ -24,6 +27,7 @@ export interface AboutLink { label: string; href: string; note?: string }
 // `_features` decides what the local app adds once it is offered again (the website has no install picker).
 export function aboutLinks(_features: Features): AboutLink[] {
   return [
+    TUTORIAL,
     { label: 'Source code', href: REPO },
     { label: 'Report a problem or rights concern', href: `${REPO}/issues/new` },
     // The licence and the notices for the code the site sends to browsers (dev/licence-files.ts).
