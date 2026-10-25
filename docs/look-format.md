@@ -45,6 +45,7 @@ Each `compare` entry has `race` and `sex`, and may also have:
 | `custom` | Customization choices for this character's body model, only those that differ from its defaults. |
 | `identity` | The character's own name, title, guild, level, class and PvP flag, read and checked like the main `identity`. |
 | `anim` | The character's own animation, `"Stand"` included. Absent means it plays the main `anim`. |
+| `sheathe` | With its own `items` or `anim`, its weapons put away: `"hip"` or `"back"` for one-handers, as the main look's `sheathed` and `sheatheOnBack`. Absent means drawn. In the main outfit and animation, it sheathes as the main character does. |
 
 ```json
 "compare": [{ "race": 2, "sex": 0, "label": "Level 30", "items": { "chest": 7418, "legs": 7919 },

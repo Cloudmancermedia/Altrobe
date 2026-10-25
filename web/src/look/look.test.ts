@@ -251,6 +251,15 @@ describe('identity addition', () => {
     expect(decodeLook(encodeLook(look)).look!.compare).toEqual(look.compare)
   })
 
+  test('a side-by-side character in its own outfit or animation keeps its own sheathing in the link', () => {
+    // One short field, "hip" or "back", keeps six-character links under the preview function's cap.
+    const look = norm({ ...outfitA, compare: [{ race: 5, sex: 1, items: { mainhand: 19019 }, sheathe: 'back' }, { race: 6, sex: 0, items: {}, sheathe: 'hip' }, { race: 2, sex: 0, sheathe: 'hip' }, { race: 3, sex: 0, items: {}, sheathe: 'up' }, { race: 4, sex: 1, anim: 'Run', sheathe: 'hip' }] })
+    // Its own animation unbinds it too; in the main outfit and animation, sheathe is ignored.
+    expect(look.compare.map((c) => [c.sheathed, c.sheatheOnBack])).toEqual([[true, true], [true, undefined], [undefined, undefined], [undefined, undefined], [true, undefined]])
+    expect(JSON.parse(canonicalJSON(look)).compare.map((c: { sheathe?: string }) => c.sheathe)).toEqual(['back', 'hip', undefined, undefined, 'hip'])
+    expect(decodeLook(encodeLook(look)).look!.compare).toEqual(look.compare)
+  })
+
   test('pvp false and blank text are not stored', () => {
     expect(norm({ ...outfitA, identity: { firstName: '   ', pvp: false } }).identity).toBeUndefined()
   })
@@ -326,7 +335,7 @@ describe('share link length', () => {
     const custom = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [String(30000 + i), 400000 + i]))
     const hide = ['head', 'back', 'tabard'] as SlotName[]
     const identity = { firstName: 'Ü'.repeat(12), lastName: 'Ü'.repeat(12), guild: 'Ü'.repeat(MAX_GUILD), titleId: 1284, level: MAX_LEVEL, classId: 2, pvp: true }
-    const char = (race: number) => ({ race, sex: 1 as const, models: 'hd' as const, label: 'Ü'.repeat(MAX_LABEL), items, hide, custom, identity, anim: 'AttackTwoHand' })
+    const char = (race: number) => ({ race, sex: 1 as const, models: 'hd' as const, label: 'Ü'.repeat(MAX_LABEL), items, hide, custom, identity, anim: 'AttackTwoHand', sheathed: true, sheatheOnBack: true })
     const look: Look = { ...emptyLook(5, 1),  items, hide, custom, anim: 'AttackTwoHand', identity,
       compare: [2, 6, 95, 1, 4].slice(0, MAX_COMPARE).map(char) }
     const payload = encodeLook(look)

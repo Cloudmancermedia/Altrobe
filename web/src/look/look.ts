@@ -9,7 +9,8 @@
 //     compare: [{ race, sex, models,        optional, up to 5 more characters shown side by side
 //                 items?, hide?, custom?,   an own outfit; without "items" the entry wears the main one
 //                 label?, identity?,        identity: its own name, title and guild, as the main one's
-//                 anim? }] }                its own animation ("Stand" too); without, it plays the main one
+//                 anim?,                    its own animation ("Stand" too); without, it plays the main one
+//                 sheathe? }] }             with its own outfit or animation, weapons away: "hip" or "back"
 // A share link carries it in the URL fragment, which browsers never send to a server:
 //   /#look=<base64url(canonical JSON)>
 // docs/look-format.md describes the format, including the "compare" addition.
@@ -62,6 +63,9 @@ export interface CompareCharacter {
   identity?: Identity
   /** Its own animation, "Stand" included. Without it, the character plays the look's animation. */
   anim?: string
+  /** With its own outfit or animation, its own sheathing; otherwise it sheathes as the main character does. */
+  sheathed?: boolean
+  sheatheOnBack?: boolean
 }
 
 export interface Look {
@@ -162,6 +166,11 @@ export function normalizeLook(input: unknown, { characters }: { characters?: Kno
       if (identity) entry.identity = identity
       if (typeof c.anim === 'string' && c.anim.trim()) entry.anim = c.anim.trim().slice(0, 40)
       else if (c.anim !== undefined) notices.push(`dropped animation ${JSON.stringify(c.anim)} in compare: not a name`)
+      const own = !!(entry.items || entry.anim)
+      if (own && (c.sheathe === 'hip' || c.sheathe === 'back')) {
+        entry.sheathed = true
+        if (c.sheathe === 'back') entry.sheatheOnBack = true
+      } else if (c.sheathe !== undefined && own) notices.push(`dropped sheathe ${JSON.stringify(c.sheathe)} in compare: not hip or back`)
       look.compare.push(entry)
     }
   }
@@ -263,6 +272,8 @@ export function canonicalLook(look: Look, { defaults = {} }: { defaults?: Record
     if (c.custom && Object.keys(c.custom).length) e.custom = sortKeys(c.custom)
     if (c.identity && Object.keys(c.identity).length) e.identity = sortKeys({ ...c.identity })
     if (c.anim) e.anim = c.anim
+    // One field, not the main look's two flags: six characters' worth keeps links short (look.test.ts).
+    if ((c.items || c.anim) && c.sheathed) e.sheathe = c.sheatheOnBack ? 'back' : 'hip'
     return sortKeys(e)
   })
   return sortKeys(out)

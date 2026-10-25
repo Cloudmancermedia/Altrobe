@@ -300,23 +300,25 @@ function SingleItemSearch({ build }: { build: string }) {
 
 const WEAPON_SLOTS: SlotName[] = ['mainhand', 'offhand']
 
-/** Quick ways back to a bare character: set pieces, weapons, the animation, or all of them. */
-export function ClearButtons({ look, editing }: { look: Look; editing: Look }) {
-  const worn = Object.keys(look.items).length > 0
+/** Quick ways back to bare characters, for everyone on screen: set pieces, weapons, the animation, or all of it. */
+export function ClearButtons({ look }: { look: Look }) {
+  const outfits = [look.items, ...look.compare.flatMap((c) => (c.items ? [c.items] : []))]
+  const worn = outfits.some((items) => Object.keys(items).length > 0)
+  const moving = !!look.anim || look.compare.some((c) => c.anim && c.anim !== 'Stand')
   const clearSetPieces = async () => {
     try {
-      const { look, selected } = store.get()
-      commands.edit.unequip_slots(setPieceSlots(characterLook(look, selected).items, new Set(await getSetPieces())))
+      const pieces = new Set(await getSetPieces())
+      commands.unequip_everyone((items) => setPieceSlots(items, pieces))
     } catch (e) {
       setNotices(store, 'search', [`couldn't load the set pieces: ${e instanceof ApiError ? e.message : String(e)}`])
     }
   }
   return (
     <div className="clear-buttons">
-      <button type="button" disabled={!Object.keys(editing.items).length} onClick={clearSetPieces}>Clear set pieces</button>
-      <button type="button" disabled={!WEAPON_SLOTS.some((s) => editing.items[s])} onClick={() => commands.edit.unequip_slots(WEAPON_SLOTS)}>Clear weapons</button>
-      <button type="button" disabled={!editing.anim} onClick={() => commands.edit.set_animation('Stand', [])}>Clear animation</button>
-      <button type="button" disabled={!worn && !look.anim && !look.compare.length} onClick={() => commands.clear_all()}>Clear all</button>
+      <button type="button" disabled={!worn} onClick={clearSetPieces}>Clear set pieces</button>
+      <button type="button" disabled={!outfits.some((items) => WEAPON_SLOTS.some((s) => items[s]))} onClick={() => commands.unequip_everyone(WEAPON_SLOTS)}>Clear weapons</button>
+      <button type="button" disabled={!moving} onClick={() => commands.stand_everyone()}>Clear animation</button>
+      <button type="button" disabled={!worn && !moving && !look.compare.length} onClick={() => commands.clear_all()}>Clear all</button>
     </div>
   )
 }
