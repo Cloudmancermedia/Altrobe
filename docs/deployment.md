@@ -14,7 +14,7 @@ All in one AWS account, in us-east-1 (CloudFront needs its certificate there).
 | `AltrobeCi` | GitHub's OIDC provider and three roles: `altrobe-github-diff` (read only, any branch or pull request in the repository), `altrobe-github-deploy` (only jobs in the `production` environment) and `altrobe-github-publish` (workflows on `main`, no approval; the bundle bucket and the asset distribution only) |
 | `AltrobeSite` | the certificate for `altrobe.com`, `www.altrobe.com` and `assets.altrobe.com`; a private bucket and CloudFront distribution for the web app (www redirects to the apex; browsers keep the hashed files under `static/` for a year and recheck `index.html` on every visit); a private bucket and distribution for the game bundles at `assets.altrobe.com`; DNS records; the web app's files; the `/api/*` route to the prompt box's API |
 | `AltrobePrompt` | the hosted prompt box's API (below): the Lambda, API Gateway, the counters table, the kill switch, its secrets, and an SSM parameter with the API's hostname that `AltrobeSite` reads for its `/api/*` route. It deploys before `AltrobeSite`, and alone with `npx cdk deploy AltrobePrompt` |
-| `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. A second budget, $300 a month, counts the account's Bedrock spend; past it, a budget action denies the prompt API `bedrock:InvokeModel`. It exists only when an alert address is set; see below. |
+| `AltrobeBudget` | a $50-a-month cost budget that counts only resources tagged `project=altrobe` (every stack above carries the tag), emailing at 80% of actual spend and 100% of forecast spend. A second budget, $300 a month, counts the account's Bedrock spend; past it, a budget action denies the prompt API `bedrock:InvokeModel`. It also holds the prompt box's CloudWatch alarms, which email the same address. It exists only when an alert address is set; see below. |
 
 All three roles trust the repository's immutable OIDC subject (the token's `sub` claim, such as
 `repo:Cloudmancermedia@52295078/Altrobe@1426387099:environment:production`, plus `aud`). GitHub gives
@@ -90,6 +90,10 @@ custom resource on every deploy, so the budget starts counting from the first de
 seen the tag. Until then it reports no spend. To deploy it locally, set the address in the
 environment: `ALTROBE_BUDGET_EMAIL=you@example.com npx cdk deploy AltrobeBudget --profile <profile>`
 (**WRITE OPERATION**).
+
+The prompt box's alarms go to an SNS topic, `Altrobe prompt box`. After the first deploy that creates it, AWS
+emails the alert address once to confirm the subscription; no alarm email arrives until that link is
+clicked. The alarms are item 8 under "Limits" in [hosted-prompt-box.md](hosted-prompt-box.md#limits).
 
 ### The prompt box
 

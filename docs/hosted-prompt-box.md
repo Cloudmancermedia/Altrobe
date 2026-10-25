@@ -125,6 +125,11 @@ answers with a `busy` code.
    `bedrock:InvokeModel` to the Lambda's role. Billing data lags by up to a day, so this is the last
    line behind 4 and 5. Bedrock calls through an inference profile carry no tags, so this budget
    counts the whole account's Bedrock spend.
+8. **Alarms,** within minutes where the budget lags by hours. `AltrobePrompt` counts three metrics in
+   `Altrobe/Prompt` from the Lambda's log lines, and `AltrobeBudget` alarms on them, emailing the
+   budget address: the day's cap reached (any `daily_cap` in 5 minutes), an hour's spend past a quarter
+   of the cap ($6.25, so the box would close within four hours), and any step whose spend failed to
+   save (`spendError`), which leaves the cap undercounting. They don't act; the kill switch does.
 
 Each Bedrock call has `maxTokens` 600 and temperature 0, or 0.8 for a `creative` request. The API returns tool calls and at most 200
 characters of text, so it can't serve as a general chatbot.
