@@ -19,19 +19,21 @@ export function PaperDoll({ look, build, children }: { look: Look; build: string
       searchItems({ q: id, limit: 1, unnamed: 1 }).then((r) => rememberItems(store, r.filter((i) => String(i.itemId) === id)), () => {})
     }
   }, [missing])
+  // A druid form wears no gear: its slots show empty and the weapon buttons go.
+  const slot = (s: DollSlot) => (editing.form ? <FormSlot key={s.slot} s={s} /> : <Slot key={s.slot} s={s} look={editing} build={build} />)
   return (
     <div className="doll">
-      <div className="doll-column" aria-label="Armor">{DOLL.left.map((s) => <Slot key={s.slot} s={s} look={editing} build={build} />)}</div>
+      <div className="doll-column" aria-label="Armor">{DOLL.left.map(slot)}</div>
       <div className="doll-view">{children}</div>
-      <div className="doll-column" aria-label="Accessories">{DOLL.right.map((s) => <Slot key={s.slot} s={s} look={editing} build={build} />)}</div>
+      <div className="doll-column" aria-label="Accessories">{DOLL.right.map(slot)}</div>
       <div className="doll-bottom">
         <div className="doll-weapons" aria-label="Weapons">
-          {DOLL.bottom.map((s) => <Slot key={s.slot} s={s} look={editing} build={build} />)}
-          <button type="button" className="sheathe" aria-pressed={!!editing.sheathed} onClick={() => commands.edit.set_sheathed(!editing.sheathed)}
+          {DOLL.bottom.map(slot)}
+          {!editing.form && <button type="button" className="sheathe" aria-pressed={!!editing.sheathed} onClick={() => commands.edit.set_sheathed(!editing.sheathed)}
             title={editing.sheathed ? 'Take weapons out' : 'Put weapons away: on the back or hip (a ranged weapon is not shown)'}>
             {editing.sheathed ? 'Draw weapons' : 'Sheathe weapons'}
-          </button>
-          {editing.sheathed && (
+          </button>}
+          {editing.sheathed && !editing.form && (
             <div className="segmented sheathe-where" role="radiogroup" aria-label="Sheathe one-handers on" title="Where one-hand weapons go when sheathed, as in Forever's options">
               {([[false, 'Hip'], [true, 'Back']] as const).map(([onBack, label]) => (
                 <button key={label} type="button" role="radio" aria-checked={!!editing.sheatheOnBack === onBack} onClick={() => commands.edit.set_sheathe_on_back(onBack)}>{label}</button>
@@ -43,6 +45,10 @@ export function PaperDoll({ look, build, children }: { look: Look; build: string
       </div>
     </div>
   )
+}
+
+function FormSlot({ s }: { s: DollSlot }) {
+  return <div className="doll-slot dim" title={`${s.label}: a druid form wears no gear`}><Empty slot={s.slot} /></div>
 }
 
 function Slot({ s, look, build }: { s: DollSlot; look: Look; build: string }) {

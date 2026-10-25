@@ -51,6 +51,8 @@ function clip(text, max) {
   return text.length > max ? text.slice(0, max) : text
 }
 
+var FORMS = { cat: 'Cat', bear: 'Bear', travel: 'Travel', moonkin: 'Moonkin' }
+
 // The look's title and description, or null when the link isn't a look this knows.
 function describe(look) {
   if (!look || typeof look !== 'object' || !RACES[look.race]) return null
@@ -58,7 +60,9 @@ function describe(look) {
   var name = clip([text(id.firstName), text(id.lastName)].filter(Boolean).join(' '), 30)
   var level = typeof id.level === 'number' && id.level >= 1 && id.level <= 60 ? 'Level ' + Math.floor(id.level) + ' ' : ''
   var cls = CLASSES[id.classId] ? ' ' + CLASSES[id.classId] : ''
-  var who = level || cls ? level + race[0] + cls : race[0] + (look.sex === 1 ? ' female' : ' male')
+  // A druid form says which; its class goes without saying.
+  var form = FORMS.hasOwnProperty(look.form) ? FORMS[look.form] : ''
+  var who = form ? level + race[0] + ' ' + form + ' Form' : level || cls ? level + race[0] + cls : race[0] + (look.sex === 1 ? ' female' : ' male')
   var guild = clip(text(id.guild), 30)
   return {
     title: name ? name + ' · ' + who : who,

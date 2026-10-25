@@ -50,7 +50,7 @@ export function EditingNote({ verb }: { verb: string }) {
   if (!others) return null
   return (
     <p className="small editing-note">
-      {verb} <strong>{characterLabel(characters, editing.race, editing.sex, editing.models)}</strong>{index === 0 ? ' (main)' : ''}.{' '}
+      {verb} <strong>{characterLabel(characters, editing.race, editing.sex, editing.models, editing.form)}</strong>{index === 0 ? ' (main)' : ''}.{' '}
       {index > 0 && <button type="button" className="link" onClick={() => commands.select(0)}>Edit the main character</button>}
     </p>
   )

@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import preview from '../../../infra/functions/look-preview.js?raw'
 import type { ResolvedItem } from '../api/types'
 import {
-  canonicalJSON, checkAgainstData, decodeLook, defaultsFrom, dressStateFor, encodeLook, lookFromFragment,
+  canonicalJSON, canonicalLook, checkAgainstData, decodeLook, defaultsFrom, dressStateFor, encodeLook, lookFromFragment,
   emptyLook, MAX_COMPARE, MAX_GUILD, MAX_LABEL, MAX_LEVEL, MAX_NAME, normalizeLook, shareUrl, previewUrl, lookFromLocation, type Look,
 } from './look'
 import { SLOT_ORDER, type SlotName } from '../viewer/dress'
@@ -321,6 +321,34 @@ describe('links shared before side-by-side names and animations', () => {
     const again = encodeLook(look)
     expect(again.length).toBeLessThan(R1.length)
     expect(decodeLook(again).look).toEqual(look)
+  })
+})
+
+describe('druid forms', () => {
+  test('a form and its color round-trip, on the main character and side by side', () => {
+    const look = norm({ ...outfitA, race: 4, form: 'cat', formChoice: 79119, compare: [{ race: 6, sex: 0, form: 'bear' }] })
+    expect([look.form, look.formChoice, look.compare[0].form, look.compare[0].formChoice]).toEqual(['cat', 79119, 'bear', undefined])
+    expect(decodeLook(encodeLook(look))).toEqual({ look, notices: [] })
+  })
+
+  test('an unknown form or a bad color is dropped with a notice', () => {
+    const r = normalizeLook({ ...outfitA, form: 'flight', compare: [{ race: 4, sex: 0, form: 'cat', formChoice: 'purple' }] })
+    expect(r.look!.form).toBeUndefined()
+    expect([r.look!.compare[0].form, r.look!.compare[0].formChoice]).toEqual(['cat', undefined])
+    expect(r.notices).toEqual(['dropped form "flight": not cat, bear, travel or moonkin', 'dropped form color "purple" in compare: not a choice ID'])
+  })
+
+  test('a form leaves out what it cannot show: customizations, and a side-by-side form its own outfit', () => {
+    const look = norm({ ...outfitA, race: 4, form: 'moonkin', custom: { 20: 385 },
+      compare: [{ race: 6, sex: 1, form: 'cat', items: { head: 12640 }, hide: ['back'], custom: { 20: 385 }, anim: 'Run', sheathe: 'back' }] })
+    const json = canonicalLook(look) as { custom?: unknown; items?: unknown; compare: Record<string, unknown>[] }
+    expect(json.custom).toBeUndefined()
+    expect(json.items).toEqual(outfitA.items) // the main outfit, which side-by-side characters may wear
+    expect(json.compare[0]).toEqual({ anim: 'Run', form: 'cat', race: 6, sex: 1 })
+  })
+
+  test('a look without a form has no form fields, so links made before forms read the same', () => {
+    expect(Object.keys(canonicalLook(norm(outfitA)))).not.toContain('form')
   })
 })
 

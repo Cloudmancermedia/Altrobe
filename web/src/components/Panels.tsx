@@ -36,7 +36,7 @@ export function ComparePanel({ characters, look }: { characters: CharactersRespo
       <p className="muted small">Up to {MAX_COMPARE + 1} characters. Pick one here or on screen to change its race, look, gear, name or animation.</p>
       <ul className="compare-list" role="radiogroup" aria-label="Character to edit">
         {rows.map(({ c, i }) => {
-          const name = characterLabel(characters, c.race, c.sex, c.models)
+          const name = characterLabel(characters, c.race, c.sex, c.models, c.form)
           const own = i >= 0 && !!look.compare[i].items
           return (
             <li key={i} className={selected === i + 1 ? 'selected' : undefined}>
@@ -46,9 +46,12 @@ export function ComparePanel({ characters, look }: { characters: CharactersRespo
               {i >= 0 && (
                 <span className="compare-row small">
                   <span className="compare-shares">
-                    <label title="Unchecked, it wears its own outfit, starting from a copy of the main one">
-                      <input type="checkbox" checked={!own} onChange={(e) => (e.target.checked ? commands.wear_main_outfit(i) : commands.own_outfit(i))} /> Wear the main outfit
-                    </label>
+                    {/* A druid form wears nothing, so there is no outfit to share. */}
+                    {!look.compare[i].form && (
+                      <label title="Unchecked, it wears its own outfit, starting from a copy of the main one">
+                        <input type="checkbox" checked={!own} onChange={(e) => (e.target.checked ? commands.wear_main_outfit(i) : commands.own_outfit(i))} /> Wear the main outfit
+                      </label>
+                    )}
                     <label title="Unchecked, it plays its own animation, starting from the main one">
                       <input type="checkbox" checked={!look.compare[i].anim} onChange={(e) => (e.target.checked ? commands.main_animation(i) : commands.own_animation(i))} /> Play the main animation
                     </label>
