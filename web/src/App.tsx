@@ -166,7 +166,6 @@ export default function App() {
   const titles = useMemo(() => titlesFor(allTitles, characters?.races.find((r) => r.race === look.race)?.faction), [allTitles, characters, look.race])
   // The tooltip is off by default on touch screens, where a tap leaves a hover stuck on.
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>(() => defaultTooltipMode(typeof matchMedia === 'function' && matchMedia('(hover: hover)').matches))
-  // Who a character is, over its head and in its tooltip; each side-by-side character has its own.
   const identityFor = useCallback((identity: Look['identity'], race: number, sex: 0 | 1, own: TitleInfo[]) => ({
     plate: nameplate(identity, own, sex),
     tooltip: identity ? tooltipLines(identity, own, sex, characters?.races.find((r) => r.race === race)) : [],
@@ -184,12 +183,11 @@ export default function App() {
     ...look.compare.map((c, i): ViewerCell => ({
       key: `compare${i}`, main: false, spec: { race: c.race, sex: c.sex, models: c.models }, custom: c.custom,
       outfit: c.items ? { items: c.items, hide: c.hide ?? [] } : undefined,
-      // Its own once its outfit or animation is (commands.ts ownSheathing).
       sheathed: ownSheathing(c) ? c.sheathed : look.sheathed, sheatheOnBack: ownSheathing(c) ? c.sheatheOnBack : look.sheatheOnBack,
       autoRotate: ownSheathing(c) ? c.autoRotate : look.autoRotate,
       label: `${c.label ? `${c.label} · ` : ''}${characterLabel(characters, c.race, c.sex, c.models)}`,
       identity: identityFor(c.identity, c.race, c.sex, titlesFor(allTitles, characters?.races.find((r) => r.race === c.race)?.faction)),
-      // Its own animation, Stand included, or the main one.
+      // Its own "Stand" means stand still, not play the main animation.
       anim: c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : look.anim,
     })),
   ], [look.race, look.sex, look.models, look.compare, look.identity, look.anim, look.sheathed, look.sheatheOnBack, look.autoRotate, titles, allTitles, characters, identityFor])
@@ -240,7 +238,6 @@ export default function App() {
       {phase === 'ready' && characters && (
         <main className="layout">
           <aside className={`side left${panelTab === 'character' ? '' : ' narrow-hidden'}`} aria-label="Character">
-            {/* Side by side first: who is picked there decides what the panels below change. */}
             <ComparePanel characters={characters} look={look} />
             <CharacterPanel characters={characters} look={look} />
             {/* The AI comes first after the character: Ask, then Identity, whose AI buttons share Ask's daily AI allowance. */}

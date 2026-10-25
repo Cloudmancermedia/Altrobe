@@ -66,7 +66,6 @@ export function CharacterPicker({ characters, race, sex, models, onChange, idPre
 }
 
 export function CharacterPanel({ characters, look }: { characters: CharactersResponse; look: Look }) {
-  // Race, sex, models and animation are the edited character's; the camera view is for everyone.
   const editing = useEditing().look
   const race = characters.races.find((r) => r.race === editing.race)
   const animations = useBaseLook(editing.race, editing.sex, editing.models)?.animations ?? []
@@ -86,7 +85,6 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
         </select>
       </div>
       <div className="actions">
-        {/* The edited character's: its own once its outfit or animation is, else the main character's. */}
         <button type="button" className="auto-rotate" aria-pressed={!!editing.autoRotate} onClick={() => commands.edit.set_auto_rotate(!editing.autoRotate)}
           title="Turn slowly, a full turn every 30 seconds; off, back to the front. Dragging still turns the view.">Auto-rotate</button>
       </div>

@@ -14,7 +14,6 @@ export const TAGLINE = 'WoW: Forever model viewer and character planner'
 
 export const SUPPORT = { label: 'Buy me a coffee', href: 'https://buymeacoffee.com/cloudmancer' }
 
-/** The maintainer's walkthrough of the site on YouTube (2026-10-23): under the tagline and in About. */
 export const TUTORIAL = { label: 'Watch the tutorial', href: 'https://www.youtube.com/watch?v=Ij51rZt48V8' }
 
 export interface AboutLink { label: string; href: string; note?: string }

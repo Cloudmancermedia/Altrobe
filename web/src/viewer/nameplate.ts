@@ -80,9 +80,8 @@ export const CLEARANCE = 1.4
 
 // Models whose hair, horns or ears stand well above the skull, which the skull leaves out, so the shared
 // clearance left them the least room: by race and sex ("race-sex"). Tuned on 2026-10-21 by measuring the
-// gap between the guild line and the head on every model, to bring these near the others. On 2026-10-24
-// the maintainer found Orcs, Undead, Trolls, Tauren and Dwarves still too close, so each of those got 1.5
-// times its room.
+// gap between the guild line and the head on every model, to bring these near the others. Orcs, Undead,
+// Trolls, Tauren and Dwarves then got 1.5 times that, by eye (2026-10-24).
 const MODEL_CLEARANCE: Record<string, number> = {
   '2-0': 2.1, // Orc male
   '2-1': 3.0, // Orc female

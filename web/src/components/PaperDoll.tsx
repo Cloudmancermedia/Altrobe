@@ -12,7 +12,6 @@ import { SLOT_ART } from './slot-art'
 export function PaperDoll({ look, build, children }: { look: Look; build: string; children: ReactNode }) {
   // Items equipped from a share link or a set come without icon and quality; an exact-ID search has them.
   const info = useStore(store, (st) => st.itemInfo)
-  // The slots show the character being edited; sheathing and the clear-all buttons are for everyone.
   const editing = useEditing().look
   const missing = Object.values(editing.items).filter((id): id is number => !!id && info[id]?.quality === undefined).sort().join()
   useEffect(() => {
@@ -28,7 +27,6 @@ export function PaperDoll({ look, build, children }: { look: Look; build: string
       <div className="doll-bottom">
         <div className="doll-weapons" aria-label="Weapons">
           {DOLL.bottom.map((s) => <Slot key={s.slot} s={s} look={editing} build={build} />)}
-          {/* The edited character's: its own in its own outfit, everyone's in the main outfit. */}
           <button type="button" className="sheathe" aria-pressed={!!editing.sheathed} onClick={() => commands.edit.set_sheathed(!editing.sheathed)}
             title={editing.sheathed ? 'Take weapons out' : 'Put weapons away: on the back or hip (a ranged weapon is not shown)'}>
             {editing.sheathed ? 'Draw weapons' : 'Sheathe weapons'}

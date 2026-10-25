@@ -138,8 +138,7 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loadKey])
 
-  // Auto-rotate on and off. Turned off, the view goes back to where a fresh page load puts it, wherever the
-  // turn had got to.
+  // Stopping auto-rotate reframes the view, as a fresh page load does.
   const turning = !!cell.autoRotate
   const wasTurning = useRef(turning)
   useEffect(() => {

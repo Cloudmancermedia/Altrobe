@@ -71,7 +71,6 @@ describe('new-in-Forever sets', () => {
 })
 
 describe('weaponView', () => {
-  // The Weapons tab's switch: Classic keeps every group but Forever's, New in Forever shows only it.
   const g = (group: string) => ({ group, items: [] })
   const groups = [g('Two-hand'), g('One-hand'), g('Off hand'), g('Ranged'), g('New in Forever')]
   test('Classic shows the class groups and Popular; New in Forever shows only its group', () => {
