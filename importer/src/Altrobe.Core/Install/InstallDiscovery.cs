@@ -11,11 +11,16 @@ public sealed record WowProduct(
     string? Folder)
 {
     // Forever has no product code of its own yet (the beta ships as wow_classic_beta, and launch is
-    // expected to add a new one), so it is recognized by the build name in the local build config.
-    public bool IsForever => LooksLikeForever(BuildName);
+    // expected to add a new one), so it is recognized by the build name in the local build config, or by
+    // its patch line: 1.60 on, where Classic Era is 1.15. The beta's name lost "Forever" in 1.60.1.70532.
+    public bool IsForever => LooksLikeForever(BuildName, Version);
 
-    public static bool LooksLikeForever(string? buildName) =>
-        buildName != null && buildName.Contains("Forever", StringComparison.OrdinalIgnoreCase);
+    public static bool LooksLikeForever(string? buildName, string version)
+    {
+        if (buildName != null && buildName.Contains("Forever", StringComparison.OrdinalIgnoreCase)) return true;
+        var parts = version.Split('.');
+        return parts.Length >= 2 && parts[0] == "1" && int.TryParse(parts[1], out var minor) && minor >= 60;
+    }
 }
 
 public sealed record WowInstall(string Path, IReadOnlyList<WowProduct> Products);
