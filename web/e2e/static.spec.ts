@@ -421,3 +421,41 @@ test('a character in its own outfit sheathes on its own, and Clear weapons empti
   l = await look()
   expect([l.sheathed, l.compare[1].sheathe, l.compare[1].items]).toEqual([undefined, 'hip', undefined])
 })
+
+test('Auto-rotate turns a character slowly and back to the front when stopped; one on its own animation turns on its own', async ({ page }) => {
+  await openApp(page)
+  const toggle = page.getByRole('button', { name: 'Auto-rotate' })
+  const angle = (i: number) => call(page, (h, n: number) => h.cameraAngle(n), i)
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  const front = await angle(0)
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await page.waitForTimeout(1500)
+  // Slow: a full turn takes 30 seconds, so 1.5 seconds turn it about 18 degrees.
+  const turned = Math.abs(await angle(0) - front)
+  expect(turned).toBeGreaterThan(5)
+  expect(turned).toBeLessThan(45)
+
+  // Off, it goes back to the front, wherever the turn had got to, and stays.
+  await toggle.click()
+  await expect.poll(() => angle(0)).toBeCloseTo(front, 1)
+  await page.waitForTimeout(500)
+  expect(await angle(0)).toBeCloseTo(front, 1)
+
+  // A side-by-side character in the main outfit and animation turns with the main one; on its own
+  // animation, it turns on its own.
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await settled(page, 2)
+  await page.getByRole('checkbox', { name: 'Play the main animation' }).uncheck()
+  await toggle.click()
+  await page.waitForTimeout(1000)
+  expect(Math.abs(await angle(1) - front)).toBeGreaterThan(3)
+  expect(await angle(0)).toBeCloseTo(front, 1)
+
+  // Share links leave it out: a reload, which opens the address bar's link, faces front.
+  await page.reload()
+  await settled(page, 2)
+  await page.waitForTimeout(500)
+  expect(await angle(1)).toBeCloseTo(front, 1)
+})

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import type { CharactersResponse, CustomizationOption, ItemSearchResult } from './api/types'
 import { characterLook, createCommands, replacedSetSlots, setPieceSlots, transitions } from './commands'
-import { decodeLook, emptyLook } from './look/look'
+import { canonicalLook, decodeLook, emptyLook } from './look/look'
 import { createStore, initialState } from './store'
 
 const characters: CharactersResponse = {
@@ -168,6 +168,21 @@ describe('transitions', () => {
     const alone = transitions.editCharacter(dancing, 1, (l) => transitions.setSheathed(l, true)).look!
     expect([alone.sheathed, alone.compare[0].sheathed, alone.compare[0].items]).toEqual([undefined, true, undefined])
     expect(transitions.mainAnimation(alone, 0).look!.compare[0].sheathed).toBeUndefined()
+  })
+
+  test('auto-rotate follows sheathing: its own once the outfit or animation is, else the main one; never in links', () => {
+    const main = { ...bare, compare: [{ race: 5, sex: 1 as const, models: 'hd' as const }, { race: 2, sex: 1 as const, models: 'hd' as const, anim: 'Run' }] }
+    const shared = transitions.editCharacter(main, 1, (l) => transitions.setAutoRotate(l, true)).look!
+    expect([shared.autoRotate, shared.compare[0].autoRotate]).toEqual([true, undefined])
+    expect(characterLook(shared, 1).autoRotate).toBe(true)
+    const own = transitions.editCharacter(main, 2, (l) => transitions.setAutoRotate(l, true)).look!
+    expect([own.autoRotate, own.compare[1].autoRotate, characterLook(own, 2).autoRotate]).toEqual([undefined, true, true])
+    // Back on the main outfit and animation, it turns with the main character again.
+    expect(transitions.mainAnimation(own, 1).look!.compare[1].autoRotate).toBeUndefined()
+    // Adding a character keeps the others' setting; a share link carries none of it.
+    expect(transitions.compare(own, [...own.compare, { race: 2, sex: 0 }], characters).look!.compare[1].autoRotate).toBe(true)
+    expect(canonicalLook({ ...own, autoRotate: true })).not.toHaveProperty('autoRotate')
+    expect(JSON.stringify(canonicalLook(own))).not.toContain('autoRotate')
   })
 
   test('the clear buttons reach every character: set pieces and weapons off every outfit, and everyone stands', () => {

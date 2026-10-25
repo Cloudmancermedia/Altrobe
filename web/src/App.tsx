@@ -179,19 +179,20 @@ export default function App() {
   const cells: ViewerCell[] = useMemo(() => [
     {
       key: 'main', main: true, spec: { race: look.race, sex: look.sex, models: look.models }, label: characterLabel(characters, look.race, look.sex, look.models),
-      identity: identityFor(look.identity, look.race, look.sex, titles), anim: look.anim, sheathed: look.sheathed, sheatheOnBack: look.sheatheOnBack,
+      identity: identityFor(look.identity, look.race, look.sex, titles), anim: look.anim, sheathed: look.sheathed, sheatheOnBack: look.sheatheOnBack, autoRotate: look.autoRotate,
     },
     ...look.compare.map((c, i): ViewerCell => ({
       key: `compare${i}`, main: false, spec: { race: c.race, sex: c.sex, models: c.models }, custom: c.custom,
       outfit: c.items ? { items: c.items, hide: c.hide ?? [] } : undefined,
       // Its own once its outfit or animation is (commands.ts ownSheathing).
       sheathed: ownSheathing(c) ? c.sheathed : look.sheathed, sheatheOnBack: ownSheathing(c) ? c.sheatheOnBack : look.sheatheOnBack,
+      autoRotate: ownSheathing(c) ? c.autoRotate : look.autoRotate,
       label: `${c.label ? `${c.label} · ` : ''}${characterLabel(characters, c.race, c.sex, c.models)}`,
       identity: identityFor(c.identity, c.race, c.sex, titlesFor(allTitles, characters?.races.find((r) => r.race === c.race)?.faction)),
       // Its own animation, Stand included, or the main one.
       anim: c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : look.anim,
     })),
-  ], [look.race, look.sex, look.models, look.compare, look.identity, look.anim, look.sheathed, look.sheatheOnBack, titles, allTitles, characters, identityFor])
+  ], [look.race, look.sex, look.models, look.compare, look.identity, look.anim, look.sheathed, look.sheatheOnBack, look.autoRotate, titles, allTitles, characters, identityFor])
 
   // Drop notices from characters no longer on screen.
   const cellKeys = cells.map((c) => c.key).join()

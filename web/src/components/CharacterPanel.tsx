@@ -85,6 +85,11 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
           {VIEWS.map((v) => <option key={v} value={v}>{v[0].toUpperCase() + v.slice(1)}</option>)}
         </select>
       </div>
+      <div className="actions">
+        {/* The edited character's: its own once its outfit or animation is, else the main character's. */}
+        <button type="button" className="auto-rotate" aria-pressed={!!editing.autoRotate} onClick={() => commands.edit.set_auto_rotate(!editing.autoRotate)}
+          title="Turn slowly, a full turn every 30 seconds; off, back to the front. Dragging still turns the view.">Auto-rotate</button>
+      </div>
       {animations.length > 0 && (
         <div className="picker">
           <label htmlFor="anim">Animation</label>

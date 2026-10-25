@@ -20,6 +20,8 @@ export interface Hooks {
     share_link(): string
   }
   setTime(t: number): void
+  /** The camera's angle around the character in view i, in degrees (0 is the front). */
+  cameraAngle(i: number): number
   nodeWorld(i: number, name: string): number[] | null
   drawn(i: number): { geosets: number[]; layerFiles: number[] }
   attached(i: number): { itemId: number; attachmentId: number; rootName: string }[]

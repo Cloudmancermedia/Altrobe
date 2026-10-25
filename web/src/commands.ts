@@ -25,6 +25,7 @@ export interface CompareInput {
   custom?: Record<string, number>
   identity?: Identity
   anim?: string
+  autoRotate?: boolean
 }
 
 const isId = (x: unknown): x is number => Number.isInteger(x) && (x as number) > 0
@@ -62,17 +63,18 @@ export function setPieceSlots(items: Look['items'], setPieces: ReadonlySet<numbe
 export function characterLook(look: Look, index: number): Look {
   const c = index > 0 ? look.compare[index - 1] : undefined
   if (!c) return look
-  const { identity: _, anim: mainAnim, sheathed: mainSheathed, sheatheOnBack: mainOnBack, ...rest } = look
+  const { identity: _, anim: mainAnim, sheathed: mainSheathed, sheatheOnBack: mainOnBack, autoRotate: mainRotate, ...rest } = look
   const anim = c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : mainAnim
   // Sheathing is its own once its outfit or animation is; until then it is the main character's.
   const sheathed = ownSheathing(c) ? c.sheathed : mainSheathed, onBack = ownSheathing(c) ? c.sheatheOnBack : mainOnBack
+  const autoRotate = ownSheathing(c) ? c.autoRotate : mainRotate
   return {
     ...rest, race: c.race, sex: c.sex, models: c.models, custom: c.custom ?? {}, items: c.items ?? look.items, hide: c.items ? c.hide ?? [] : look.hide, compare: [],
-    ...(c.identity ? { identity: c.identity } : {}), ...(anim ? { anim } : {}), ...(sheathed ? { sheathed } : {}), ...(onBack ? { sheatheOnBack: onBack } : {}),
+    ...(c.identity ? { identity: c.identity } : {}), ...(anim ? { anim } : {}), ...(sheathed ? { sheathed } : {}), ...(onBack ? { sheatheOnBack: onBack } : {}), ...(autoRotate ? { autoRotate } : {}),
   }
 }
 
-/** Whether a side-by-side character sheathes on its own: once its outfit or its animation is its own. */
+/** Whether a side-by-side character sheathes and auto-rotates on its own: once its outfit or its animation is its own. */
 export function ownSheathing(c: CompareCharacter): boolean {
   return !!(c.items || c.anim)
 }
@@ -83,6 +85,7 @@ function bindSheathing(c: CompareCharacter): CompareCharacter {
   const next = { ...c }
   delete next.sheathed
   delete next.sheatheOnBack
+  delete next.autoRotate
   return next
 }
 
@@ -151,6 +154,14 @@ export const transitions = {
     const next = { ...look }
     if (identity) next.identity = identity
     else delete next.identity
+    return { look: next }
+  },
+
+  /** Turns the character slowly (on screen only; share links leave it out). */
+  setAutoRotate(look: Look, on: boolean): Result {
+    const next = { ...look }
+    if (on) next.autoRotate = true
+    else delete next.autoRotate
     return { look: next }
   },
 
@@ -245,6 +256,7 @@ export const transitions = {
         if (identity) entry.identity = identity
       }
       if (typeof c.anim === 'string' && c.anim.trim()) entry.anim = c.anim.trim()
+      if (c.autoRotate === true) entry.autoRotate = true
       list.push(entry)
     }
     return { look: { ...look, compare: list } }
@@ -342,13 +354,17 @@ export const transitions = {
       else delete next.sheathed
       if (after.sheatheOnBack) next.sheatheOnBack = true
       else delete next.sheatheOnBack
-    } else if (after.sheathed !== before.sheathed || after.sheatheOnBack !== before.sheatheOnBack) {
-      // In the main outfit and animation, a character sheathes with the main one.
+      if (after.autoRotate) next.autoRotate = true
+      else delete next.autoRotate
+    } else if (after.sheathed !== before.sheathed || after.sheatheOnBack !== before.sheatheOnBack || after.autoRotate !== before.autoRotate) {
+      // In the main outfit and animation, a character sheathes and turns with the main one.
       main = { ...look }
       if (after.sheathed) main.sheathed = true
       else delete main.sheathed
       if (after.sheatheOnBack) main.sheatheOnBack = true
       else delete main.sheatheOnBack
+      if (after.autoRotate) main.autoRotate = true
+      else delete main.autoRotate
     }
     return { look: { ...main, compare: look.compare.map((x, i) => (i === index - 1 ? next : x)) } }
   },
@@ -444,6 +460,7 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
       reset_customization: () => onSelected((l) => transitions.resetCustomization(l)),
       set_identity: (change: Parameters<typeof transitions.setIdentity>[1]) => onSelected((l) => transitions.setIdentity(l, change)),
       set_sheathed: (sheathed: boolean) => onSelected((l) => transitions.setSheathed(l, sheathed)),
+      set_auto_rotate: (on: boolean) => onSelected((l) => transitions.setAutoRotate(l, on)),
       set_sheathe_on_back: (onBack: boolean) => onSelected((l) => transitions.setSheatheOnBack(l, onBack)),
       /** `animations` are the selected character's, from its base look. */
       set_animation: (name: string, animations: AnimationInfo[]) => onSelected((l) => transitions.setAnimation(l, name, animations)),

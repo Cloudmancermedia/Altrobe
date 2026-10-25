@@ -14,6 +14,10 @@ import { apparentHeight, boxSkull, clearanceFor, nameSize, plateAnchor, screenPo
 const FRAME_DISTANCE = 2.5
 const FRAME_LIFT = 0.12
 
+// Auto-rotate's speed in OrbitControls' units: given the frame time, 2 is one full turn every 30 seconds,
+// slow enough to look the character over.
+export const AUTO_ROTATE_SPEED = 2
+
 // The page background (--bg in index.css), a touch lighter so the character stands out.
 const BACKGROUND = 0x0b2636
 
@@ -23,6 +27,8 @@ export class StageView {
   readonly controls: OrbitControls
   readonly element: HTMLElement
   character: Character | null = null
+  /** Turning slowly (the Auto-rotate button), on this view's own. */
+  autoRotate = false
   /** The nameplate element to keep over the character's head, if it has one. */
   nameplate: HTMLElement | null = null
   /** Where the nameplate's bottom goes, from the skull in the character's first animated frame, frozen so it never bobs. */
@@ -162,7 +168,10 @@ export class Stage {
       if (!this.paused) v.character?.update(dt)
       v.camera.aspect = r.width / r.height
       v.camera.updateProjectionMatrix()
-      v.controls.update()
+      v.controls.autoRotate = v.autoRotate
+      v.controls.autoRotateSpeed = AUTO_ROTATE_SPEED
+      // The frame time keeps the turn the same speed on every screen; without it, it turns once a frame.
+      v.controls.update(dt)
       // After the camera moves, and while paused too, so billboards follow orbiting.
       v.character?.faceCamera(v.camera)
       renderer.setViewport(left, bottom, r.width, r.height)
