@@ -139,14 +139,14 @@ test('Run plays a different pose from Stand, loaded as its own file', async ({ p
   await settled(page, 1, bare)
   await call(page, (h) => h.setTime(0.3))
   const stand = await call(page, (h, n) => h.nodeWorld(0, n), HEAD)
-  const anim = page.waitForResponse((r) => /\/anims\/\d+\/5\.glb$/.test(r.url()))
+  const anim = page.waitForResponse((r) => /\/anims\/\d+\/5\.glb(\?|$)/.test(r.url()))
   expect(await call(page, (h) => h.commands.set_animation('Run'))).not.toHaveProperty('error')
   expect((await anim).status()).toBe(200)
   await settled(page, 1)
   await call(page, (h) => h.setTime(0.3))
   const run = await call(page, (h, n) => h.nodeWorld(0, n), HEAD)
   expect(Math.hypot(run![0] - stand![0], run![1] - stand![1], run![2] - stand![2])).toBeGreaterThan(0.01)
-  await expect(page.getByLabel('Animation')).toHaveValue('Run')
+  await expect(page.getByLabel('Animation', { exact: true })).toHaveValue('Run')
 })
 
 test('an empty search shows a hint; typing finds Thunderfury', async ({ page }) => {
@@ -171,5 +171,66 @@ test.describe('a bogus item', () => {
     await settled(page, 1)
     const notices = await call(page, (h) => Object.values(h.store.get().notices).flat())
     expect(notices.join('\n')).toContain(String(BOGUS_ITEM))
+  })
+})
+
+test.describe('druid forms', () => {
+  // 1.60.1.70532: the Night Elf cat's default is the Classic Purple (druidcat_legacy.m2, 307529); Black is
+  // on the newer cat (druidcat.m2, 123682).
+  const CLASSIC_CAT = 307529, CAT = 123682, BLACK = 7151
+
+  test('the race list picks a form: its model, its colors with the Classic as default, and no sex or gear', async ({ page }) => {
+    await openApp(page)
+    const model = page.waitForResponse((r) => r.url().includes(`/models/${CLASSIC_CAT}.glb`))
+    await page.getByLabel('Race').selectOption('cat:4')
+    expect((await model).status()).toBe(200)
+    await settled(page, 1)
+    await expect(page.locator('[data-cell="main"] .cell-label')).toHaveText('Night Elf Cat Form')
+    await expect(page.getByLabel('Color').locator('option:checked')).toHaveText('Purple (Classic, default)')
+    await expect(page.getByRole('radiogroup', { name: 'Sex' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Sheathe weapons' })).toHaveCount(0)
+    expect(await call(page, (h) => h.attached(0).length)).toBe(0)
+  })
+
+  test('a color loads its own model, and a quick button plays the form\'s attack from its own file', async ({ page }) => {
+    await openApp(page)
+    await page.getByLabel('Race').selectOption('cat:4')
+    await settled(page, 1)
+    const model = page.waitForResponse((r) => r.url().includes(`/models/${CAT}.glb`))
+    await page.getByLabel('Color').selectOption(String(BLACK))
+    expect((await model).status()).toBe(200)
+    await settled(page, 1)
+    const anim = page.waitForResponse((r) => new RegExp(`/anims/${CAT}/\\d+\\.glb(\\?|$)`).test(r.url()))
+    await page.getByRole('group', { name: 'Quick animations' }).getByRole('button', { name: 'Rake', exact: true }).click()
+    expect((await anim).status()).toBe(200)
+    await settled(page, 1)
+    await expect(page.getByLabel('Animation', { exact: true })).toHaveValue('DruidCatRake')
+  })
+
+  test('a share link opens a cat beside a bear, with the chosen color, in a fresh browser', async ({ page, browser }) => {
+    await openApp(page)
+    await page.getByLabel('Race').selectOption('cat:4')
+    await settled(page, 1)
+    await page.getByLabel('Color').selectOption(String(BLACK))
+    await page.getByRole('button', { name: 'Add character' }).click()
+    await page.locator('.compare-pick').nth(1).click()
+    await page.getByLabel('Race').selectOption('bear:6')
+    await settled(page, 2)
+    const link = await call(page, (h) => h.commands.share_link())
+    const look = await call(page, (h) => h.commands.get_look())
+
+    const context = await browser.newContext()
+    try {
+      const fresh = await context.newPage()
+      const problems = watch(fresh)
+      // openApp waits for one character; the link opens two.
+      await fresh.goto(link)
+      await settled(fresh, 2)
+      expect(await call(fresh, (h) => h.commands.get_look())).toEqual(look)
+      await expect(fresh.locator('.cell-label')).toHaveText(['Night Elf Cat Form', 'Tauren Bear Form'])
+      expect(problems).toEqual([])
+    } finally {
+      await context.close()
+    }
   })
 })
