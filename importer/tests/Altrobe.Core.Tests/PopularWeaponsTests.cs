@@ -202,6 +202,8 @@ public class PopularWeaponsTests
         Assert.All(new[] { 1, 2, 5, 7, 8, 9, 11 }, c => Assert.NotEmpty(list.Classes[c].OffHand ?? []));
         // Warriors get no daggers (Phase 4 — Find Panel Spec): Fang of the Faceless and The Lobotomizer are rogues'.
         Assert.DoesNotContain(19859, list.Classes[1].OneHand);
+        // Hurricane (2824): Forever's hotfixes delete its Item row (DBCache.bin, 1.60.1.70532), so the game has none.
+        Assert.DoesNotContain(2824, list.All.Concat(list.Classes.Values.SelectMany(c => c.TwoHand.Concat(c.OneHand).Concat(c.Ranged).Concat(c.OffHand ?? []))));
         Assert.DoesNotContain(19324, list.Classes[1].OneHand);
         Assert.Contains(18805, list.Classes[3].OneHand); // Core Hound Tooth
         Assert.Empty(list.Classes[4].TwoHand);
