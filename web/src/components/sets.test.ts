@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { ItemSetResult } from '../api/types'
-import { DEFAULT_SET_PREFS, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs } from './sets'
+import { DEFAULT_SET_PREFS, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs , weaponView } from './sets'
 
 const set = (setId: number): ItemSetResult => ({ setId, name: `Set ${setId}`, internal: false, unnamed: false, pieces: [], skipped: [] })
 
@@ -67,5 +67,16 @@ describe('new-in-Forever sets', () => {
   test('other sets keep their details', () => {
     expect(setDetails({ ...set(218), unnamed: true })).toBe('0 pieces · set 218 · pieces unnamed in this build')
     expect(setDetails({ ...set(102), internal: true })).toBe('0 pieces · set 102 · dev set')
+  })
+})
+
+describe('weaponView', () => {
+  // The Weapons tab's switch: Classic keeps every group but Forever's, New in Forever shows only it.
+  const g = (group: string) => ({ group, items: [] })
+  const groups = [g('Two-hand'), g('One-hand'), g('Off hand'), g('Ranged'), g('New in Forever')]
+  test('Classic shows the class groups and Popular; New in Forever shows only its group', () => {
+    expect(weaponView(groups, 'classic').map((x) => x.group)).toEqual(['Two-hand', 'One-hand', 'Off hand', 'Ranged'])
+    expect(weaponView(groups, 'forever').map((x) => x.group)).toEqual(['New in Forever'])
+    expect(weaponView([g('Popular'), g('New in Forever')], 'classic').map((x) => x.group)).toEqual(['Popular'])
   })
 })

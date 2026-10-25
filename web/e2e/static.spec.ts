@@ -48,28 +48,35 @@ test('the Weapons tab shows each class its own weapons, and a click equips one',
   const groups = panel.locator('h3.result-group')
   const names = panel.locator('.results .qname')
 
-  // No class picked: the "Popular" list, then every weapon Forever added.
+  // No class picked: the "Popular" list on the Classic side, every weapon Forever added on the other.
+  const view = panel.getByRole('radiogroup', { name: 'Weapons from' })
   await classSelect.selectOption({ label: 'All classes' })
-  await expect(groups).toHaveText(['Popular', 'New in Forever'])
+  await expect(view.getByRole('radio', { name: 'Classic' })).toHaveAttribute('aria-checked', 'true')
+  await expect(groups).toHaveText(['Popular'])
+  await view.getByRole('radio', { name: 'New in Forever' }).click()
+  await expect(groups).toHaveText(['New in Forever'])
+  await view.getByRole('radio', { name: 'Classic' }).click()
 
   await call(page, (h) => h.commands.set_character(4, 0))
   await classSelect.selectOption({ label: 'Druid' })
-  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Off hand', 'New in Forever'])
+  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Off hand'])
   await expect(names.filter({ hasText: 'Staff of Dominance' })).toHaveCount(1)
   await expect(names.filter({ hasText: 'Arcanite Reaper' })).toHaveCount(0)
   // Forever lets druids use polearms.
+  await view.getByRole('radio', { name: 'New in Forever' }).click()
   await expect(names.filter({ hasText: 'Bear Poking Stick' })).toHaveCount(1)
+  await view.getByRole('radio', { name: 'Classic' }).click()
 
   await call(page, (h) => h.commands.set_character(1, 0))
   await classSelect.selectOption({ label: 'Warrior' })
   await expect(names.filter({ hasText: 'Arcanite Reaper' })).toHaveCount(1)
   await expect(names.filter({ hasText: "Perdition's Blade" })).toHaveCount(0)
-  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Off hand', 'Ranged', 'New in Forever'])
+  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Off hand', 'Ranged'])
   await expect(names.filter({ hasText: 'Drillborer Disk' })).toHaveCount(1)
 
   await call(page, (h) => h.commands.set_character(2, 0))
   await classSelect.selectOption({ label: 'Hunter' })
-  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Ranged', 'New in Forever'])
+  await expect(groups).toHaveText(['Two-hand', 'One-hand', 'Ranged'])
 
   await panel.locator('.results li button.result', { hasText: "Rhok'delar" }).click()
   await settled(page, 1, (h: Hooks) => h.attached(0).some((a) => a.itemId === 18713))

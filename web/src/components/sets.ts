@@ -49,3 +49,12 @@ export function setDetails(s: ItemSetResult): string {
   if (s.internal) parts.push('dev set')
   return parts.join(' · ')
 }
+
+/** The Weapons tab's switch: Classic weapons, or the ones Forever added. */
+export type WeaponView = 'classic' | 'forever'
+const FOREVER_GROUP = 'New in Forever'
+
+/** The groups one side of the switch shows: Classic keeps all but Forever's group, New in Forever only it. */
+export function weaponView<T extends { group: string }>(groups: T[], view: WeaponView): T[] {
+  return groups.filter((g) => (g.group === FOREVER_GROUP) === (view === 'forever'))
+}
