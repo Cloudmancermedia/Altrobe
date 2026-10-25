@@ -500,3 +500,20 @@ test('on a desktop window the page never scrolls, and the side panels never scro
   })
   expect(await size()).toEqual({ page: [0, 0], sides: [0, 0] })
 })
+
+test('the views have no separator lines, and the selection outline fades after a moment', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await page.getByRole('button', { name: 'Add character' }).click()
+  await settled(page, 3)
+  // A finished fade can leave a transparent shadow rather than none; both draw nothing.
+  const shadows = () => page.locator('.stage-cell').evaluateAll((cells) => cells.map((c) => {
+    const s = getComputedStyle(c).boxShadow
+    return s.startsWith('rgba(0, 0, 0, 0)') ? 'none' : s
+  }))
+  await page.locator('[data-cell="compare0"]').click()
+  // Picked: the outline shows at once, then fades, so screenshots come out clean.
+  expect((await shadows())[1]).not.toBe('none')
+  await expect.poll(shadows, { timeout: 5000 }).toEqual(['none', 'none', 'none'])
+  await expect(page.locator('[data-cell="compare0"]')).toHaveClass(/selected/)
+})
