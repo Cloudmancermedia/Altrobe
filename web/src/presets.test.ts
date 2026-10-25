@@ -38,3 +38,24 @@ describe('animation presets', () => {
     expect(animationPresets([])).toEqual([])
   })
 })
+
+describe('druid form presets', () => {
+  const names = (list: { animation: string }[]) => list.map((p) => p.animation)
+  const has = (...n: string[]) => n.map((name, id) => ({ id, name }))
+
+  test('each form gets its own named attacks, never the weapon ones', () => {
+    const cat = has('Stand', 'Run', 'StealthWalk', 'DruidCatClaw', 'DruidCatRake', 'DruidCatRip', 'DruidCatPounce', 'DruidCatRavage', 'Attack1H', 'AttackBow')
+    expect(names(animationPresets(cat, undefined, undefined, 'cat'))).toEqual(['Stand', 'Run', 'StealthWalk', 'DruidCatClaw', 'DruidCatRake', 'DruidCatRip', 'DruidCatPounce', 'DruidCatRavage'])
+    const bear = has('Stand', 'Run', 'DruidBearMaul', 'DruidBearSwipe', 'DruidBearBite', 'DruidBearBash', 'BattleRoar')
+    expect(names(animationPresets(bear, undefined, undefined, 'bear'))).toEqual(['Stand', 'Run', 'DruidBearMaul', 'DruidBearSwipe', 'DruidBearBite', 'DruidBearBash', 'BattleRoar'])
+    const moonkin = has('Stand', 'Run', 'SpellCastDirected', 'SpellCastOmni', 'EmoteRoar', 'EmoteDance', 'Attack2H')
+    expect(names(animationPresets(moonkin, undefined, undefined, 'moonkin'))).toEqual(['Stand', 'Run', 'SpellCastDirected', 'SpellCastOmni', 'EmoteRoar', 'EmoteDance'])
+  })
+
+  test('a form model without an animation leaves its button out: the Classic cat cannot prowl', () => {
+    const classicCat = has('Stand', 'Run', 'DruidCatClaw')
+    expect(names(animationPresets(classicCat, undefined, undefined, 'cat'))).toEqual(['Stand', 'Run', 'DruidCatClaw'])
+    expect(animationPresets(has('Stand', 'Walk', 'Run', 'Sprint', 'Jump'), undefined, undefined, 'travel').map((p) => p.label))
+      .toEqual(['Stand', 'Walk', 'Run', 'Sprint', 'Jump (in the air)'])
+  })
+})
