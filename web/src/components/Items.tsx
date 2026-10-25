@@ -9,7 +9,7 @@ import type { Look } from '../look/look'
 import { rememberItems, setNotices, useStore } from '../store'
 import { otherSlots, SLOT_ORDER, type SlotName } from '../viewer/dress'
 import { SEARCH_HINT, searchText } from './search-query'
-import { readSetPrefs, setDetails, setQuality, type SetPrefs, withoutNotable, writeSetPrefs } from './sets'
+import { readSetPrefs, setDetails, setQuality, type SetPrefs, weaponView, type WeaponView, withoutNotable, writeSetPrefs } from './sets'
 
 const PAGE = 50
 
@@ -202,7 +202,9 @@ function PopularWeapons({ build }: { build: string }) {
   }, [classId])
 
   const busy = shown?.classId !== classId
-  const groups = shown?.groups ?? []
+  // Classic and Forever's own weapons on two sides of a switch, so neither list runs on forever.
+  const [view, setView] = useState<WeaponView>('classic')
+  const groups = weaponView(shown?.groups ?? [], view)
   return (
     <>
       <div className="search-controls">
@@ -210,6 +212,11 @@ function PopularWeapons({ build }: { build: string }) {
           <option value={0}>All classes</option>
           {classes.map((c) => <option key={c.classId} value={c.classId}>{c.name}</option>)}
         </select>
+        <div className="segmented" role="radiogroup" aria-label="Weapons from">
+          {([['classic', 'Classic'], ['forever', 'New in Forever']] as const).map(([v, label]) => (
+            <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}>{label}</button>
+          ))}
+        </div>
       </div>
       <div aria-live="polite" aria-busy={busy}>
         {groups.map((g) => (
@@ -219,7 +226,7 @@ function PopularWeapons({ build }: { build: string }) {
           </div>
         ))}
       </div>
-      {!busy && groups.length === 0 && <p className="muted small">No popular weapons for this class yet.</p>}
+      {!busy && groups.length === 0 && <p className="muted small">{view === 'forever' ? 'No weapons new in Forever for this class.' : 'No popular weapons for this class yet.'}</p>}
     </>
   )
 }
