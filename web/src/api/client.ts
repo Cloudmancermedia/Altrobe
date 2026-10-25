@@ -9,6 +9,7 @@ import { ApiError } from './errors'
 import { API, localBackend, rememberStatus, request } from './local'
 import { createStaticBackend } from './static'
 import { promptBoxOn } from '../assistant/prompt-flag'
+import { labelChoices } from '../viewer/customize'
 import type {
   ApiErrorBody, AssistantEvent, AssistantSettingsInput, AssistantSettingsView, AssistantTestResult, AssistantTurn, InstallRequest, ItemSearchQuery, ModelSet,
 } from './types'
@@ -51,7 +52,7 @@ export function clearCache() {
 }
 
 export const getBaseLook = (race: number, sex: number, models: ModelSet) =>
-  cached(`look:${race}:${sex}:${models}`, () => backend.getBaseLook(race, sex, models))
+  cached(`look:${race}:${sex}:${models}`, () => backend.getBaseLook(race, sex, models).then((look) => (look.options ? { ...look, options: labelChoices(look.options) } : look)))
 
 /** Resolved item data for one character, or null when there is none (404). */
 export const getResolvedItem = (itemId: number, race: number, sex: number, models: ModelSet) =>

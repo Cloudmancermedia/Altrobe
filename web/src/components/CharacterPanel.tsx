@@ -4,7 +4,7 @@ import { useBaseLook, useItemSubclass } from '../hooks'
 import { animationPresets } from '../presets'
 import { ANIMATION_GROUPS, animationGroup, animationLabel, animationOrder, pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
 import { VIEWS, type Look } from '../look/look'
-import { panelOptions } from '../viewer/customize'
+import { companionChoices, panelOptions } from '../viewer/customize'
 import { EditingNote } from './Items'
 
 const FACTION_LABELS: Record<Faction, string> = { alliance: 'Alliance', horde: 'Horde', neutral: 'Other' }
@@ -154,7 +154,12 @@ export function CustomizationPanel() {
             <label htmlFor={id}>{o.name}</label>
             <div className="choice">
               {current?.swatch && <span className="swatch" style={{ background: current.swatch }} aria-hidden="true" />}
-              <select id={id} value={value} onChange={(e) => commands.edit.set_customization(o.optionId, Number(e.target.value), choices)}>
+              <select id={id} value={value} onChange={(e) => {
+                const choiceId = Number(e.target.value)
+                commands.edit.set_customization(o.optionId, choiceId, choices)
+                // A tattoo or face paint pattern shows only in a color; one in no color gets the first.
+                for (const [opt, pick] of Object.entries(companionChoices(choices ?? [], look.custom, o.optionId, choiceId))) commands.edit.set_customization(Number(opt), pick, choices)
+              }}>
                 {o.choices.map((c, i) => (
                   <option key={c.choiceId} value={c.choiceId}>
                     {c.name || `#${i + 1}`}{c.choiceId === o.defaultChoiceId ? ' (default)' : ''}

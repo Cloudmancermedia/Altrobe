@@ -360,3 +360,17 @@ test('a side-by-side character keeps its own name and animation through the shar
   expect([l.anim, l.compare[0].anim, l.compare[0].identity]).toEqual([undefined, 'Run', { firstName: 'Velka', guild: 'Ashen Vanguard' }])
   await expect(page.locator('[data-cell="compare0"] .nameplate')).toContainText('Velka')
 })
+
+test("Skyborne customization: no placeholder names, an empty tattoo color reads None, and a tattoo pattern shows in a color", async ({ page }) => {
+  const look = { v: 1, game: 'forever', build: '', models: 'hd', race: 95, sex: 0 }
+  await openApp(page, `${appUrl()}#look=${Buffer.from(JSON.stringify(look)).toString('base64url')}`)
+  const hair = await page.getByLabel('Hair Color', { exact: true }).locator('option').allTextContents()
+  expect(hair.some((t) => /New \d/.test(t))).toBe(false)
+  const color = page.getByLabel('Body Tattoo Color', { exact: true })
+  await expect(color.locator('option:checked')).toHaveText('None (default)')
+
+  await page.getByLabel('Body Tattoo', { exact: true }).selectOption({ label: 'Zephyr' })
+  await expect(color.locator('option:checked')).not.toHaveText('None (default)')
+  const custom = await call(page, (h) => (h.commands.get_look() as { custom?: Record<string, number> }).custom ?? {})
+  expect(Object.keys(custom)).toHaveLength(2)
+})

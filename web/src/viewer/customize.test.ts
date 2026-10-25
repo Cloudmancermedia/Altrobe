@@ -1,7 +1,7 @@
 // customize() over a tiny hand-written base look (made-up IDs, not game data).
 import { describe, expect, test } from 'vitest'
 import type { BaseLook, CustomizationOption, TextureLayer } from '../api/types'
-import { customize, panelOptions, randomCustomization } from './customize'
+import { companionChoices, customize, labelChoices, panelOptions, randomCustomization } from './customize'
 
 const section = { sectionType: -1, x: 0, y: 0, width: 512, height: 512 }
 const layer = (optionId: number, choiceId: number, fileDataId: number, extra: Partial<TextureLayer> = {}): TextureLayer =>
@@ -111,5 +111,39 @@ describe('panelOptions', () => {
 
   test('without options, each default stands alone', () => {
     expect(panelOptions({ choices: [choice(1, 'Skin', 11)] }).map((o) => o.choices.length)).toEqual([1])
+  })
+})
+
+// A pattern and its color, as Skyborne tattoos are: the color paints the pattern chosen, and its
+// default paints nothing.
+const tattoo: CustomizationOption[] = [
+  { optionId: 20, name: 'Body Tattoo', defaultChoiceId: 200, choices: [{ choiceId: 200, name: 'None' }, { choiceId: 201, name: 'Zephyr' }] },
+  { optionId: 21, name: 'Body Tattoo Color', defaultChoiceId: 210, choices: [
+    { choiceId: 210, name: '' },
+    { choiceId: 211, name: '', swatch: '#f2fff3', layers: [layer(21, 211, 900, { relatedChoiceId: 201 })] },
+    { choiceId: 212, name: '', swatch: '#4589af', layers: [layer(21, 212, 901, { relatedChoiceId: 201 })] },
+  ] },
+  { optionId: 22, name: 'Hair Color', defaultChoiceId: 220, choices: [{ choiceId: 220, name: '', swatch: '#111111' }, { choiceId: 221, name: 'New 28', swatch: '#222222' }, { choiceId: 222, name: 'Ember', swatch: '#333333' }] },
+]
+
+describe('labelChoices', () => {
+  test("numbers the game's placeholder names and calls a color's empty default None", () => {
+    // Skyborne Hair Color has "New 28" to "New 31"; the male Body Tattoo Color default has no name.
+    const [pattern, color, hair] = labelChoices(tattoo)
+    expect(pattern.choices.map((c) => c.name)).toEqual(['None', 'Zephyr'])
+    expect(color.choices.map((c) => c.name)).toEqual(['None', '', ''])
+    expect(hair.choices.map((c) => c.name)).toEqual(['', '', 'Ember'])
+    expect(tattoo[2].choices[1].name, 'input is not changed').toBe('New 28')
+  })
+})
+
+describe('companionChoices', () => {
+  test('a pattern picked while its color paints nothing also picks the first color that shows it', () => {
+    expect(companionChoices(tattoo, {}, 20, 201)).toEqual({ 21: 211 })
+    // A color that already shows the pattern stays.
+    expect(companionChoices(tattoo, { 21: 212 }, 20, 201)).toEqual({})
+    // None, and options with no pattern of their own, pick nothing.
+    expect(companionChoices(tattoo, {}, 20, 200)).toEqual({})
+    expect(companionChoices(tattoo, {}, 22, 222)).toEqual({})
   })
 })
