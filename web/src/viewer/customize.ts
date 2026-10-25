@@ -57,6 +57,43 @@ export function customize(look: CustomizeLook, custom: Record<string, number>): 
   return { geosets: [...show].sort((a, b) => a - b), layers, notes }
 }
 
+/**
+ * Choice names as the panel and the prompt box show them. The game's data has placeholders some colors
+ * still carry (Skyborne Hair Color "New 28" to "New 31"), shown numbered like the other colors, and a
+ * color option's default that paints nothing is None, as the female Skyborne Body Tattoo Color names it.
+ */
+export function labelChoices(options: CustomizationOption[]): CustomizationOption[] {
+  return options.map((o) => {
+    const colors = o.choices.some((c) => c.swatch)
+    return {
+      ...o,
+      choices: o.choices.map((c) => {
+        if (/^New \d+$/.test(c.name)) return { ...c, name: '' }
+        const empty = !c.swatch && !c.layers?.length && !c.geosets?.length
+        if (colors && empty && !c.name && c.choiceId === o.defaultChoiceId) return { ...c, name: 'None' }
+        return c
+      }),
+    }
+  })
+}
+
+/**
+ * Other options to change with a pick, so it shows: a tattoo or face paint pattern draws only in its color
+ * option's colors, and that option's default paints nothing. Only an option whose current choice paints
+ * nothing changes, to its first choice that draws the pattern.
+ */
+export function companionChoices(options: CustomizationOption[], custom: Record<string, number>, optionId: number, choiceId: number): Record<number, number> {
+  const out: Record<number, number> = {}
+  for (const o of options) {
+    if (o.optionId === optionId) continue
+    const current = o.choices.find((c) => c.choiceId === (custom[String(o.optionId)] ?? o.defaultChoiceId))
+    if (current?.layers?.length) continue
+    const shows = o.choices.find((c) => c.layers?.some((l) => l.relatedChoiceId === choiceId))
+    if (shows) out[o.optionId] = shows.choiceId
+  }
+  return out
+}
+
 /** One random choice per option (option ID -> choice ID), for the dice button. */
 /**
  * The dropdowns for the customization panel. The base look names a default for every option, including
