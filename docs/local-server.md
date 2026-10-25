@@ -57,6 +57,7 @@ matching HTTP status. Until an install is selected, every data endpoint answers 
 | `GET /weapons/popular?class=` | the Weapons tab: popular weapons for one class, grouped Two-hand, One-hand, Off hand (shields and held items), Ranged (wands for casters) and New in Forever, or a "Popular" list without `class` (`Catalog/popular-weapons.json`) |
 | `GET /sets/pieces` | every set piece's item ID, so equipping a set can take off the one worn before |
 | `GET /titles`, `GET /names` | the game's titles and random-name lists |
+| `GET /forms` | druid forms per race, their colors, and every animation of each form model |
 | `GET /items/{itemId}/resolved?race=&sex=&models=` | what one item draws on one race and sex. `404` when the item has no visual |
 | `GET`, `PUT /assistant/settings` | the prompt box's provider, model and key, saved to `settings.json` in the config folder, readable only by its owner. The key itself is never returned |
 | `POST /assistant/test` | one short request with the saved settings |

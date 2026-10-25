@@ -188,6 +188,16 @@ public class ApiTests : IClassFixture<ApiTests.Fixture>
     }
 
     [Fact]
+    public async Task FormsListTheBuildsDruidFormsAndNoneForAnOrcOnlyBuild()
+    {
+        var client = await _app.Installed();
+        var forms = await Body(await client.GetAsync("/api/v1/forms"));
+        Assert.Equal(TestApp.Build, forms.GetProperty("build").GetString());
+        Assert.Equal(0, forms.GetProperty("forms").GetArrayLength());
+        Assert.Empty(forms.GetProperty("animations").EnumerateObject());
+    }
+
+    [Fact]
     public async Task AnimationAssetsLiveUnderTheBuildAndMissingOnesAre404()
     {
         var client = await _app.Installed();

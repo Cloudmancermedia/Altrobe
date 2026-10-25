@@ -93,6 +93,23 @@ public sealed class BuildSession
         return _looks.Value.Resolve(raceId, sex, classId, set, _ => geosets) is { } look ? look.ForPlayer() with { Build = Build, Animations = animations } : null;
     }
 
+    // Converts each form model (once) to list its animations; a model missing from local disk lists none.
+    public async Task<FormSet> FormsAsync()
+    {
+        var forms = Forms.For([.. Characters.Races().Select(r => r.Race)]);
+        var animations = new Dictionary<int, IReadOnlyList<AnimationInfo>>();
+        foreach (var fdid in forms.SelectMany(f => f.Choices).Select(c => c.ModelFileDataId).Distinct())
+        {
+            try
+            {
+                var meta = await File.ReadAllBytesAsync((await ModelAsync((uint)fdid))[0]);
+                animations[fdid] = AssetConverter.SequenceIds(meta).Where(AnimationNames.IsClassic).Select(id => new AnimationInfo(id, AnimationNames.Name(id))).ToList();
+            }
+            catch (Exception e) when (e is FileNotFoundException or InvalidDataException) { }
+        }
+        return new FormSet(forms, animations);
+    }
+
     // An item with no ItemSparse row goes by its catalog name: cmangos' (ClassicItemNames) or the one the
     // catalog made from its set and slot. The resolver alone only knows the game files.
     public ResolvedItem ResolveItem(int itemId, int raceId, int sex, ModelSet set)

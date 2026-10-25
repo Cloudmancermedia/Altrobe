@@ -1,3 +1,4 @@
+using Altrobe.Core.Resolve;
 using Altrobe.Core.Tables;
 using T = Altrobe.Core.Tables.GameTableNames;
 
@@ -10,6 +11,9 @@ public sealed record FormChoice(int ChoiceId, string Name, int ModelFileDataId, 
 
 public sealed record FormLook(string Form, int Race, int DefaultChoiceId, IReadOnlyList<FormChoice> Choices);
 
+// Every race's forms, and the animations of each form model, by FileDataID.
+public sealed record FormSet(IReadOnlyList<FormLook> Forms, IReadOnlyDictionary<int, IReadOnlyList<AnimationInfo>> Animations);
+
 // Druid forms as the barber shop offers them. Forever keeps every retail form choice in its tables; the ones
 // it draws have a ChrCustomizationDisplayInfo element naming the form and a creature display, and a
 // requirement for druids of some races.
@@ -18,11 +22,15 @@ public sealed class FormCatalog(ITables t)
     // SpellShapeshiftForm IDs, in the order the race picker lists the forms.
     public static readonly IReadOnlyList<(int Id, string Key)> Forms = [(1, "cat"), (5, "bear"), (3, "travel"), (31, "moonkin")];
 
-    const int DruidClassBit = 1 << 10;
+    const int DruidClassId = 11, DruidClassBit = 1 << (DruidClassId - 1);
 
     public IReadOnlyList<FormLook> For(IReadOnlyCollection<int> races)
     {
-        var raceBits = t.Get(T.ChrRaces).Where(r => races.Contains(r.Int("ID"))).ToDictionary(r => r.Int("ID"), r => r.Int("PlayableRaceBit"));
+        // Some choices still allow retail's druid races (the Cheetah allows Trolls), so the race must also be
+        // able to be a druid at character creation.
+        var druidRaces = t.Get(T.CharBaseInfo).Where(r => r.Int("ClassID") == DruidClassId).Select(r => r.Int("RaceID")).ToHashSet();
+        var raceBits = t.Get(T.ChrRaces).Where(r => races.Contains(r.Int("ID")) && druidRaces.Contains(r.Int("ID")))
+            .ToDictionary(r => r.Int("ID"), r => r.Int("PlayableRaceBit"));
         var choices = t.Get(T.ChrCustomizationChoice).ById();
         var reqs = t.Get(T.ChrCustomizationReq).ById();
         var displayInfo = t.Get(T.ChrCustomizationDisplayInfo).ById();

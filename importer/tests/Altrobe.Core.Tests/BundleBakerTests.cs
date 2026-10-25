@@ -48,6 +48,11 @@ public class BundleBakerTests : IDisposable
             Animations = [new AnimationInfo(0, "Stand"), new AnimationInfo(5, "Run"), new AnimationInfo(135, "Fly")],
         });
 
+        // A Night Elf cat in two colors on model 7700; Fly is not on the forms' short list.
+        public Task<FormSet> FormsAsync() => Task.FromResult(new FormSet(
+            [new FormLook("cat", 4, 2, [new FormChoice(1, "Black", 7700, [9700, 0, 0]), new FormChoice(2, "Purple", 7700, [9701, 0, 0])])],
+            new Dictionary<int, IReadOnlyList<AnimationInfo>> { [7700] = [new(0, "Stand"), new(Anim("DruidCatClaw"), "DruidCatClaw"), new(135, "Fly")] }));
+
         public List<(uint, int)> AnimationsAsked { get; } = [];
 
         public Task<string> AnimationAsync(uint fdid, int animId)
@@ -189,7 +194,35 @@ public class BundleBakerTests : IDisposable
         foreach (var f in new[] { "anims/7000/0.glb", "anims/7000/5.glb", "anims/7001/0.glb", "anims/7001/5.glb" })
             Assert.True(File.Exists(Path.Combine(AssetDir, f)), f);
         Assert.DoesNotContain(source.AnimationsAsked, a => a.Item2 == 135);
-        Assert.Equal(4, r.Manifest.Counts["animations"]);
+        // Four for the Orc's bodies, two for the druid cat.
+        Assert.Equal(6, r.Manifest.Counts["animations"]);
+    }
+
+    static int Anim(string name) => BundleBaker.FormAnimations.Concat(BundleBaker.Animations).First(i => AnimationNames.Name(i) == name);
+
+    [Fact]
+    public async Task DruidFormsAreBakedWithTheirModelsColorsAndShortListOfAnimations()
+    {
+        var source = Source();
+        var r = await BundleBaker.BakeAsync(source, new BakeOptions(Out));
+
+        var forms = Read(Path.Combine(BuildDir, "forms.json"));
+        var cat = Assert.Single(forms.GetProperty("forms").EnumerateArray());
+        Assert.Equal(("cat", 4, 2), (cat.GetProperty("form").GetString(), cat.GetProperty("race").GetInt32(), cat.GetProperty("defaultChoiceId").GetInt32()));
+        Assert.Equal([0, Anim("DruidCatClaw")], forms.GetProperty("animations").GetProperty("7700").EnumerateArray().Select(a => a.GetProperty("id").GetInt32()));
+        foreach (var f in new[] { "models/7700.glb", "textures/9700.png", "textures/9701.png", "anims/7700/0.glb", $"anims/7700/{Anim("DruidCatClaw")}.glb" })
+            Assert.True(File.Exists(Path.Combine(AssetDir, f)), f);
+        Assert.DoesNotContain(source.AnimationsAsked, a => a.Item2 == 135);
+        Assert.Equal(1, r.Manifest.Counts["forms"]);
+    }
+
+    [Fact]
+    public void TheFormAnimationListHasEachFormsNamedAttacks()
+    {
+        var names = BundleBaker.FormAnimations.Select(AnimationNames.Name).ToHashSet();
+        foreach (var n in new[] { "Stand", "Run", "Jump", "StealthWalk", "DruidCatClaw", "DruidCatRake", "DruidCatRip", "DruidCatPounce", "DruidCatRavage",
+                     "DruidBearMaul", "DruidBearSwipe", "DruidBearBite", "DruidBearBash", "BattleRoar", "SpellCastDirected", "SpellCastOmni", "EmoteRoar" })
+            Assert.Contains(n, names);
     }
 
     [Fact]
