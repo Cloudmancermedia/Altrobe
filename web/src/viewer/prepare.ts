@@ -1,14 +1,18 @@
 // Fetches what one character needs and works out how to dress it. No three.js here.
-import { getBaseLook, getResolvedItem } from '../api/client'
+import { getBaseLook, getForms, getResolvedItem } from '../api/client'
 import type { BaseLook, ModelSet, ResolvedItem } from '../api/types'
 import { checkAgainstData, choicesFrom, defaultsFrom, dressStateFor, type Look } from '../look/look'
 import { customize } from './customize'
 import { dress, type Dressed } from './dress'
+import { formCharacter } from './form'
 
 export interface CharacterSpec {
   race: number
   sex: 0 | 1
   models: ModelSet
+  /** A druid form (cat, bear, travel, moonkin) in place of the race's body, and its color's choice ID. */
+  form?: string
+  formChoice?: number
 }
 
 export interface Prepared {
@@ -24,6 +28,11 @@ export interface Prepared {
  * @param main  true for the main character, whose build is checked against the data
  */
 export async function prepareCharacter(spec: CharacterSpec, look: Look, main: boolean): Promise<Prepared> {
+  if (spec.form) {
+    const form = formCharacter(await getForms(), spec)
+    if (!form) throw new Error(`race ${spec.race} has no ${spec.form} form`)
+    return { ...form, resolved: [], notices: [] }
+  }
   const baseLook = await getBaseLook(spec.race, spec.sex, spec.models)
   const ids = [...new Set(Object.values(look.items))] as number[]
   const resolvedList = await Promise.all(ids.map(async (id) => [id, await getResolvedItem(id, spec.race, spec.sex, spec.models)] as const))

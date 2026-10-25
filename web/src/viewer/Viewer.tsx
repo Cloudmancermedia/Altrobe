@@ -102,7 +102,7 @@ function StageCell({ stage, cell, count, look, itemSpeed, onNotices, onResolved,
     return () => { view.nameplate = null }
   }, [view, plate])
 
-  const specKey = `${cell.spec.race}:${cell.spec.sex}:${cell.spec.models}`
+  const specKey = `${cell.spec.race}:${cell.spec.sex}:${cell.spec.models}:${cell.spec.form ?? ''}:${cell.spec.formChoice ?? ''}`
   // Only what changes the dressed result; camera moves do not rebuild the character.
   const worn = cell.outfit ?? look
   const custom = cell.main ? look.custom : cell.custom ?? {}
