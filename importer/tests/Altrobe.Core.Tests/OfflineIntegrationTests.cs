@@ -168,6 +168,30 @@ public class OfflineIntegrationTests : IDisposable
         Assert.DoesNotContain(paladin.Values.SelectMany(v => v), n => n.StartsWith("Field Marshal's"));
     }
 
+    // The barber shop's form colors in 1.60.1.70532: five on the newer cat plus Purple on druidcat_legacy.m2 for
+    // a Night Elf, and the Skyborne cat's four colors on its own model.
+    [IntegrationFact]
+    public void DruidFormsListEachRacesColorsWithTheClassicAsDefault()
+    {
+        var (install, product) = RealInstall.Find()!.Value;
+        var session = BuildSession.Open(install, product, _cacheRoot);
+        var races = session.Characters.Races().ToDictionary(r => r.Name, r => r.Race);
+        var druids = new[] { "Night Elf", "Tauren", "High Order Skyborne", "Windshaper Skyborne" }.Select(n => races[n]).ToList();
+        var forms = session.Forms.For(druids);
+
+        Assert.Equal(16, forms.Count);
+        var cat = forms.Single(f => f.Form == "cat" && f.Race == races["Night Elf"]);
+        Assert.Equal(6, cat.Choices.Count);
+        var classic = Assert.Single(cat.Choices, c => c.Classic);
+        Assert.Equal(("Purple", 307529), (classic.Name, classic.ModelFileDataId));
+        Assert.Equal(classic.ChoiceId, cat.DefaultChoiceId);
+
+        var skyborne = forms.Single(f => f.Form == "cat" && f.Race == races["Windshaper Skyborne"]);
+        Assert.Equal(["Blue", "Gray", "Green", "White"], skyborne.Choices.Select(c => c.Name).Order());
+        Assert.All(skyborne.Choices, c => Assert.Equal(7749920, c.ModelFileDataId));
+        Assert.Equal(["Cheetah"], forms.Single(f => f.Form == "travel" && f.Race == races["Tauren"]).Choices.Select(c => c.Name));
+    }
+
     // Proves the trap would catch a regression: without the placeholder CDN list, the same missing
     // file makes TACTSharp call the version service.
     [IntegrationFact]

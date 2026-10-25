@@ -20,6 +20,7 @@ public sealed class BuildSession
     readonly Memo<PopularWeapons> _weapons;
     readonly Memo<IdentityCatalog> _identity;
     readonly Memo<CharacterCatalog> _characters;
+    readonly Memo<FormCatalog> _forms;
     readonly Memo<ItemResolver> _itemResolver;
     readonly Memo<LookResolver> _looks;
 
@@ -38,6 +39,7 @@ public sealed class BuildSession
         _weapons = new(() => new PopularWeapons(_items.Value));
         _identity = new(() => new IdentityCatalog(tables));
         _characters = new(() => new CharacterCatalog(tables));
+        _forms = new(() => new FormCatalog(tables));
         _itemResolver = new(() => new ItemResolver(tables));
         _looks = new(() => new LookResolver(tables));
     }
@@ -52,6 +54,7 @@ public sealed class BuildSession
     public PopularWeapons Weapons => _weapons.Value;
     public IdentityCatalog Identity => _identity.Value;
     public CharacterCatalog Characters => _characters.Value;
+    public FormCatalog Forms => _forms.Value;
     public ItemResolver ItemResolver => _itemResolver.Value;
 
     public static BuildSession Open(WowInstall install, WowProduct product, string cacheRoot, IReadOnlyDictionary<int, ClassicItem>? classicItems = null)
