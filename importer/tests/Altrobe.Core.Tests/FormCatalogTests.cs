@@ -8,7 +8,7 @@ namespace Altrobe.Core.Tests;
 public class FormCatalogTests
 {
     const int Druid = 1 << 10;
-    const int NightElf = 4, Tauren = 6, Skyborne = 95;
+    const int NightElf = 4, Tauren = 6, Troll = 8, Skyborne = 95;
 
     sealed class Fixture
     {
@@ -18,7 +18,9 @@ public class FormCatalogTests
         public Fixture()
         {
             // PlayableRaceBit: Night Elf 3, Tauren 5, High Order Skyborne 32, the second 32-bit word's first bit.
-            _t.Add(GameTableNames.ChrRaces, R(("ID", NightElf), ("PlayableRaceBit", 3)), R(("ID", Tauren), ("PlayableRaceBit", 5)), R(("ID", Skyborne), ("PlayableRaceBit", 32)));
+            _t.Add(GameTableNames.ChrRaces, R(("ID", NightElf), ("PlayableRaceBit", 3)), R(("ID", Tauren), ("PlayableRaceBit", 5)), R(("ID", Troll), ("PlayableRaceBit", 7)), R(("ID", Skyborne), ("PlayableRaceBit", 32)))
+                .Add(GameTableNames.CharBaseInfo, R(("ID", 1), ("RaceID", NightElf), ("ClassID", 11)), R(("ID", 2), ("RaceID", Tauren), ("ClassID", 11)),
+                    R(("ID", 3), ("RaceID", Skyborne), ("ClassID", 11)), R(("ID", 4), ("RaceID", Troll), ("ClassID", 7)));
         }
 
         // A choice drawn by a creature display, for one shapeshift form, with a requirement.
@@ -69,6 +71,14 @@ public class FormCatalogTests
             .Undrawn(4, "Dreamsaber (Blue)")
             .Catalog().For([NightElf]);
         Assert.Equal(["Black"], Assert.Single(forms).Choices.Select(c => c.Name));
+    }
+
+    [Fact]
+    public void ARaceThatCantBeADruidHasNoFormsEvenWhenAChoiceAllowsIt()
+    {
+        // Forever's Cheetah still allows Trolls, a retail druid race; Forever's Trolls can't be druids.
+        var forms = new Fixture().Choice(1, "Cheetah", 3, 510, [610, 0, 0, 0], [1 << 3 | 1 << 7, 0]).Catalog().For([NightElf, Troll]);
+        Assert.Equal([NightElf], forms.Select(f => f.Race));
     }
 
     [Fact]
