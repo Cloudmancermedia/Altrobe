@@ -459,3 +459,17 @@ test('Auto-rotate turns a character slowly and back to the front when stopped; o
   await page.waitForTimeout(500)
   expect(await angle(1)).toBeCloseTo(front, 1)
 })
+
+test('Copy shortlist puts the shortlist on the clipboard, numbered, first choice first', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await openApp(page)
+  for (const [first, last] of [['Velka', 'Mirebloom'], ['Zorak', 'Darksoul']]) {
+    await page.locator('#id-first').fill(first)
+    await page.locator('#id-last').fill(last)
+    await page.getByRole('button', { name: 'Add to shortlist' }).click()
+  }
+  await page.getByRole('button', { name: 'Copy shortlist' }).click()
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
+  // The newest addition goes to the top of the shortlist.
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('1. Zorak Darksoul\n2. Velka Mirebloom')
+})

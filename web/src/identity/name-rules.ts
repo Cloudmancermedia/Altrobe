@@ -41,6 +41,11 @@ export function addToShortlist(list: NamePair[], pair: NamePair): NamePair[] {
   return [{ firstName: pair.firstName, lastName: pair.lastName }, ...list.filter((p) => !same(p, pair))].slice(0, MAX_SHORTLIST)
 }
 
+/** The shortlist as text to paste on reservation day: one numbered line per name, first choice first. */
+export function shortlistText(list: NamePair[]): string {
+  return list.map((p, i) => `${i + 1}. ${p.firstName} ${p.lastName}`).join('\n')
+}
+
 export function removeFromShortlist(list: NamePair[], pair: NamePair): NamePair[] {
   return list.filter((p) => !same(p, pair))
 }

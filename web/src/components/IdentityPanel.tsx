@@ -7,10 +7,11 @@ import { useTitles } from '../hooks'
 import { classChoices, titlesFor } from '../identity/identity'
 import { fallbackIdeas, generateName, styleExamples } from '../identity/names'
 import { getMoreNames } from '../identity/more-names'
-import { addToShortlist, MAX_LETTERS, MAX_STYLE, nameProblems, removeFromShortlist, suggestPrompt, type FallbackReason, type NamePair } from '../identity/name-rules'
+import { addToShortlist, MAX_LETTERS, MAX_STYLE, nameProblems, removeFromShortlist, shortlistText, suggestPrompt, type FallbackReason, type NamePair } from '../identity/name-rules'
 import { TOOLTIP_MODES, type TooltipMode } from '../viewer/tooltip'
 import { MAX_GUILD, MAX_LEVEL, type Look } from '../look/look'
 import { AiStatus, AiTag } from './Ai'
+import { copyText } from './clipboard'
 import { EditingNote } from './Items'
 
 /**
@@ -79,6 +80,22 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
   const pair = id.firstName && id.lastName ? { firstName: id.firstName, lastName: id.lastName } : null
   const use = (p: NamePair) => commands.edit.set_identity({ firstName: p.firstName, lastName: p.lastName })
   const save = (p: NamePair) => setShortlist(store, addToShortlist(store.get().shortlist, p))
+  const [copied, setCopied] = useState(false)
+  const copyShortlist = async () => {
+    // Without the clipboard API, a hidden box holds the text for the browser's copy command.
+    let box: HTMLTextAreaElement | null = null
+    const ok = await copyText(shortlistText(store.get().shortlist), () => {
+      box = document.createElement('textarea')
+      box.value = shortlistText(store.get().shortlist)
+      box.style.position = 'fixed'; box.style.opacity = '0'
+      document.body.append(box)
+      box.select()
+    })
+    ;(box as HTMLTextAreaElement | null)?.remove()
+    if (!ok) return
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
   // The lists' five, when there's no AI here or the prompt box couldn't answer; or the rest, when the AI
   // gave fewer than five.
   const fromLists = (reason: FallbackReason, styled: boolean) => {
@@ -164,7 +181,10 @@ export function IdentityPanel({ characters, look, tooltipMode, onTooltipMode }: 
             <button type="button" onClick={() => use(p)}>Use</button>
             <button type="button" onClick={() => setShortlist(store, removeFromShortlist(store.get().shortlist, p))}>Remove</button>
           </>} />
-          <p className="muted small">Kept in this browser only.</p>
+          <div className="actions">
+            <button type="button" onClick={copyShortlist}>{copied ? 'Copied' : 'Copy shortlist'}</button>
+          </div>
+          <p className="muted small">Kept in this browser only. Copy it to keep it open somewhere on reservation day.</p>
         </>
       )}
       <div className="picker">

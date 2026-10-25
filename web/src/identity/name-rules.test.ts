@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { addToShortlist, MAX_SHORTLIST, nameProblems, pairProblems, removeFromShortlist, launchBanner, suggestPrompt, fallbackNote } from './name-rules'
+import { addToShortlist, MAX_SHORTLIST, nameProblems, pairProblems, removeFromShortlist, launchBanner, suggestPrompt, fallbackNote, shortlistText } from './name-rules'
 
 describe('the name check', () => {
   test('passes names that keep the rules, accents included', () => {
@@ -26,6 +26,12 @@ describe('the name check', () => {
 })
 
 describe('the shortlist', () => {
+  test('copies as one numbered line per name, first choice first, ready to paste for reservation day', () => {
+    expect(shortlistText([{ firstName: 'Zorak', lastName: 'Darksoul' }, { firstName: 'Velka', lastName: 'Mirebloom' }]))
+      .toBe('1. Zorak Darksoul\n2. Velka Mirebloom')
+    expect(shortlistText([])).toBe('')
+  })
+
   test('adds a pair to the top once, whatever its case, and keeps at most 10', () => {
     let list = addToShortlist([], { firstName: 'Aldric', lastName: 'Ashborne' })
     list = addToShortlist(list, { firstName: 'Mira', lastName: 'Vale' })
