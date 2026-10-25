@@ -9,7 +9,7 @@ import type { Look } from '../look/look'
 import { rememberItems, setNotices, useStore } from '../store'
 import { otherSlots, SLOT_ORDER, type SlotName } from '../viewer/dress'
 import { SEARCH_HINT, searchText } from './search-query'
-import { readSetPrefs, setDetails, setQuality, type SetPrefs, weaponView, type WeaponView, withoutNotable, writeSetPrefs } from './sets'
+import { mergeWeaponGroups, readSetPrefs, setDetails, setQuality, type SetPrefs, weaponView, type WeaponView, withoutNotable, writeSetPrefs } from './sets'
 
 const PAGE = 50
 
@@ -178,43 +178,47 @@ function ItemRow({ build, r }: { build: string; r: ItemSearchResult }) {
   )
 }
 
-/** The Weapons tab: popular weapons for the character's class (Identity panel), or a "Popular" list with no class. */
+/** The Weapons tab: popular weapons for the character's class (Identity panel), or with no class, for every class its race can be. */
 function PopularWeapons({ build }: { build: string }) {
-  // The lists shown and the class they are for; while the class differs, the new lists are loading.
-  const [shown, setShown] = useState<{ classId: number; groups: WeaponGroup[] } | null>(null)
+  // The lists shown and what they are for; while that differs, the new lists are loading.
+  const [shown, setShown] = useState<{ key: string; groups: WeaponGroup[] } | null>(null)
   const race = useEditing().look.race
   const characters = useStore(store, (s) => s.characters)
   const anyClass = useStore(store, (s) => s.anyClass)
   const classes = classChoices(characters, race, anyClass)
   const [classId, setClassId] = useFindClass()
+  // All classes is every class this race can be, merged.
+  const ids = classId ? [classId] : classes.map((c) => c.classId)
+  const key = ids.join()
 
   useEffect(() => {
     let live = true
-    getPopularWeapons(classId || undefined).then((groups) => {
+    Promise.all(key.split(',').filter(Boolean).map((id) => getPopularWeapons(Number(id)))).then((lists) => {
       if (!live) return
+      const groups = mergeWeaponGroups(lists)
       rememberItems(store, groups.flatMap((g) => g.items))
-      setShown({ classId, groups })
+      setShown({ key, groups })
     }, (e) => {
       if (live) setNotices(store, 'search', [`popular weapons failed: ${e instanceof ApiError ? e.message : String(e)}`])
     })
     return () => { live = false }
-  }, [classId])
+  }, [key])
 
-  const busy = shown?.classId !== classId
+  const busy = shown?.key !== key
   const [view, setView] = useState<WeaponView>('classic')
   const groups = weaponView(shown?.groups ?? [], view)
   return (
     <>
+      <div className="segmented weapon-view" role="radiogroup" aria-label="Weapons from">
+        {([['classic', 'Classic'], ['forever', 'New in Forever']] as const).map(([v, label]) => (
+          <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}>{label}</button>
+        ))}
+      </div>
       <div className="search-controls">
         <select aria-label="Class" value={classId} onChange={(e) => setClassId(Number(e.target.value))}>
           <option value={0}>All classes</option>
           {classes.map((c) => <option key={c.classId} value={c.classId}>{c.name}</option>)}
         </select>
-        <div className="segmented" role="radiogroup" aria-label="Weapons from">
-          {([['classic', 'Classic'], ['forever', 'New in Forever']] as const).map(([v, label]) => (
-            <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}>{label}</button>
-          ))}
-        </div>
       </div>
       <div aria-live="polite" aria-busy={busy}>
         {groups.map((g) => (

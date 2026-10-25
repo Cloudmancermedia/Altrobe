@@ -57,3 +57,17 @@ const FOREVER_GROUP = 'New in Forever'
 export function weaponView<T extends { group: string }>(groups: T[], view: WeaponView): T[] {
   return groups.filter((g) => (g.group === FOREVER_GROUP) === (view === 'forever'))
 }
+
+const GROUP_ORDER = ['Two-hand', 'One-hand', 'Off hand', 'Ranged', FOREVER_GROUP]
+
+/** All classes: several classes' groups as one list each, in the tab's order, every weapon once. */
+export function mergeWeaponGroups<I extends { itemId: number }>(lists: { group: string; items: I[] }[][]): { group: string; items: I[] }[] {
+  const merged = new Map<string, Map<number, I>>()
+  for (const groups of lists) for (const g of groups) {
+    const items = merged.get(g.group) ?? new Map<number, I>()
+    for (const i of g.items) if (!items.has(i.itemId)) items.set(i.itemId, i)
+    merged.set(g.group, items)
+  }
+  const rank = (group: string) => { const i = GROUP_ORDER.indexOf(group); return i < 0 ? GROUP_ORDER.length : i }
+  return [...merged].sort(([a], [b]) => rank(a) - rank(b)).map(([group, items]) => ({ group, items: [...items.values()] }))
+}

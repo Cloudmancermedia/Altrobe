@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { ItemSetResult } from '../api/types'
-import { DEFAULT_SET_PREFS, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs , weaponView } from './sets'
+import { DEFAULT_SET_PREFS, readSetPrefs, setDetails, setQuality, withoutNotable, writeSetPrefs , mergeWeaponGroups, weaponView } from './sets'
 
 const set = (setId: number): ItemSetResult => ({ setId, name: `Set ${setId}`, internal: false, unnamed: false, pieces: [], skipped: [] })
 
@@ -77,5 +77,16 @@ describe('weaponView', () => {
     expect(weaponView(groups, 'classic').map((x) => x.group)).toEqual(['Two-hand', 'One-hand', 'Off hand', 'Ranged'])
     expect(weaponView(groups, 'forever').map((x) => x.group)).toEqual(['New in Forever'])
     expect(weaponView([g('Popular'), g('New in Forever')], 'classic').map((x) => x.group)).toEqual(['Popular'])
+  })
+})
+
+describe('mergeWeaponGroups', () => {
+  const w = (itemId: number) => ({ itemId }) as never
+  test('All classes: each group once, in class-list order, every weapon once', () => {
+    const warrior = [{ group: 'Two-hand', items: [w(1), w(2)] }, { group: 'One-hand', items: [w(3)] }, { group: 'New in Forever', items: [w(9)] }]
+    const shaman = [{ group: 'Two-hand', items: [w(2), w(4)] }, { group: 'Off hand', items: [w(5)] }, { group: 'New in Forever', items: [w(9), w(8)] }]
+    expect(mergeWeaponGroups([warrior, shaman]).map((g) => [g.group, g.items.map((i: { itemId: number }) => i.itemId)])).toEqual([
+      ['Two-hand', [1, 2, 4]], ['One-hand', [3]], ['Off hand', [5]], ['New in Forever', [9, 8]],
+    ])
   })
 })

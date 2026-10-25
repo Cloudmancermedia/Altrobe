@@ -48,11 +48,12 @@ test('the Weapons tab shows each class its own weapons, and a click equips one',
   const groups = panel.locator('h3.result-group')
   const names = panel.locator('.results .qname')
 
-  // No class picked: the "Popular" list on the Classic side, every weapon Forever added on the other.
+  // No class picked: every class the race can be, merged into the same groups.
   const view = panel.getByRole('radiogroup', { name: 'Weapons from' })
   await classSelect.selectOption({ label: 'All classes' })
   await expect(view.getByRole('radio', { name: 'Classic' })).toHaveAttribute('aria-checked', 'true')
-  await expect(groups).toHaveText(['Popular'])
+  await expect(groups.first()).toHaveText('Two-hand')
+  await expect(groups).not.toContainText(['Popular'])
   await view.getByRole('radio', { name: 'New in Forever' }).click()
   await expect(groups).toHaveText(['New in Forever'])
   await view.getByRole('radio', { name: 'Classic' }).click()
