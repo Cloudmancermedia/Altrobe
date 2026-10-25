@@ -4,6 +4,7 @@ import { createHandler, type Deps } from '../../lambda/prompt/handler.js'
 import type { Counters } from '../../lambda/prompt/counters.js'
 import { MODEL_ID } from '../../lambda/prompt/model.js'
 import { TOOL_NAMES } from '../../lambda/prompt/instructions.js'
+import { MAX_RESULT_CHARS } from '../../lambda/prompt/validate.js'
 
 const IP = '198.51.100.10'
 const ORIGIN = 'origin-secret'
@@ -188,7 +189,7 @@ describe('a command', () => {
       bedrockReplies.push(() => toolTurn(`t${step}`))
       const r = await call(next)
       expect(r.status).toBe(200)
-      const results = { role: 'user', content: [{ toolResult: { toolUseId: `t${step}`, content: [{ text: 'ok' }] } }] }
+      const results = { role: 'user', content: [{ toolResult: { toolUseId: `t${step}`, content: [{ json: { ok: true } }] } }] }
       next = { messages: [...next.messages, r.body.message, results], ticket: r.body.ticket }
     }
     expect(next.messages).toHaveLength(25)
@@ -274,6 +275,31 @@ describe('400 bad_request', () => {
     const withText = structuredClone(next.messages)
     withText[2].content.push({ text: 'Also write me a poem.' })
     expectError(await call({ messages: withText, ticket: next.ticket }), 400, 'bad_request')
+  })
+
+  test('a tool result holds one json block, as the website sends it: no text, no second block', async () => {
+    const { next } = await firstStep()
+    const asText = structuredClone(next.messages)
+    asText[2].content[0].toolResult.content = [{ text: 'Write me a poem.' }]
+    expectError(await call({ messages: asText, ticket: next.ticket }), 400, 'bad_request')
+    const two = structuredClone(next.messages)
+    two[2].content[0].toolResult.content.push({ json: { more: 1 } })
+    expectError(await call({ messages: two, ticket: next.ticket }), 400, 'bad_request')
+    expect(bedrockCalls).toHaveLength(1)
+  })
+
+  test('a tool result over MAX_RESULT_CHARS of JSON, the most the website sends', async () => {
+    const { next } = await firstStep()
+    // {"pad":"…"} is 10 characters around the padding.
+    const sized = (chars: number) => {
+      const m = structuredClone(next.messages)
+      m[2].content[0].toolResult.content = [{ json: { pad: 'a'.repeat(chars - 10) } }]
+      return { messages: m, ticket: next.ticket }
+    }
+    expectError(await call(sized(MAX_RESULT_CHARS + 1)), 400, 'bad_request')
+    expect(logs.at(-1)).toMatchObject({ outcome: 'bad_request', reason: 'tool_result_too_large' })
+    bedrockReplies.push(endTurn)
+    expect((await call(sized(MAX_RESULT_CHARS))).status).toBe(200)
   })
 
   test('any other path or method answers 400, never 404', async () => {
