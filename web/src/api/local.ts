@@ -1,7 +1,7 @@
 // The local app's backend: the Altrobe server on this computer (/api/v1 and /assets).
 import type { Backend } from './backend'
 import { ApiError } from './errors'
-import type { ApiErrorBody, BaseLook, CharactersResponse, ItemSearchResult, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
+import type { ApiErrorBody, BaseLook, CharactersResponse, FormsResponse, ItemSearchResult, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
 
 export const API = '/api/v1'
 
@@ -43,6 +43,7 @@ export const localBackend: Backend = {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   }).then(rememberStatus),
   getCharacters: () => request<CharactersResponse>('/characters'),
+  getForms: () => request<FormsResponse>('/forms'),
   getBaseLook: (race, sex, models) => request<BaseLook>(`/characters/${race}/${sex}?models=${models}`),
   getResolvedItem: (itemId, race, sex, models) =>
     request<ResolvedItem>(`/items/${itemId}/resolved?race=${race}&sex=${sex}&models=${models}`)

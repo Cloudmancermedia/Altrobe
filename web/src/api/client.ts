@@ -70,6 +70,7 @@ export const getPopularWeapons = (classId?: number) =>
 
 /** Item IDs of every set piece, so equipping a set can replace the last one (replacedSetSlots). */
 export const getSetPieces = () => cached('set-pieces', () => backend.getSetPieces())
+export const getForms = () => cached('forms', () => backend.getForms())
 export const getTitles = () => cached('titles', () => backend.getTitles())
 export const getNames = () => cached('names', () => backend.getNames())
 
