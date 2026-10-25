@@ -421,3 +421,30 @@ test('a character in its own outfit sheathes on its own, and Clear weapons empti
   l = await look()
   expect([l.sheathed, l.compare[1].sheathe, l.compare[1].items]).toEqual([undefined, 'hip', undefined])
 })
+
+test('Auto-rotate turns the characters slowly, a reload keeps it on, and a second press stops it', async ({ page }) => {
+  await openApp(page)
+  const toggle = page.getByRole('button', { name: 'Auto-rotate' })
+  const angle = () => call(page, (h) => h.cameraAngle(0))
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  const still = await angle()
+  await page.waitForTimeout(600)
+  expect(await angle()).toBeCloseTo(still, 1)
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  const start = await angle()
+  await page.waitForTimeout(1500)
+  // Slow: a full turn takes 30 seconds, so 1.5 seconds turn it about 18 degrees.
+  const turned = Math.abs(await angle() - start)
+  expect(turned).toBeGreaterThan(5)
+  expect(turned).toBeLessThan(45)
+
+  await page.reload()
+  await settled(page, 1)
+  await expect(page.getByRole('button', { name: 'Auto-rotate' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Auto-rotate' }).click()
+  const stopped = await angle()
+  await page.waitForTimeout(600)
+  expect(await angle()).toBeCloseTo(stopped, 1)
+})

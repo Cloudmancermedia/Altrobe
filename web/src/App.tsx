@@ -206,6 +206,7 @@ export default function App() {
   const onResolved = useCallback((items: ResolvedItem[]) => rememberItems(store, items), [])
   const build = status?.active?.build ?? look.build
   const selected = useStore(store, (s) => s.selected)
+  const autoRotate = useStore(store, (s) => s.autoRotate)
   const editing = useEditing().look
 
   return (
@@ -251,7 +252,7 @@ export default function App() {
           <PaperDoll look={look} build={build}>
             <Viewer cells={cells} look={look} itemSpeed={itemSpeedParam > 0 ? itemSpeedParam : undefined}
               onNotices={onNotices} onResolved={onResolved} onStage={(s) => { stageRef.current = s }}
-              selected={selected} onSelect={commands.select} />
+              selected={selected} onSelect={commands.select} autoRotate={autoRotate} />
           </PaperDoll>
           <div className="segmented panel-tabs" role="radiogroup" aria-label="Panels">
             {([['find', 'Find'], ['character', 'Character']] as const).map(([tab, label]) => (

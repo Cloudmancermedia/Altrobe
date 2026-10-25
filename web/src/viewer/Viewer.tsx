@@ -34,11 +34,13 @@ interface ViewerProps {
   onStage?: (stage: Stage | null) => void
   /** The character the panels edit, by position (0 the main one); clicking a view picks it. */
   selected?: number
+  /** Turn every character slowly. */
+  autoRotate?: boolean
   onSelect?: (index: number) => void
 }
 
 /** Hosts the shared three.js stage and one view per character. */
-export function Viewer({ cells, look, itemSpeed, onNotices, onResolved, onStage, selected = 0, onSelect }: ViewerProps) {
+export function Viewer({ cells, look, itemSpeed, onNotices, onResolved, onStage, selected = 0, onSelect, autoRotate = false }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [stage, setStage] = useState<Stage | null>(null)
 
@@ -50,6 +52,7 @@ export function Viewer({ cells, look, itemSpeed, onNotices, onResolved, onStage,
     // The stage lives as long as the component; onStage is a notification only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => { if (stage) stage.autoRotate = autoRotate }, [stage, autoRotate])
 
   return (
     <div className="stage">

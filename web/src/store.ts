@@ -28,6 +28,8 @@ export interface AppState {
   itemInfo: Record<number, ItemInfo>
   /** Offer every class, not only the race's own (a Tauren in priest sets). Remembered in this browser. */
   anyClass: boolean
+  /** Turn every character slowly. Remembered in this browser, not part of the look. */
+  autoRotate: boolean
   /** A request from the character screen to search one slot's items; `n` changes on every request. */
   findSlot: { slot: string; n: number } | null
   /** Name pairs saved for reservation day. Remembered in this browser. */
@@ -84,6 +86,7 @@ export const initialState = (): AppState => ({
   animations: [],
   itemInfo: {},
   anyClass: readAnyClass(),
+  autoRotate: readFlag(AUTO_ROTATE_KEY),
   findSlot: null,
   shortlist: readShortlist(),
   nameIdeas: [],
@@ -104,6 +107,15 @@ function readAnyClass(): boolean {
 export function setAnyClass(store: Store<AppState>, anyClass: boolean) {
   store.set({ anyClass })
   try { globalThis.localStorage?.setItem(ANY_CLASS_KEY, anyClass ? '1' : '0') } catch { /* not kept */ }
+}
+
+const AUTO_ROTATE_KEY = 'altrobe.autoRotate'
+function readFlag(key: string): boolean {
+  try { return globalThis.localStorage?.getItem(key) === '1' } catch { return false }
+}
+export function setAutoRotate(store: Store<AppState>, autoRotate: boolean) {
+  store.set({ autoRotate })
+  try { globalThis.localStorage?.setItem(AUTO_ROTATE_KEY, autoRotate ? '1' : '0') } catch { /* not kept */ }
 }
 
 const SHORTLIST_KEY = 'altrobe.shortlist'

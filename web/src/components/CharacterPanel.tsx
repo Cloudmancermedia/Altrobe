@@ -1,5 +1,6 @@
 import type { AnimationInfo, CharactersResponse, ModelSet } from '../api/types'
-import { commands, useEditing } from '../app-state'
+import { commands, store, useEditing } from '../app-state'
+import { setAutoRotate, useStore } from '../store'
 import { useBaseLook, useItemSubclass } from '../hooks'
 import { animationPresets } from '../presets'
 import { ANIMATION_GROUPS, animationGroup, animationLabel, animationOrder, pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
@@ -68,6 +69,7 @@ export function CharacterPicker({ characters, race, sex, models, onChange, idPre
 export function CharacterPanel({ characters, look }: { characters: CharactersResponse; look: Look }) {
   // Race, sex, models and animation are the edited character's; the camera view is for everyone.
   const editing = useEditing().look
+  const autoRotate = useStore(store, (s) => s.autoRotate)
   const race = characters.races.find((r) => r.race === editing.race)
   const animations = useBaseLook(editing.race, editing.sex, editing.models)?.animations ?? []
   return (
@@ -84,6 +86,10 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
         <select id="cam-view" value={look.cam.view} onChange={(e) => commands.set_view(e.target.value)}>
           {VIEWS.map((v) => <option key={v} value={v}>{v[0].toUpperCase() + v.slice(1)}</option>)}
         </select>
+      </div>
+      <div className="actions">
+        <button type="button" className="auto-rotate" aria-pressed={autoRotate} onClick={() => setAutoRotate(store, !autoRotate)}
+          title="Turn every character slowly, a full turn every 30 seconds. Dragging still turns the view.">Auto-rotate</button>
       </div>
       {animations.length > 0 && (
         <div className="picker">

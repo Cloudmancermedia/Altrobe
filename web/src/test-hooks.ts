@@ -25,6 +25,13 @@ export function installTestHooks(stage: () => Stage | null) {
       for (const v of s.views) v.character?.setTime(t)
     },
     resume() { const s = stage(); if (s) s.paused = false },
+    /** The camera's angle around the character in view i, in degrees (0 is the front). */
+    cameraAngle(i: number) {
+      const v = stage()?.views[i]
+      if (!v) throw new Error(`no view ${i}`)
+      const d = v.camera.position.clone().sub(v.controls.target)
+      return THREE.MathUtils.radToDeg(Math.atan2(d.z, d.x))
+    },
     nodeWorld(i: number, name: string) {
       const node = view(i).root.getObjectByName(name)
       return node ? node.getWorldPosition(new THREE.Vector3()).toArray() : null
