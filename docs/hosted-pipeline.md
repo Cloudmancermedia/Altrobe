@@ -48,7 +48,8 @@ so it stays beside the build. `current.json` moves only after the count check pa
 
 The site offers a chosen list of animations (`BundleBaker.AnimationList`), because every animation
 would add about 1.7 GB per build. Only Classic animations count (`AnimationNames.IsClassic`): the HD
-bodies also carry retail's, which the app never offers.
+bodies also carry retail's, which the app never offers. `AnimationNames.Offered` also drops the Undead
+female's StealthStand, whose data carries her weapons away from her hands.
 
 ## Run it from a local install
 

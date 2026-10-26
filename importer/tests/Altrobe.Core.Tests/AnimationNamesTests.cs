@@ -27,6 +27,16 @@ public class AnimationNamesTests
     }
 
     [Fact]
+    public void AnUndeadFemaleOffersNoStealthStand()
+    {
+        Assert.False(AnimationNames.Offered(120, 5, 1));
+        Assert.True(AnimationNames.Offered(120, 5, 0));
+        Assert.True(AnimationNames.Offered(120, 1, 1));
+        Assert.True(AnimationNames.Offered(119, 5, 1)); // StealthWalk
+        Assert.False(AnimationNames.Offered(204, 2, 0));
+    }
+
+    [Fact]
     public void TheSiteOffersOnlyClassicAnimations()
     {
         Assert.All(Altrobe.Core.Hosted.BundleBaker.Animations, id => Assert.True(AnimationNames.IsClassic(id), $"{AnimationNames.Name(id)} ({id})"));

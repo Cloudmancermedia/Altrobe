@@ -99,6 +99,18 @@ public class OfflineIntegrationTests : IDisposable
     }
 
     [IntegrationFact]
+    public async Task AnUndeadFemaleListsNoStealthStand()
+    {
+        var (install, product) = RealInstall.Find()!.Value;
+        var session = BuildSession.Open(install, product, _cacheRoot);
+        foreach (var set in new[] { ModelSet.Hd, ModelSet.Sd })
+        {
+            Assert.DoesNotContain((await session.LookAsync(5, 1, 1, set))!.Animations, a => a.Name == "StealthStand");
+            Assert.Contains((await session.LookAsync(5, 0, 1, set))!.Animations, a => a.Name == "StealthStand");
+        }
+    }
+
+    [IntegrationFact]
     public async Task AnAutoAttackFileHoldsEverySwing()
     {
         // An Orc male has two one-hand swings (Attack1H, 17) and three polearm swings (Attack2HL, 19).
