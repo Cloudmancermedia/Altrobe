@@ -24,10 +24,10 @@ public class FormCatalogTests
         }
 
         // A choice drawn by a creature display, for one shapeshift form, with a requirement.
-        public Fixture Choice(int choiceId, string name, int form, int model, int[] textures, int[] raceMasks, int classMask = Druid, int order = 0)
+        public Fixture Choice(int choiceId, string name, int form, int model, int[] textures, int[] raceMasks, int classMask = Druid, int order = 0, int? uiOrder = null)
         {
             var id = ++_id;
-            _t.Add(GameTableNames.ChrCustomizationChoice, R(("ID", choiceId), ("Name_lang", name), ("ChrCustomizationOptionID", 911), ("ChrCustomizationReqID", id), ("OrderIndex", order)))
+            _t.Add(GameTableNames.ChrCustomizationChoice, R(("ID", choiceId), ("Name_lang", name), ("ChrCustomizationOptionID", 911), ("ChrCustomizationReqID", id), ("OrderIndex", order), ("UiOrderIndex", uiOrder ?? order)))
                 .Add(GameTableNames.ChrCustomizationReq, R(("ID", id), ("ReqType", 1), ("ClassMask", classMask), ("RaceMasks", raceMasks)))
                 .Add(GameTableNames.ChrCustomizationElement, R(("ID", id), ("ChrCustomizationChoiceID", choiceId), ("ChrCustomizationDisplayInfoID", id)))
                 .Add(GameTableNames.ChrCustomizationDisplayInfo, R(("ID", id), ("SpellShapeshiftFormID", form), ("CreatureDisplayInfoID", id)))
@@ -96,16 +96,18 @@ public class FormCatalogTests
     }
 
     [Fact]
-    public void ADistinctNameOnAnotherModelIsNoClassic()
+    public void ADistinctNameOnAnotherModelIsNoClassicAndChoicesGoInTheBarberShopsOrder()
     {
-        // Skyborne travel: the Cheetah on its own model beside four colors of the Skyborne one.
+        // Skyborne travel in 1.60.1.70532: the Cheetah on its own model beside colors of the Skyborne one. The
+        // Cheetah's OrderIndex comes first, but the barber shop lists by UiOrderIndex, which puts it last.
         var travel = Assert.Single(new Fixture()
-            .Choice(1, "Cheetah", 3, 510, [610, 0, 0, 0], SkyborneMask)
-            .Choice(2, "Blue", 3, 511, [611, 0, 0, 0], SkyborneMask)
-            .Choice(3, "Gray", 3, 511, [612, 0, 0, 0], SkyborneMask)
+            .Choice(1, "Cheetah", 3, 510, [610, 0, 0, 0], SkyborneMask, order: 21, uiOrder: 25)
+            .Choice(2, "Blue", 3, 511, [611, 0, 0, 0], SkyborneMask, order: 22, uiOrder: 21)
+            .Choice(3, "Gray", 3, 511, [612, 0, 0, 0], SkyborneMask, order: 23, uiOrder: 22)
             .Catalog().For([Skyborne]));
         Assert.All(travel.Choices, c => Assert.False(c.Classic));
-        Assert.Equal(1, travel.DefaultChoiceId);
+        Assert.Equal([2, 3, 1], travel.Choices.Select(c => c.ChoiceId));
+        Assert.Equal(2, travel.DefaultChoiceId);
     }
 
     [Fact]

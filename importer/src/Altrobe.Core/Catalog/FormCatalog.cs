@@ -55,8 +55,9 @@ public sealed class FormCatalog(ITables t)
         foreach (var (_, form) in Forms)
             foreach (var race in races)
             {
+                // The barber shop lists by UiOrderIndex; OrderIndex would put the Skyborne's Cheetah first.
                 var mine = drawn.Where(d => d.form == form && d.race == race)
-                    .OrderBy(d => d.choice.Int("OrderIndex")).ThenBy(d => d.choice.Int("ID")).Select(d => d.look).ToList();
+                    .OrderBy(d => d.choice.Int("UiOrderIndex")).ThenBy(d => d.choice.Int("ID")).Select(d => d.look).ToList();
                 if (mine.Count == 0) continue;
                 var marked = MarkClassic(mine);
                 var classic = marked.FirstOrDefault(c => c.Classic);
