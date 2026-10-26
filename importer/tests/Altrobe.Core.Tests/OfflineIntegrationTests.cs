@@ -190,6 +190,10 @@ public class OfflineIntegrationTests : IDisposable
         Assert.Equal(["Blue", "Gray", "Green", "White"], skyborne.Choices.Select(c => c.Name).Order());
         Assert.All(skyborne.Choices, c => Assert.Equal(7749920, c.ModelFileDataId));
         Assert.Equal(["Cheetah"], forms.Single(f => f.Form == "travel" && f.Race == races["Tauren"]).Choices.Select(c => c.Name));
+
+        var travel = forms.Single(f => f.Form == "travel" && f.Race == races["High Order Skyborne"]);
+        Assert.Equal(["Blue", "Gray", "Green", "White", "Cheetah"], travel.Choices.Select(c => c.Name));
+        Assert.Equal(travel.Choices[0].ChoiceId, travel.DefaultChoiceId);
     }
 
     // Proves the trap would catch a regression: without the placeholder CDN list, the same missing
