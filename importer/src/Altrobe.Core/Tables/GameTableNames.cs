@@ -9,6 +9,7 @@ public static class GameTableNames
     public const string CharTitles = nameof(CharTitles);
     public const string ChrClasses = nameof(ChrClasses);
     public const string ChrCustomizationChoice = nameof(ChrCustomizationChoice);
+    public const string ChrCustomizationDisplayInfo = nameof(ChrCustomizationDisplayInfo);
     public const string ChrCustomizationElement = nameof(ChrCustomizationElement);
     public const string ChrCustomizationGeoset = nameof(ChrCustomizationGeoset);
     public const string ChrCustomizationMaterial = nameof(ChrCustomizationMaterial);
@@ -40,7 +41,7 @@ public static class GameTableNames
     public static readonly IReadOnlyList<string> All =
     [
         CharBaseInfo, CharComponentTextureLayouts, CharComponentTextureSections, CharTitles, ChrClasses,
-        ChrCustomizationChoice, ChrCustomizationElement, ChrCustomizationGeoset, ChrCustomizationMaterial,
+        ChrCustomizationChoice, ChrCustomizationDisplayInfo, ChrCustomizationElement, ChrCustomizationGeoset, ChrCustomizationMaterial,
         ChrCustomizationOption, ChrCustomizationReq, ChrModel, ChrModelAltVariant, ChrModelMaterial,
         ChrModelTextureLayer, ChrRaceXChrModel, ChrRaces, ComponentModelFileData, ComponentTextureFileData,
         CreatureDisplayInfo, CreatureModelData, HelmetGeosetData, Item, ItemAppearance, ItemDisplayInfo,

@@ -20,6 +20,7 @@ public sealed class BuildSession
     readonly Memo<PopularWeapons> _weapons;
     readonly Memo<IdentityCatalog> _identity;
     readonly Memo<CharacterCatalog> _characters;
+    readonly Memo<FormCatalog> _forms;
     readonly Memo<ItemResolver> _itemResolver;
     readonly Memo<LookResolver> _looks;
 
@@ -38,6 +39,7 @@ public sealed class BuildSession
         _weapons = new(() => new PopularWeapons(_items.Value));
         _identity = new(() => new IdentityCatalog(tables));
         _characters = new(() => new CharacterCatalog(tables));
+        _forms = new(() => new FormCatalog(tables));
         _itemResolver = new(() => new ItemResolver(tables));
         _looks = new(() => new LookResolver(tables));
     }
@@ -52,6 +54,7 @@ public sealed class BuildSession
     public PopularWeapons Weapons => _weapons.Value;
     public IdentityCatalog Identity => _identity.Value;
     public CharacterCatalog Characters => _characters.Value;
+    public FormCatalog Forms => _forms.Value;
     public ItemResolver ItemResolver => _itemResolver.Value;
 
     public static BuildSession Open(WowInstall install, WowProduct product, string cacheRoot, IReadOnlyDictionary<int, ClassicItem>? classicItems = null)
@@ -88,6 +91,23 @@ public sealed class BuildSession
         var geosets = AssetConverter.GeosetIds(meta);
         var animations = AssetConverter.SequenceIds(meta).Where(id => AnimationNames.Offered(id, raceId, sex)).Select(id => new AnimationInfo(id, AnimationNames.Name(id))).ToList();
         return _looks.Value.Resolve(raceId, sex, classId, set, _ => geosets) is { } look ? look.ForPlayer() with { Build = Build, Animations = animations } : null;
+    }
+
+    // Converts each form model (once) to list its animations; a model missing from local disk lists none.
+    public async Task<FormSet> FormsAsync()
+    {
+        var forms = Forms.For([.. Characters.Races().Select(r => r.Race)]);
+        var animations = new Dictionary<int, IReadOnlyList<AnimationInfo>>();
+        foreach (var fdid in forms.SelectMany(f => f.Choices).Select(c => c.ModelFileDataId).Distinct())
+        {
+            try
+            {
+                var meta = await File.ReadAllBytesAsync((await ModelAsync((uint)fdid))[0]);
+                animations[fdid] = AssetConverter.SequenceIds(meta).Where(AnimationNames.IsClassic).Select(id => new AnimationInfo(id, AnimationNames.Name(id))).ToList();
+            }
+            catch (Exception e) when (e is FileNotFoundException or InvalidDataException) { }
+        }
+        return new FormSet(forms, animations);
     }
 
     // An item with no ItemSparse row goes by its catalog name: cmangos' (ClassicItemNames) or the one the

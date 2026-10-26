@@ -87,6 +87,10 @@ describe('static backend', () => {
     expect(await b.getNames()).toEqual({}) // no names.json in this bundle
   })
 
+  test('a bundle baked before druid forms has none', async () => {
+    expect(await backend().getForms()).toEqual({ build: '1.60.1.70245', forms: [], animations: {} })
+  })
+
   test('asset URLs point into the build folder for the converter version', async () => {
     const b = backend()
     await b.getStatus()

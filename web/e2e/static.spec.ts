@@ -517,3 +517,13 @@ test('the views have no separator lines, and the selection outline fades after a
   await expect.poll(shadows, { timeout: 5000 }).toEqual(['none', 'none', 'none'])
   await expect(page.locator('[data-cell="compare0"]')).toHaveClass(/selected/)
 })
+
+test('a druid form loads from the bundle with every request answered', async ({ page }) => {
+  await openApp(page)
+  await page.getByLabel('Race').selectOption('bear:6')
+  await settled(page, 1)
+  await expect(page.locator('[data-cell="main"] .cell-label')).toHaveText('Tauren Bear Form')
+  await page.getByRole('group', { name: 'Quick animations' }).getByRole('button', { name: 'Maul', exact: true }).click()
+  await settled(page, 1)
+  await expect(page.getByLabel('Animation', { exact: true })).toHaveValue('DruidBearMaul')
+})

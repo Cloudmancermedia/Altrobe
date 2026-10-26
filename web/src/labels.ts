@@ -1,4 +1,5 @@
-import type { CharacterRace, CharactersResponse, ModelSet } from './api/types'
+import type { CharacterRace, CharactersResponse, FormChoice, FormLook, ModelSet } from './api/types'
+import { FORMS, type Form } from './look/look'
 import type { SlotName } from './viewer/dress'
 
 export const SLOT_LABELS: Record<SlotName, string> = {
@@ -10,9 +11,23 @@ export const QUALITY_NAMES = ['Poor', 'Common', 'Uncommon', 'Rare', 'Epic', 'Leg
 
 export const sexLabel = (sex: number) => (sex === 0 ? 'male' : 'female')
 
-export function characterLabel(characters: CharactersResponse | null, race: number, sex: number, models: string) {
+export function characterLabel(characters: CharactersResponse | null, race: number, sex: number, models: string, form?: Form) {
   const name = characters?.races.find((r) => r.race === race)?.name ?? `Race ${race}`
-  return `${name} ${sexLabel(sex)} ${models.toUpperCase()}`
+  return form ? `${name} ${FORM_LABELS[form]} Form` : `${name} ${sexLabel(sex)} ${models.toUpperCase()}`
+}
+
+export const FORM_LABELS: Record<Form, string> = { cat: 'Cat', bear: 'Bear', travel: 'Travel', moonkin: 'Moonkin' }
+
+/** The race picker's druid form groups, after the factions: the races with each form, in the race list's order. */
+export function formGroups(races: CharacterRace[], forms: FormLook[]): { form: Form; label: string; races: CharacterRace[] }[] {
+  return FORMS
+    .map((form) => ({ form, label: `Druid ${FORM_LABELS[form]}`, races: races.filter((r) => forms.some((f) => f.form === form && f.race === r.race)) }))
+    .filter((g) => g.races.length > 0)
+}
+
+export function formChoiceLabel(choice: FormChoice, defaultChoiceId: number) {
+  const notes = [...(choice.classic ? ['Classic'] : []), ...(choice.choiceId === defaultChoiceId ? ['default'] : [])]
+  return notes.length ? `${choice.name} (${notes.join(', ')})` : choice.name
 }
 
 /** Picks the nearest available sex and model set when the race changes. */
@@ -58,9 +73,13 @@ const ANIMATIONS: [group: string, labels: Record<string, string>][] = [
     ReadyBow: 'Ready (bow)', AttackBow: 'Shoot (bow)', ReadyRifle: 'Ready (gun or crossbow)', AttackRifle: 'Shoot (gun or crossbow)',
     ReadyThrown: 'Ready (thrown)', AttackThrown: 'Throw or shoot a wand',
   }],
+  ['Druid forms', {
+    DruidCatClaw: 'Claw', DruidCatRake: 'Rake', DruidCatRip: 'Rip', DruidCatPounce: 'Pounce', DruidCatRavage: 'Ravage',
+    DruidBearMaul: 'Maul', DruidBearSwipe: 'Swipe', DruidBearBite: 'Bite', DruidBearBash: 'Bash',
+  }],
   ['Stealth', { StealthStand: 'Stealth', StealthWalk: 'Stealth (walk)' }],
   ['Mounted and emotes', {
-    Mount: 'Mounted', MountSpecial: 'Mounted (special)', EmoteWave: 'Wave', EmoteCheer: 'Cheer', EmoteDance: 'Dance', EmoteLaugh: 'Laugh',
+    Mount: 'Mounted', MountSpecial: 'Mounted (special)', EmoteWave: 'Wave', EmoteCheer: 'Cheer', EmoteDance: 'Dance', EmoteLaugh: 'Laugh', EmoteRoar: 'Roar',
   }],
 ]
 

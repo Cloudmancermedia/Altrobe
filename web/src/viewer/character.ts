@@ -46,7 +46,7 @@ export interface AttachedItem extends Attachment {
 
 export interface Character {
   root: THREE.Object3D
-  /** Bind-pose box of the shown geosets, for framing. */
+  /** Bind-pose box of the shown geosets (a form's first pose), for framing. */
   box: THREE.Box3
   attached: AttachedItem[]
   /** What was drawn: the geosets shown and the texture files composited, in layer order. */
@@ -59,6 +59,8 @@ export interface Character {
   setTime(t: number): void
   /** Turns the items' billboard bones to `camera`. Call once per frame, after update and camera moves. */
   faceCamera(camera: THREE.Camera): void
+  /** A druid form, framed from the side facing the camera (frameDistance). */
+  form: boolean
   /** The race and sex it was built as, for the nameplate's clearance. */
   race: number
   sex: number
@@ -169,7 +171,8 @@ export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.
   for (const o of meshesOf(root)) {
     const data = userData(o)
     o.material = (await submeshMaterial(body.meta, data.submeshIndex, dressed.replaceableTextures)).material
-    o.visible = data.geosetId !== undefined && show.has(data.geosetId)
+    // A form's creature model shows all its geosets; nothing customizes or dresses it.
+    o.visible = data.geosetId !== undefined && (!!baseLook.form || show.has(data.geosetId))
     if (o.visible && skullGeoset(data.geosetId!) && (o as THREE.SkinnedMesh).isSkinnedMesh) skullMeshes.push(o as THREE.SkinnedMesh)
     // Every primitive shares one vertex buffer, so this is the bind-pose box of the whole model; it
     // avoids Box3.expandByObject, which skins every vertex on the CPU.
@@ -296,11 +299,14 @@ export async function buildCharacter({ baseLook, dressed, assets, itemSpeed = 0.
   }
   mixer?.update(0)
   root.updateMatrixWorld(true)
+  // Creature bind poses can be far from how they stand (the Skyborne travel form is five times as tall),
+  // so a form frames on its first pose. It is one small mesh, so skinning it on the CPU is cheap.
+  if (baseLook.form) box.setFromObject(root, true)
   let headBone: THREE.Object3D | undefined
   root.traverse((o) => { if (o.userData.keyBoneId === HEAD_KEY_BONE) headBone ??= o })
 
   return {
-    root, box, attached, notices, mixer, itemMixers, race: baseLook.race, sex: baseLook.sex,
+    root, box, attached, notices, mixer, itemMixers, race: baseLook.race, sex: baseLook.sex, form: !!baseLook.form,
     drawn: { geosets: look.geosets, layerFiles: look.layers.map((l) => l.fileDataId) },
     update(dt) {
       for (const b of billboards) b.bone.quaternion.copy(b.rest)

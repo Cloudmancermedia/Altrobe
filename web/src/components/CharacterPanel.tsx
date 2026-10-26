@@ -1,30 +1,34 @@
 import type { AnimationInfo, CharactersResponse, ModelSet } from '../api/types'
 import { commands, useEditing } from '../app-state'
-import { useBaseLook, useItemSubclass } from '../hooks'
+import { useAnimations, useBaseLook, useForms, useItemSubclass } from '../hooks'
 import { animationPresets } from '../presets'
-import { ANIMATION_GROUPS, animationGroup, animationLabel, animationOrder, pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
-import { VIEWS, type Look } from '../look/look'
+import { ANIMATION_GROUPS, animationGroup, animationLabel, animationOrder, FORM_LABELS, formChoiceLabel, formGroups, pickCharacter, racesByFaction, sexLabel, type Faction } from '../labels'
+import { VIEWS, type Form, type Look } from '../look/look'
+import { formChoiceFor } from '../viewer/form'
 import { companionChoices, panelOptions } from '../viewer/customize'
 import { EditingNote } from './Items'
 
 const FACTION_LABELS: Record<Faction, string> = { alliance: 'Alliance', horde: 'Horde', neutral: 'Other' }
 
-export function CharacterPicker({ characters, race, sex, models, onChange, idPrefix }: {
-  characters: CharactersResponse; race: number; sex: number; models: ModelSet
-  onChange: (race: number, sex: 0 | 1, models: ModelSet) => void; idPrefix: string
+export function CharacterPicker({ characters, race, sex, models, form, onChange, idPrefix }: {
+  characters: CharactersResponse; race: number; sex: number; models: ModelSet; form?: Form
+  onChange: (race: number, sex: 0 | 1, models: ModelSet, form?: Form) => void; idPrefix: string
 }) {
   const r = characters.races.find((x) => x.race === race)
   const s = r?.sexes.find((x) => x.sex === sex)
+  const forms = useForms()
   return (
     <div className="picker">
       <label htmlFor={`${idPrefix}-race`}>Race</label>
       <select
         id={`${idPrefix}-race`}
-        value={race}
+        // A form's option is "cat:4"; a race's body is its ID.
+        value={form ? `${form}:${race}` : race}
         onChange={(e) => {
-          const next = characters.races.find((x) => x.race === Number(e.target.value))!
+          const [f, id] = e.target.value.includes(':') ? e.target.value.split(':') : [undefined, e.target.value]
+          const next = characters.races.find((x) => x.race === Number(id))!
           const p = pickCharacter(next, sex, models)
-          if (p) onChange(next.race, p.sex, p.models)
+          if (p) onChange(next.race, p.sex, p.models, f as Form | undefined)
         }}
       >
         {racesByFaction(characters.races).map((g) => (
@@ -35,8 +39,15 @@ export function CharacterPicker({ characters, race, sex, models, onChange, idPre
             })}
           </optgroup>
         ))}
+        {forms && formGroups(characters.races, forms.forms).map((g) => (
+          <optgroup key={g.form} label={g.label}>
+            {g.races.map((x) => <option key={x.race} value={`${g.form}:${x.race}`}>{x.name} {FORM_LABELS[g.form]}</option>)}
+          </optgroup>
+        ))}
       </select>
 
+      {/* A form has no sex or model set to pick. */}
+      {!form && <>
       <span className="label">Sex</span>
       <div className="segmented" role="radiogroup" aria-label="Sex">
         {([0, 1] as const).map((v) => {
@@ -61,6 +72,7 @@ export function CharacterPicker({ characters, race, sex, models, onChange, idPre
           </button>
         ))}
       </div>
+      </>}
     </div>
   )
 }
@@ -68,14 +80,14 @@ export function CharacterPicker({ characters, race, sex, models, onChange, idPre
 export function CharacterPanel({ characters, look }: { characters: CharactersResponse; look: Look }) {
   const editing = useEditing().look
   const race = characters.races.find((r) => r.race === editing.race)
-  const animations = useBaseLook(editing.race, editing.sex, editing.models)?.animations ?? []
+  const animations = useAnimations(editing) ?? []
   return (
     <section className="panel" aria-labelledby="character-heading">
       <h2 id="character-heading">Character</h2>
       <EditingNote verb="Editing" />
-      <CharacterPicker characters={characters} race={editing.race} sex={editing.sex} models={editing.models} idPrefix="main"
-        onChange={(r, s, m) => commands.edit.set_character(r, s, m)} />
-      {race && race.classes.length > 0 && (
+      <CharacterPicker characters={characters} race={editing.race} sex={editing.sex} models={editing.models} form={editing.form} idPrefix="main"
+        onChange={(r, s, m, f) => commands.edit.set_character(r, s, m, f)} />
+      {race && race.classes.length > 0 && !editing.form && (
         <p className="muted small">Classes: {race.classes.map((c) => c.name).join(', ')}</p>
       )}
       <div className="picker">
@@ -113,7 +125,7 @@ export function CharacterPanel({ characters, look }: { characters: CharactersRes
 function AnimationPresets({ look, animations }: { look: Look; animations: AnimationInfo[] }) {
   const subclass = useItemSubclass(look.items.mainhand, look.race, look.sex, look.models)
   const rangedSubclass = useItemSubclass(look.items.ranged, look.race, look.sex, look.models)
-  const presets = animationPresets(animations, subclass, rangedSubclass)
+  const presets = animationPresets(animations, subclass, rangedSubclass, look.form)
   if (!presets.length) return null
   return (
     <div className="actions presets" role="group" aria-label="Quick animations">
@@ -133,7 +145,8 @@ function AnimationPresets({ look, animations }: { look: Look; animations: Animat
 export function CustomizationPanel() {
   const look = useEditing().look
   const changed = Object.keys(look.custom).length > 0
-  const baseLook = useBaseLook(look.race, look.sex, look.models)
+  const baseLook = useBaseLook(look.race, look.sex, look.models, !look.form)
+  if (look.form) return <FormColorPanel look={look} />
   if (!baseLook) return null
   // Checked against the edited character's own options, which differ by race and sex.
   const choices = baseLook.options ?? null
@@ -173,6 +186,24 @@ export function CustomizationPanel() {
           </div>
         )
       })}
+    </section>
+  )
+}
+
+/** A druid form's one customization: its color, which can be the Classic model. */
+function FormColorPanel({ look }: { look: Look }) {
+  const forms = useForms()
+  const found = forms && formChoiceFor(forms, look)
+  if (!found) return null
+  return (
+    <section className="panel" aria-labelledby="custom-heading">
+      <h2 id="custom-heading">Customization</h2>
+      <div className="picker">
+        <label htmlFor="form-color">Color</label>
+        <select id="form-color" value={found.choice.choiceId} onChange={(e) => commands.edit.set_form_color(Number(e.target.value))}>
+          {found.look.choices.map((c) => <option key={c.choiceId} value={c.choiceId}>{formChoiceLabel(c, found.look.defaultChoiceId)}</option>)}
+        </select>
+      </div>
     </section>
   )
 }

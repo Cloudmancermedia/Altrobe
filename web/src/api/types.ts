@@ -136,8 +136,33 @@ export interface CustomizationOption {
   geosets?: number[]
   choices: CustomizationChoice[]
 }
+// GET /api/v1/forms, and forms.json in a bundle: druid forms per race. Textures fill the form model's
+// creature skin slots (M2 texture types 11 to 13) in order; 0 leaves a slot empty.
+export interface FormChoice {
+  choiceId: number
+  name: string
+  modelFileDataId: number
+  textures: number[]
+  /** The original model, offered beside the newer one under a color name it also uses. */
+  classic: boolean
+}
+export interface FormLook {
+  form: string
+  race: number
+  defaultChoiceId: number
+  choices: FormChoice[]
+}
+export interface FormsResponse {
+  build: string
+  forms: FormLook[]
+  /** Each form model's animations, by model FileDataID. */
+  animations: Record<string, AnimationInfo[]>
+}
+
 export interface BaseLook {
   name?: string
+  /** Set for a druid form (formCharacter), which has no body, layout or gear. */
+  form?: string
   character?: string
   build: string
   models: ModelSet

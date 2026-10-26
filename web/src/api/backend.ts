@@ -1,6 +1,6 @@
 // Where the app's data comes from: the local server (local.ts) or a baked bundle on the hosted site
 // (static.ts). client.ts picks one at build time and adds the session cache in front of it.
-import type { BaseLook, CharactersResponse, InstallRequest, ItemSearchQuery, ItemSearchResult, ItemSetResult, ModelSet, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
+import type { BaseLook, CharactersResponse, FormsResponse, InstallRequest, ItemSearchQuery, ItemSearchResult, ItemSetResult, ModelSet, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
 
 /** What only the local app has: picking an install, the MCP command channel, the prompt box. */
 export interface Features {
@@ -15,6 +15,7 @@ export interface Backend {
   selectInstall(body: InstallRequest): Promise<Status>
   getCharacters(): Promise<CharactersResponse>
   getBaseLook(race: number, sex: number, models: ModelSet): Promise<BaseLook>
+  getForms(): Promise<FormsResponse>
   /** Resolved item data for one character, or null when there is none. */
   getResolvedItem(itemId: number, race: number, sex: number, models: ModelSet): Promise<ResolvedItem | null>
   searchItems(query: ItemSearchQuery, signal?: AbortSignal): Promise<ItemSearchResult[]>

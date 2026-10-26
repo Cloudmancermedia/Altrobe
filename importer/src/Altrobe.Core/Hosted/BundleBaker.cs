@@ -18,6 +18,7 @@ public interface IBundleSource
     IReadOnlyList<ItemSummary> Items { get; }
     IReadOnlyList<ItemSetInfo> Sets { get; }
     Task<CharacterLook?> LookAsync(int race, int sex, ModelSet set);
+    Task<FormSet> FormsAsync();
     ResolvedItem ResolveItem(int itemId, int race, int sex, ModelSet set);
     // [meta json, glb] paths of the converted model; throws FileNotFoundException when it is missing.
     Task<string[]> ModelAsync(uint fdid);
@@ -43,6 +44,7 @@ public sealed class BuildSessionSource(BuildSession session) : IBundleSource
     public IReadOnlyList<ItemSummary> Items => session.Items.All;
     public IReadOnlyList<ItemSetInfo> Sets => session.Sets.All;
     public Task<CharacterLook?> LookAsync(int race, int sex, ModelSet set) => session.LookAsync(race, sex, LookResolver.DefaultClassId, set);
+    public Task<FormSet> FormsAsync() => session.FormsAsync();
     public ResolvedItem ResolveItem(int itemId, int race, int sex, ModelSet set) => session.ResolveItem(itemId, race, sex, set);
     public Task<string[]> ModelAsync(uint fdid) => session.ModelAsync(fdid);
     public Task<string> TextureAsync(uint fdid) => session.TextureAsync(fdid);
@@ -76,6 +78,7 @@ public sealed record BakeResult(BundleManifest Manifest, IReadOnlyList<string> F
 //   {product}/current.json                       the build the site shows, and its asset folder
 //   {product}/{build}/manifest.json              counts and anything that failed to convert
 //   {product}/{build}/characters.json            races and every base look ("race-sex-hd|sd")
+//   {product}/{build}/forms.json                 druid forms per race, and each form model's animations
 //   {product}/{build}/catalog.json, sets.json    for search in the browser
 //   {product}/{build}/notable.json               notable sets per race: "all" and each class ID
 //   {product}/{build}/set-pieces.json            every item that is a piece of some set
@@ -114,8 +117,19 @@ public static class BundleBaker
         // Mounted (the rider's pose; the mount's own animations come with mounts) and emotes
         "Mount", "MountSpecial", "EmoteWave", "EmoteCheer", "EmoteDance", "EmoteLaugh",
     ];
-    public static readonly IReadOnlyList<int> Animations =
-        AnimationList.Select(n => Enumerable.Range(0, AnimationNames.Count).First(i => AnimationNames.Name(i) == n)).ToList();
+    public static readonly IReadOnlyList<int> Animations = Ids(AnimationList);
+
+    // Druid forms: movement, prowl, each form's named attacks, and the moonkin's casts.
+    public static readonly IReadOnlyList<int> FormAnimations = Ids([
+        "Stand", "Walk", "Run", "Walkbackwards", "ShuffleLeft", "ShuffleRight", "Sprint", "JumpStart", "Jump", "JumpEnd", "JumpLandRun",
+        "StealthStand", "StealthWalk", "ReadyUnarmed", "AttackUnarmed",
+        "DruidCatClaw", "DruidCatRake", "DruidCatRip", "DruidCatPounce", "DruidCatRavage",
+        "DruidBearMaul", "DruidBearSwipe", "DruidBearBite", "DruidBearBash", "BattleRoar",
+        "SpellCastDirected", "SpellCastOmni", "EmoteRoar", "EmoteDance",
+    ]);
+
+    static List<int> Ids(IEnumerable<string> names) =>
+        names.Select(n => Enumerable.Range(0, AnimationNames.Count).First(i => AnimationNames.Name(i) == n)).ToList();
 
     public static async Task<BakeResult> BakeAsync(IBundleSource source, BakeOptions options, Action<string>? log = null)
     {
@@ -150,6 +164,18 @@ public static class BundleBaker
                 }
         Write(Path.Combine(buildDir, "characters.json"), new { build = source.Build, races = source.Races, looks });
         log?.Invoke($"{looks.Count} looks");
+
+        var formSet = await source.FormsAsync();
+        var formAnimations = formSet.Animations.ToDictionary(m => m.Key, m => (IReadOnlyList<AnimationInfo>)m.Value.Where(a => FormAnimations.Contains(a.Id)).ToList());
+        foreach (var c in formSet.Forms.SelectMany(f => f.Choices))
+        {
+            models.Add(c.ModelFileDataId);
+            foreach (var t in c.Textures) textures.Add(t);
+        }
+        foreach (var (model, offered) in formAnimations)
+            foreach (var a in offered) anims.Add((model, a.Id));
+        Write(Path.Combine(buildDir, "forms.json"), new { build = source.Build, forms = formSet.Forms, animations = formAnimations });
+        log?.Invoke($"{formSet.Forms.Count} druid forms");
 
         // Catalog and sets. A limited bake keeps the limited sets' pieces, so each set is whole.
         var sets = options.LimitSets is { } ls ? source.Sets.Take(ls).ToList() : source.Sets;
@@ -257,7 +283,7 @@ public static class BundleBaker
 
         var counts = new Dictionary<string, int>
         {
-            ["races"] = source.Races.Count, ["looks"] = looks.Count, ["items"] = items.Count, ["sets"] = sets.Count,
+            ["races"] = source.Races.Count, ["looks"] = looks.Count, ["forms"] = formSet.Forms.Count, ["items"] = items.Count, ["sets"] = sets.Count,
             ["resolvedItems"] = resolved, ["models"] = copiedModels, ["textures"] = copiedTextures, ["animations"] = copiedAnims,
         };
         var manifest = new BundleManifest(source.Product, source.Build, source.BuildName, AssetConverter.OutputVersion, counts,

@@ -5,8 +5,8 @@
 import type { AnimationInfo, CharactersResponse, CustomizationOption, ItemSearchQuery, ItemSearchResult, ModelSet, TitleInfo } from './api/types'
 import { describeCharacter, identitySummary, wornSets, type DescribeSet } from './identity/describe'
 import {
-  MAX_COMPARE, MAX_LABEL, MODEL_SETS, VIEWS, canonicalLook, normalizeLook, readIdentity, shareUrl,
-  type CompareCharacter, type Identity, type Look, type View,
+  FORMS, MAX_COMPARE, MAX_LABEL, MODEL_SETS, VIEWS, canonicalLook, normalizeLook, readIdentity, shareUrl,
+  type CompareCharacter, type Form, type Identity, type Look, type View,
 } from './look/look'
 import { randomCustomization } from './viewer/customize'
 import { isSlotName, type SlotName } from './viewer/dress'
@@ -63,12 +63,13 @@ export function setPieceSlots(items: Look['items'], setPieces: ReadonlySet<numbe
 export function characterLook(look: Look, index: number): Look {
   const c = index > 0 ? look.compare[index - 1] : undefined
   if (!c) return look
-  const { identity: _, anim: mainAnim, sheathed: mainSheathed, sheatheOnBack: mainOnBack, autoRotate: mainRotate, ...rest } = look
+  const { identity: _, anim: mainAnim, sheathed: mainSheathed, sheatheOnBack: mainOnBack, autoRotate: mainRotate, form: _f, formChoice: _c, ...rest } = look
   const anim = c.anim ? (c.anim === 'Stand' ? undefined : c.anim) : mainAnim
   const sheathed = ownSheathing(c) ? c.sheathed : mainSheathed, onBack = ownSheathing(c) ? c.sheatheOnBack : mainOnBack
   const autoRotate = ownSheathing(c) ? c.autoRotate : mainRotate
   return {
     ...rest, race: c.race, sex: c.sex, models: c.models, custom: c.custom ?? {}, items: c.items ?? look.items, hide: c.items ? c.hide ?? [] : look.hide, compare: [],
+    ...(c.form ? { form: c.form } : {}), ...(c.formChoice ? { formChoice: c.formChoice } : {}),
     ...(c.identity ? { identity: c.identity } : {}), ...(anim ? { anim } : {}), ...(sheathed ? { sheathed } : {}), ...(onBack ? { sheatheOnBack: onBack } : {}), ...(autoRotate ? { autoRotate } : {}),
   }
 }
@@ -184,12 +185,28 @@ export const transitions = {
     return { look: { ...look, items: {}, hide: [], anim: undefined, compare: [] } }
   },
 
-  /** Customization option IDs belong to one body model, so changing race, sex or models clears them. */
-  setCharacter(look: Look, race: number, sex: number, models: ModelSet = look.models, characters?: CharactersResponse | null): Result {
+  /**
+   * Customization option IDs belong to one body model, so changing race, sex, models or form clears them.
+   * With `form`, the race's druid form shows instead of its body; a form's color is the race's own.
+   */
+  setCharacter(look: Look, race: number, sex: number, models: ModelSet = look.models, characters?: CharactersResponse | null, form?: Form): Result {
     const err = characterError(characters, race, sex, models)
     if (err) return { error: err }
-    const same = look.race === race && look.sex === sex && look.models === models
-    return { look: { ...look, race, sex: sex as 0 | 1, models, custom: same ? look.custom : {} } }
+    if (form !== undefined && !FORMS.includes(form)) return { error: `unknown form "${form}"` }
+    const same = look.race === race && look.sex === sex && look.models === models && look.form === form
+    const next: Look = { ...look, race, sex: sex as 0 | 1, models, custom: same ? look.custom : {} }
+    delete next.form
+    delete next.formChoice
+    if (form) next.form = form
+    if (form && look.formChoice && look.race === race && look.form === form) next.formChoice = look.formChoice
+    return { look: next }
+  },
+
+  /** The druid form's color, a form choice ID (FormLook.choices). */
+  setFormColor(look: Look, choiceId: number): Result {
+    if (!look.form) return { error: 'this character is not in a druid form' }
+    if (!isId(choiceId)) return { error: `not a choice ID: ${choiceId}` }
+    return { look: { ...look, formChoice: choiceId } }
   },
 
   /** `options` are the main character's, from its base look; without them only the IDs' shape is checked. */
@@ -335,6 +352,10 @@ export const transitions = {
     if (r.error !== undefined) return r
     const after = r.look
     const next: CompareCharacter = { ...c, race: after.race, sex: after.sex, models: after.models }
+    delete next.form
+    delete next.formChoice
+    if (after.form) next.form = after.form
+    if (after.formChoice) next.formChoice = after.formChoice
     if (Object.keys(after.custom).length) next.custom = after.custom
     else delete next.custom
     if (after.identity && Object.keys(after.identity).length) next.identity = after.identity
@@ -451,7 +472,8 @@ export function createCommands({ store, searchItems, appUrl, titles, searchSets,
       unequip: (slot: SlotName | string) => onSelected((l) => transitions.unequip(l, slot)),
       unequip_slots: (slots: (SlotName | string)[]) => onSelected((l) => transitions.unequipSlots(l, slots)),
       set_visibility: (slot: SlotName | string, visible: boolean) => onSelected((l) => transitions.setVisibility(l, slot, visible)),
-      set_character: (race: number, sex: number, models?: ModelSet) => onSelected((l) => transitions.setCharacter(l, race, sex, models ?? l.models, characters())),
+      set_character: (race: number, sex: number, models?: ModelSet, form?: Form) => onSelected((l) => transitions.setCharacter(l, race, sex, models ?? l.models, characters(), form)),
+      set_form_color: (choiceId: number) => onSelected((l) => transitions.setFormColor(l, choiceId)),
       set_customization: (optionId: number, choiceId: number, options: CustomizationOption[] | null) => onSelected((l) => transitions.setCustomization(l, optionId, choiceId, options)),
       randomize_customization: (options: CustomizationOption[] | null) => onSelected((l) => transitions.randomizeCustomization(l, options)),
       reset_customization: () => onSelected((l) => transitions.resetCustomization(l)),

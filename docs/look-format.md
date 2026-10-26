@@ -31,6 +31,8 @@ A look is a small JSON object that names a character and what it wears, by game 
 | `cam.view` | `front`, `side`, `back` or `head`. |
 | `anim` | Optional animation name the characters play, such as `"Run"`; absent means `"Stand"`. A side-by-side character with its own `anim` plays that instead. A character whose body model lacks it stands, with a notice. |
 | `compare` | Up to five more characters shown side by side, in screen order. Each wears the main outfit unless it has its own `items`; see below. |
+| `form` | Optional druid form shown instead of the race's body: `"cat"`, `"bear"`, `"travel"` or `"moonkin"`. A form has no customizations, so `custom` is left out of the link; it shows no gear, but `items` stays for side-by-side characters wearing the main outfit. A race without that form shows its body, with a notice. |
+| `formChoice` | With `form`, the form's color: a form choice ID from `/forms` (`forms.json` in a bundle). Absent, or one the race doesn't have, means the default color. |
 
 ### Side-by-side characters
 
@@ -46,6 +48,7 @@ Each `compare` entry has `race` and `sex`, and may also have:
 | `identity` | The character's own name, title, guild, level, class and PvP flag, read and checked like the main `identity`. |
 | `anim` | The character's own animation, `"Stand"` included. Absent means it plays the main `anim`. |
 | `sheathe` | With its own `items` or `anim`, its weapons put away: `"hip"` or `"back"` for one-handers, as the main look's `sheathed` and `sheatheOnBack`. Absent means drawn. In the main outfit and animation, it sheathes as the main character does. |
+| `form`, `formChoice` | A druid form and its color, as on the main character. A form wears nothing, so its `items`, `hide`, `custom` and `sheathe` are left out of the link. |
 
 ```json
 "compare": [{ "race": 2, "sex": 0, "label": "Level 30", "items": { "chest": 7418, "legs": 7919 },
@@ -98,6 +101,6 @@ Against the loaded game data, the app also drops items it has no data for, items
 ## Compatibility
 
 Every field added after the first version (`compare` and its entries' `label`, `items`, `hide` and
-`custom`, `anim`, `sheathed`, `sheatheOnBack`, `identity`) is optional, so older links read the same and the version
+`custom`, `anim`, `sheathed`, `sheatheOnBack`, `identity`, `form`, `formChoice`) is optional, so older links read the same and the version
 stays 1. A viewer that predates a field ignores it, and one that predates the five-character limit
 drops `compare` entries past the third.

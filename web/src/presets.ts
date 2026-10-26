@@ -3,6 +3,7 @@
 
 import type { AnimationInfo } from './api/types'
 import { animationLabel } from './labels'
+import type { Form } from './look/look'
 
 /** Item.SubclassID of a polearm and a staff (ItemCatalog.WeaponTypes). These swing with Attack2HL. */
 export const POLEARM = 6
@@ -23,10 +24,18 @@ export interface AnimationPreset {
  * follows the main hand: Attack2HL for a staff or polearm (`mainHandSubclass`), Attack2H for anything
  * else. The shot follows the ranged slot: AttackRifle for a gun or crossbow, AttackBow otherwise.
  */
-export function animationPresets(animations: AnimationInfo[], mainHandSubclass?: number, rangedSubclass?: number): AnimationPreset[] {
+export function animationPresets(animations: AnimationInfo[], mainHandSubclass?: number, rangedSubclass?: number, form?: Form): AnimationPreset[] {
   const twoHand = mainHandSubclass === STAFF || mainHandSubclass === POLEARM ? 'Attack2HL' : 'Attack2H'
   const shot = rangedSubclass === GUN || rangedSubclass === CROSSBOW ? 'AttackRifle' : 'AttackBow'
-  return ['Stand', 'SpellCastDirected', 'SpellCastOmni', 'Run', 'Attack1H', twoHand, shot]
+  return (form ? FORM_PRESETS[form] : ['Stand', 'SpellCastDirected', 'SpellCastOmni', 'Run', 'Attack1H', twoHand, shot])
     .filter((name) => animations.some((a) => a.name === name))
     .map((animation) => ({ label: animationLabel(animation), animation }))
+}
+
+// A druid form's buttons: its named attacks, and for the cat, prowling.
+const FORM_PRESETS: Record<Form, string[]> = {
+  cat: ['Stand', 'Run', 'StealthWalk', 'DruidCatClaw', 'DruidCatRake', 'DruidCatRip', 'DruidCatPounce', 'DruidCatRavage'],
+  bear: ['Stand', 'Run', 'DruidBearMaul', 'DruidBearSwipe', 'DruidBearBite', 'DruidBearBash', 'BattleRoar'],
+  travel: ['Stand', 'Walk', 'Run', 'Sprint', 'Jump'],
+  moonkin: ['Stand', 'Run', 'SpellCastDirected', 'SpellCastOmni', 'EmoteRoar', 'EmoteDance'],
 }

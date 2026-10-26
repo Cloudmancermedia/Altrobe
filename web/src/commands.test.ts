@@ -239,6 +239,30 @@ describe('transitions', () => {
     expect(transitions.setCharacter(bare, 7, 0).look!.race).toBe(7)
   })
 
+  test('set_character with a form shows the form; its color stays only while race and form do', () => {
+    const custom = { ...transitions.equipItem(bare, 'chest', 5).look!, custom: { 20: 390 } }
+    const cat = transitions.setCharacter(custom, 2, 0, 'hd', characters, 'cat').look!
+    expect([cat.form, cat.items, cat.custom]).toEqual(['cat', { chest: 5 }, {}])
+    const purple = transitions.setFormColor(cat, 79119).look!
+    expect(purple.formChoice).toBe(79119)
+    expect(transitions.setCharacter(purple, 2, 0, 'hd', characters, 'cat').look!.formChoice).toBe(79119)
+    expect(transitions.setCharacter(purple, 2, 0, 'hd', characters, 'bear').look!.formChoice).toBeUndefined()
+    const body = transitions.setCharacter(purple, 2, 0, 'hd', characters).look!
+    expect([body.form, body.formChoice]).toEqual([undefined, undefined])
+    expect(transitions.setCharacter(bare, 2, 0, 'hd', characters, 'flight' as never).error).toBe('unknown form "flight"')
+    expect(transitions.setFormColor(bare, 79119).error).toBe('this character is not in a druid form')
+  })
+
+  test('a side-by-side character keeps its own form and color', () => {
+    const two = transitions.compare(bare, [{ race: 2, sex: 0 }], characters).look!
+    const cat = transitions.editCharacter(two, 1, (l) => transitions.setCharacter(l, 2, 0, 'hd', characters, 'cat')).look!
+    const purple = transitions.editCharacter(cat, 1, (l) => transitions.setFormColor(l, 79119)).look!
+    expect([purple.compare[0].form, purple.compare[0].formChoice, purple.form]).toEqual(['cat', 79119, undefined])
+    expect(characterLook(purple, 1)).toMatchObject({ form: 'cat', formChoice: 79119 })
+    const back = transitions.editCharacter(purple, 1, (l) => transitions.setCharacter(l, 2, 0, 'hd', characters)).look!
+    expect('form' in back.compare[0] || 'formChoice' in back.compare[0]).toBe(false)
+  })
+
   test('set_customization stores choice IDs by option ID', () => {
     expect(transitions.setCustomization(bare, 20, 390).look!.custom).toEqual({ 20: 390 })
     expect(transitions.setCustomization(bare, 0, 390).error).toBeDefined()

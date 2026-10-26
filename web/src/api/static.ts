@@ -4,7 +4,7 @@
 import type { Backend } from './backend'
 import { ApiError } from './errors'
 import { searchItemsIn, searchSetsIn, toSetResult, type BundleItem, type BundleSet } from './search'
-import type { BaseLook, CharactersResponse, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
+import type { BaseLook, CharactersResponse, FormsResponse, ItemSetResult, RaceNames, ResolvedItem, SetGroup, Status, TitleInfo, WeaponGroup } from './types'
 
 export interface StaticConfig {
   /** Where the bundle is served, such as /bundle or https://assets.example.com. */
@@ -89,6 +89,11 @@ export function createStaticBackend(config: StaticConfig): StaticBackend {
       const look = (await characters()).looks[`${race}-${sex}-${models}`]
       if (!look) throw new ApiError(404, 'character_not_found', `No playable ${models.toUpperCase()} character for race ${race} sex ${sex}.`)
       return look
+    },
+
+    // forms.json is optional; a bundle baked before druid forms has none.
+    async getForms() {
+      return orMissing(build('forms.json') as Promise<FormsResponse>, { build: (await loadCurrent()).build, forms: [], animations: {} })
     },
 
     async getResolvedItem(itemId, race, sex, models): Promise<ResolvedItem | null> {

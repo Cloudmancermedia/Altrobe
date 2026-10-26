@@ -7,11 +7,11 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { View } from '../look/look'
 import type { Character } from './character'
+import { frameDistance } from './framing'
 import { apparentHeight, boxSkull, clearanceFor, nameSize, plateAnchor, screenPoint } from './nameplate'
 
 // How far the camera starts from a character, in character heights, and how far above the middle of the
 // character it aims: room above the head for the name, which sits there at a fixed height.
-const FRAME_DISTANCE = 2.5
 const FRAME_LIFT = 0.12
 
 // Auto-rotate's speed in OrbitControls' units: given the frame time, 2 is one full turn every 30 seconds,
@@ -60,13 +60,10 @@ export class StageView {
     const c = this.character
     if (!c) return
     const size = c.box.getSize(new THREE.Vector3()), center = c.box.getCenter(new THREE.Vector3())
-    // Far enough to fit the height, and in a narrow cell (five or six side by side) the width too.
-    // Models face +X, so the side-to-side width is the Z extent; the box is the bare body, so allow a
-    // little more for shoulder pads.
     const r = this.element.getBoundingClientRect()
     const aspect = r.width > 0 && r.height > 0 ? r.width / r.height : this.camera.aspect
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * aspect
-    const d = Math.max(size.y * FRAME_DISTANCE, (size.z * 1.25 / 2) / tanH)
+    const d = frameDistance(size, view, tanH, c.form)
     center.y += size.y * FRAME_LIFT
     this.controls.target.copy(center)
     // WoW models face +X, which stays +X after the Y-up conversion, so look from +X.

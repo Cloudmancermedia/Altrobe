@@ -88,6 +88,15 @@ public static class Api
             ? ApiErrors.NoInstall()
             : Results.Json(new { build = sel.Session.Build, races = sel.Session.Characters.Races() }));
 
+        // Druid forms, the same shape as the hosted bundle's forms.json. Every animation the form models
+        // have, where the bundle keeps a short list.
+        api.MapGet("/forms", async (AppState state) =>
+        {
+            if (state.Current is not { } sel) return ApiErrors.NoInstall();
+            var forms = await sel.Session.FormsAsync();
+            return Results.Json(new { build = sel.Session.Build, forms = forms.Forms, animations = forms.Animations });
+        });
+
         api.MapGet("/characters/{race}/{sex}", async (string race, string sex, HttpRequest req, AppState state) =>
         {
             if (state.Current is not { } sel) return ApiErrors.NoInstall();

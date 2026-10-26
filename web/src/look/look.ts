@@ -10,7 +10,10 @@
 //                 items?, hide?, custom?,   an own outfit; without "items" the entry wears the main one
 //                 label?, identity?,        identity: its own name, title and guild, as the main one's
 //                 anim?,                    its own animation ("Stand" too); without, it plays the main one
-//                 sheathe? }] }             with its own outfit or animation, weapons away: "hip" or "back"
+//                 sheathe?,                 with its own outfit or animation, weapons away: "hip" or "back"
+//                 form?, formChoice? }],    a druid form, as on the main character
+//     form: "cat" | "bear" | "travel" | "moonkin",   optional: the race's druid form instead of its body
+//     formChoice: choiceId }                optional: the form's color; without, the default color
 // A share link carries it in the URL fragment, which browsers never send to a server:
 //   /#look=<base64url(canonical JSON)>
 // docs/look-format.md describes the format, including the "compare" addition.
@@ -34,6 +37,8 @@ export const MAX_NAME = 24
 /** Longest guild name kept; the game's limit is 24. */
 export const MAX_GUILD = 24
 export const MAX_LEVEL = 60
+export const FORMS = ['cat', 'bear', 'travel', 'moonkin'] as const
+export type Form = (typeof FORMS)[number]
 
 /** Who the character is: shown over its head and in its tooltip. Every field is optional. */
 export interface Identity {
@@ -68,6 +73,9 @@ export interface CompareCharacter {
   sheatheOnBack?: boolean
   /** Turning slowly, on screen only: never in a share link or saved look, so those open facing front. */
   autoRotate?: boolean
+  /** A druid form in place of the body, and its color (a form choice ID); it shows no outfit or customizations. */
+  form?: Form
+  formChoice?: number
 }
 
 export interface Look {
@@ -91,6 +99,9 @@ export interface Look {
   sheatheOnBack?: boolean
   /** Turning slowly, on screen only: never in a share link or saved look, so those open facing front. */
   autoRotate?: boolean
+  /** A druid form in place of the body, and its color. The outfit stays for side-by-side characters wearing it. */
+  form?: Form
+  formChoice?: number
 }
 
 export interface LookResult {
@@ -145,6 +156,7 @@ export function normalizeLook(input: unknown, { characters }: { characters?: Kno
   else if (input.sheatheOnBack !== undefined && input.sheatheOnBack !== false) notices.push(`dropped sheatheOnBack ${JSON.stringify(input.sheatheOnBack)}: not true or false`)
   const identity = readIdentity(input.identity, notices)
   if (identity) look.identity = identity
+  Object.assign(look, readForm(input, notices, ''))
   look.custom = readCustom(input.custom, notices)
   look.items = readItems(input.items, notices)
   look.hide = readHide(input.hide, notices)
@@ -170,6 +182,7 @@ export function normalizeLook(input: unknown, { characters }: { characters?: Kno
       if (identity) entry.identity = identity
       if (typeof c.anim === 'string' && c.anim.trim()) entry.anim = c.anim.trim().slice(0, 40)
       else if (c.anim !== undefined) notices.push(`dropped animation ${JSON.stringify(c.anim)} in compare: not a name`)
+      Object.assign(entry, readForm(c, notices, ' in compare'))
       const own = !!(entry.items || entry.anim)
       if (own && (c.sheathe === 'hip' || c.sheathe === 'back')) {
         entry.sheathed = true
@@ -216,6 +229,17 @@ export function readIdentity(input: unknown, notices: string[]): Identity | unde
   return Object.keys(out).length ? out : undefined
 }
 
+function readForm(input: Record<string, unknown>, notices: string[], where: string): Pick<Look, 'form' | 'formChoice'> {
+  const out: Pick<Look, 'form' | 'formChoice'> = {}
+  if (FORMS.includes(input.form as Form)) out.form = input.form as Form
+  else if (input.form !== undefined) notices.push(`dropped form ${JSON.stringify(input.form)}${where}: not ${FORMS.slice(0, -1).join(', ')} or ${FORMS.at(-1)}`)
+  if (out.form && input.formChoice !== undefined) {
+    if (isId(input.formChoice)) out.formChoice = input.formChoice
+    else notices.push(`dropped form color ${JSON.stringify(input.formChoice)}${where}: not a choice ID`)
+  }
+  return out
+}
+
 function readCustom(input: unknown, notices: string[]): Record<string, number> {
   const out: Record<string, number> = {}
   for (const [k, val] of Object.entries(isPlainObject(input) ? input : {})) {
@@ -258,7 +282,10 @@ export function canonicalLook(look: Look, { defaults = {} }: { defaults?: Record
   const hide = [...new Set(look.hide ?? [])].sort()
   if (look.cam?.view && look.cam.view !== 'front') out.cam = { view: look.cam.view }
   if (look.anim && look.anim !== 'Stand') out.anim = look.anim
-  if (Object.keys(custom).length) out.custom = custom
+  // A form has no customizations; its outfit stays, since side-by-side characters may wear it.
+  if (Object.keys(custom).length && !look.form) out.custom = custom
+  if (look.form) out.form = look.form
+  if (look.form && look.formChoice) out.formChoice = look.formChoice
   if (hide.length) out.hide = hide
   if (Object.keys(items).length) out.items = items
   if (look.identity && Object.keys(look.identity).length) out.identity = sortKeys({ ...look.identity })
@@ -270,14 +297,20 @@ export function canonicalLook(look: Look, { defaults = {} }: { defaults?: Record
     const e: Json = { race: c.race, sex: c.sex }
     if (c.models !== 'hd') e.models = c.models
     if (c.label) e.label = c.label
-    // An own outfit is kept even when empty: it means "wears nothing", not "wears the main outfit".
-    if (c.items) e.items = sortKeys(c.items)
-    if (c.hide?.length) e.hide = [...new Set(c.hide)].sort()
-    if (c.custom && Object.keys(c.custom).length) e.custom = sortKeys(c.custom)
+    if (c.form) {
+      // A form wears nothing and has no customizations or weapons to sheathe.
+      e.form = c.form
+      if (c.formChoice) e.formChoice = c.formChoice
+    } else {
+      // An own outfit is kept even when empty: it means "wears nothing", not "wears the main outfit".
+      if (c.items) e.items = sortKeys(c.items)
+      if (c.hide?.length) e.hide = [...new Set(c.hide)].sort()
+      if (c.custom && Object.keys(c.custom).length) e.custom = sortKeys(c.custom)
+    }
     if (c.identity && Object.keys(c.identity).length) e.identity = sortKeys({ ...c.identity })
     if (c.anim) e.anim = c.anim
     // One field, not the main look's two flags: six characters' worth keeps links short (look.test.ts).
-    if ((c.items || c.anim) && c.sheathed) e.sheathe = c.sheatheOnBack ? 'back' : 'hip'
+    if (!c.form && (c.items || c.anim) && c.sheathed) e.sheathe = c.sheatheOnBack ? 'back' : 'hip'
     return sortKeys(e)
   })
   return sortKeys(out)

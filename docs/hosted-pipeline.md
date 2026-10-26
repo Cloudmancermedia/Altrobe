@@ -30,6 +30,7 @@ Under the output folder:
 | `{product}/current.json` | the build the site shows |
 | `{product}/{build}/manifest.json` | counts, and what failed to convert |
 | `{product}/{build}/characters.json` | races and every base look |
+| `{product}/{build}/forms.json` | druid forms per race, their colors, and each form model's animations |
 | `{product}/{build}/catalog.json`, `sets.json` | the item catalog and sets, for search in the browser; items Forever added carry `newInForever` |
 | `{product}/{build}/notable.json` | notable sets per race and class, new-in-Forever sets last |
 | `{product}/{build}/set-pieces.json` | every item that is a piece of some set |
