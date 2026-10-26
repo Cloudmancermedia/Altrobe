@@ -86,7 +86,7 @@ public sealed class BuildSession
         if (_looks.Value.Body(raceId, sex, set) is not var (_, _, bodyFdid)) return null;
         var meta = await File.ReadAllBytesAsync((await ModelAsync((uint)bodyFdid))[0]);
         var geosets = AssetConverter.GeosetIds(meta);
-        var animations = AssetConverter.SequenceIds(meta).Where(AnimationNames.IsClassic).Select(id => new AnimationInfo(id, AnimationNames.Name(id))).ToList();
+        var animations = AssetConverter.SequenceIds(meta).Where(id => AnimationNames.Offered(id, raceId, sex)).Select(id => new AnimationInfo(id, AnimationNames.Name(id))).ToList();
         return _looks.Value.Resolve(raceId, sex, classId, set, _ => geosets) is { } look ? look.ForPlayer() with { Build = Build, Animations = animations } : null;
     }
 

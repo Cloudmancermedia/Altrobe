@@ -336,6 +336,10 @@ public static class AnimationNames
 
     public static bool IsClassic(int id) => id >= 0 && id <= ClassicMaxId;
 
+    // The Undead female's StealthStand (120), HD and SD alike, carries both weapon bones over 1.7 units from
+    // their pivots, so drawn weapons float by her feet; every other body keeps them under 0.2 (1.60.1.70532).
+    public static bool Offered(int id, int raceId, int sex) => IsClassic(id) && !(id == 120 && raceId == 5 && sex == 1);
+
     // The name for an animation ID, or "Animation <id>" when the table has none.
     public static string Name(int id) => id >= 0 && id < Names.Length && Names[id].Length > 0 ? Names[id] : $"Animation {id}";
 }
