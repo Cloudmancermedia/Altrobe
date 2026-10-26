@@ -372,10 +372,17 @@ describe('compressed links', () => {
   })
 
   test('links made before compression still open, in the fragment and in the /l/ path', () => {
-    const old = v1(canonicalLook(dressed()))
-    expect(old.startsWith('ey')).toBe(true)
-    expect(decodeLook(old)).toEqual({ look: dressed(), notices: [] })
-    expect(lookFromLocation({ hash: '', pathname: `/l/${old}` })?.look).toEqual(dressed())
+    // Before compression a link was base64url(canonical JSON), which v1 makes here.
+    const looks = [dressed(), norm({ ...outfitA, race: 4, form: 'cat', formChoice: 79119 }),
+      norm({ ...outfitA, identity: { firstName: 'Zoë', guild: '100% <Ñoño>' }, compare: [{ race: 6, sex: 1, models: 'sd', form: 'bear' }, { race: 95, sex: 0, models: 'hd', label: 'Ü'.repeat(40), anim: 'Run', sheathe: 'back' }] })]
+    for (const look of looks) {
+      const old = v1(canonicalLook(look))
+      expect(old.startsWith('ey')).toBe(true)
+      expect(decodeLook(old)).toEqual({ look, notices: [] })
+      expect(decodeLook(encodeURIComponent(old))).toEqual({ look, notices: [] })
+      expect(lookFromFragment(`#look=${old}`)?.look).toEqual(look)
+      expect(lookFromLocation({ hash: '', pathname: `/l/${old}` })?.look).toEqual(look)
+    }
     expect(lookFromLocation({ hash: '', pathname: `/l/${encodeLook(dressed())}` })?.look).toEqual(dressed())
   })
 

@@ -351,7 +351,7 @@ export function decodeLook(text: string, opts?: { characters?: KnownCharacters }
   let parsed: unknown
   try {
     const value = decodeURIComponent(text)
-    const parse = (bytes: Uint8Array) => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+    const parse = (bytes: Uint8Array) => JSON.parse(new TextDecoder().decode(bytes))
     if (value.startsWith('2.')) {
       const [, card, rest, extra] = value.split('.')
       if (!card || !rest || extra !== undefined) throw new Error('a compressed look has a card and a body')
