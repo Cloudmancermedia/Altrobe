@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from 'node:fs'
+import { deflateRawSync } from 'node:zlib'
 import { describe, expect, test } from 'vitest'
 
 // The CloudFront Function as CloudFront runs it: a file declaring `handler`, no modules.
@@ -7,6 +8,9 @@ const source = readFileSync(path, 'utf8')
 const handler = new Function(`${source}\nreturn handler`)() as (event: unknown) => { statusCode: number; headers: Record<string, { value: string }>; body: { encoding: string; data: string } }
 
 const encode = (look: unknown) => Buffer.from(JSON.stringify(look), 'utf8').toString('base64url')
+// A link as the app makes it now (web/src/look/look.ts encodeLook): "2.", the card, then the rest compressed.
+const encode2 = ({ race, sex, form, identity, ...rest }: Record<string, unknown>) =>
+  `2.${encode(JSON.parse(JSON.stringify({ race, sex, form, identity })))}.${deflateRawSync(JSON.stringify(rest)).toString('base64url')}`
 const event = (uri: string, referer?: string) => ({ version: '1.0', context: {}, viewer: {}, request: { method: 'GET', uri, querystring: {}, headers: referer ? { referer: { value: referer } } : {}, cookies: {} } })
 const meta = (html: string, key: string) => new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1]
 
@@ -132,6 +136,26 @@ describe('the look preview function', () => {
     const html = handler(event(`/l/${payload}`, 'https://www.reddit.com/')).body.data
     expect(meta(html, 'og:image')).toBe('https://altrobe.com/og-image.png')
     expect(html).toContain(`url=/shared/reddit.com#look=${payload}"`)
+  })
+
+  test('a compressed link previews from its card alone, and passes the whole link on', () => {
+    const payload = encode2(look)
+    const html = handler(event(`/l/${payload}`, 'https://discord.com/channels/1/2')).body.data
+    expect(meta(html, 'og:title')).toBe('Morgwyn Duskveil · Level 60 Undead Paladin')
+    expect(meta(html, 'og:image')).toBe('https://altrobe.com/og/5-1.jpg')
+    expect(meta(html, 'og:url')).toBe(`https://altrobe.com/l/${payload}`)
+    expect(html).toContain(`url=/shared/discord.com#look=${payload}"`)
+    expect(meta(handler(event(`/l/${encode2({ ...look, race: 4, form: 'cat', identity: undefined })}`)).body.data, 'og:title')).toBe('Night Elf Cat Form')
+  })
+
+  test('a compressed link with characters outside base64url, or the wrong number of parts, gets the plain preview', () => {
+    const [, card, body] = encode2(look).split('.')
+    for (const bad of [`2.${card}.${body}"><b>`, `2.${card}`, `2.${card}.${body}.${body}`, `2..${body}`]) {
+      const html = handler(event(`/l/${bad}`)).body.data
+      expect(meta(html, 'og:image'), bad).toBe('https://altrobe.com/og-image.png')
+      expect(html, bad).toContain('url=/"')
+      expect(html, bad).not.toContain('<b>')
+    }
   })
 
   test('fits CloudFront Functions: under 10 KB, and only globals the 2.0 runtime documents', () => {

@@ -1,6 +1,6 @@
 // CloudFront Function (JavaScript runtime 2.0) on /l/*: a share link's preview for chat apps and social sites.
 // They read a link's Open Graph tags and never see the part after "#", so share links carry the look in the
-// path (/l/<base64url look>). This answers with that look's tags, then sends people into the app at
+// path (/l/<look>). This answers with that look's tags, then sends people into the app at
 // /shared/<site>#look=<look> (sharedPath below). Only ES 5.1 globals and atob, which the 2.0 runtime documents; no modules. Under 10 KB.
 var SITE = 'https://altrobe.com'
 // Reading a look for its card costs compute that grows with its length (6,450 characters used 56%, 7,915 up to
@@ -102,14 +102,18 @@ function handler(event) {
   if (look.slice(-1) === '/') look = look.slice(0, -1)
   // A look atob accepts holds only base64 characters, so it goes into the page unescaped; escaping cost
   // compute that grew with its length. sharedPath yields only letters, digits, dots and dashes.
-  var raw = null, card = null
+  // A compressed link (web/src/look/look.ts encodeLook) is "2.<card>.<body>": only the card is read, since
+  // inflating the body is beyond this runtime, but atob still checks the body's characters.
+  var raw = null, card = null, read = look
   if (look.length > 0 && look.length <= MAX_LINK) {
-    try { raw = bytes(look) } catch (e) { raw = null }
+    var parts = look.slice(0, 2) === '2.' ? look.split('.') : null
+    if (parts) read = parts.length === 3 && parts[1] && parts[2] ? parts[1] : ''
+    try { if (parts) bytes(parts[2]); raw = read ? bytes(read) : null } catch (e) { raw = null }
   }
-  if (raw !== null && look.length <= MAX_LOOK) {
+  if (raw !== null && read.length <= MAX_LOOK) {
     try { card = describe(JSON.parse(raw)) } catch (e) { card = null }
   }
-  var opens = card !== null || (raw !== null && look.length > MAX_LOOK)
+  var opens = card !== null || (raw !== null && read.length > MAX_LOOK)
   var url = opens ? SITE + '/l/' + look : SITE + '/'
   var target = opens ? sharedPath(event.request.headers) + '#look=' + look : '/'
   return {

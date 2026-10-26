@@ -15,12 +15,16 @@
 //     form: "cat" | "bear" | "travel" | "moonkin",   optional: the race's druid form instead of its body
 //     formChoice: choiceId }                optional: the form's color; without, the default color
 // A share link carries it in the URL fragment, which browsers never send to a server:
-//   /#look=<base64url(canonical JSON)>
+//   /#look=2.<base64url(card JSON)>.<base64url(deflate-raw(JSON of the rest))>
+// The card is what the link preview shows (race, sex, form, identity), left uncompressed because the preview
+// function (infra/functions/look-preview.js) cannot inflate. Links from before compression are
+// base64url(canonical JSON), which always starts "ey", and still open.
 // docs/look-format.md describes the format, including the "compare" addition.
 //
 // Loading is forgiving: unknown fields are ignored, bad entries are dropped, and every change is
 // reported as a notice. Only a look it cannot render at all (no race, sex or game) fails.
 
+import { deflateSync, inflateSync } from 'fflate'
 import type { ModelSet, ResolvedItem } from '../api/types'
 import { SLOT_NAMES, SHOULDER_SLOT_L, SHOULDER_SLOT_R, isSlotName, slotsForInventoryType, type DressState, type SlotName } from '../viewer/dress'
 
@@ -320,21 +324,41 @@ export function canonicalJSON(look: Look, opts?: { defaults?: Record<string, num
   return JSON.stringify(canonicalLook(look, opts))
 }
 
-/** base64url(canonical JSON), for the #look= fragment. */
-export function encodeLook(look: Look, opts?: { defaults?: Record<string, number> }): string {
-  const bytes = new TextEncoder().encode(canonicalJSON(look, opts))
+const CARD = ['race', 'sex', 'form', 'identity'] as const
+
+function base64url(bytes: Uint8Array): string {
   let bin = ''
   for (const b of bytes) bin += String.fromCharCode(b)
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-/** Inverse of encodeLook, then normalizeLook. Never throws. Accepts a percent-encoded value. */
+function fromBase64url(text: string): Uint8Array {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/')
+  return Uint8Array.from(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)), (c) => c.charCodeAt(0))
+}
+
+/** The #look= value: "2.", the card, then the rest of the canonical look compressed. */
+export function encodeLook(look: Look, opts?: { defaults?: Record<string, number> }): string {
+  const rest = canonicalLook(look, opts)
+  const card: Json = {}
+  for (const key of CARD) if (key in rest) { card[key] = rest[key]; delete rest[key] }
+  const utf8 = (j: Json) => new TextEncoder().encode(JSON.stringify(j))
+  return `2.${base64url(utf8(card))}.${base64url(deflateSync(utf8(rest), { level: 9 }))}`
+}
+
+/** Inverse of encodeLook, then normalizeLook; also reads links from before compression. Never throws. Accepts a percent-encoded value. */
 export function decodeLook(text: string, opts?: { characters?: KnownCharacters }): LookResult {
   let parsed: unknown
   try {
-    const b64 = decodeURIComponent(text).replace(/-/g, '+').replace(/_/g, '/')
-    const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
-    parsed = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))))
+    const value = decodeURIComponent(text)
+    const parse = (bytes: Uint8Array) => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+    if (value.startsWith('2.')) {
+      const [, card, rest, extra] = value.split('.')
+      if (!card || !rest || extra !== undefined) throw new Error('a compressed look has a card and a body')
+      parsed = { ...parse(inflateSync(fromBase64url(rest))), ...parse(fromBase64url(card)) }
+    } else {
+      parsed = parse(fromBase64url(value))
+    }
   } catch (e) {
     return { look: null, notices: [`could not read the look link: ${(e as Error).message}`] }
   }
@@ -359,7 +383,7 @@ export function previewUrl(appUrl: string, look: Look, opts?: { defaults?: Recor
 export function lookFromLocation(loc: { hash: string; pathname: string }, opts?: { characters?: KnownCharacters }): LookResult | null {
   const fromHash = lookFromFragment(loc.hash, opts)
   if (fromHash) return fromHash
-  const m = /^\/l\/([A-Za-z0-9_-]+)\/?$/.exec(loc.pathname)
+  const m = /^\/l\/([A-Za-z0-9_.-]+)\/?$/.exec(loc.pathname)
   return m ? decodeLook(m[1], opts) : null
 }
 
