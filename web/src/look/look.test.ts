@@ -25,7 +25,7 @@ test('round-trip: decode(encode(look)) gives the same look', () => {
 test('encoding is URL-safe and survives a share URL', () => {
   const look = norm(outfitA)
   const url = shareUrl('http://localhost:5199/?x=1#x', look)
-  expect(url).toMatch(/^http:\/\/localhost:5199\/#look=[A-Za-z0-9_-]+$/)
+  expect(url).toMatch(/^http:\/\/localhost:5199\/#look=[A-Za-z0-9_.-]+$/)
   expect(lookFromFragment(new URL(url).hash)?.look).toEqual(look)
   expect(lookFromFragment('#other=1')).toBeNull()
   // A mangled fragment gives a notice, not a throw.
@@ -352,11 +352,53 @@ describe('druid forms', () => {
   })
 })
 
+describe('compressed links', () => {
+  const v1 = (look: unknown) => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(look)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  const readCard = (card: string) => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(card.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))))
+  const dressed = () => norm({ ...outfitA, custom: { 20: 385 }, identity: { firstName: 'Morgwyn', guild: 'Ashen Vanguard', level: 60, classId: 2 },
+    compare: [{ race: 4, sex: 1, models: 'hd', items: { head: 12640 }, identity: { firstName: 'Lyra' } }] })
+
+  test('a new link is "2.", the card a preview needs, then the rest of the look compressed', () => {
+    const [version, card, body] = encodeLook(dressed()).split('.')
+    expect(version).toBe('2')
+    expect(readCard(card)).toEqual({ race: 2, sex: 0, identity: { firstName: 'Morgwyn', guild: 'Ashen Vanguard', level: 60, classId: 2 } })
+    expect(body).toMatch(/^[A-Za-z0-9_-]+$/)
+    expect(decodeLook(encodeLook(dressed()))).toEqual({ look: dressed(), notices: [] })
+  })
+
+  test('a druid form travels in the card, for the preview to name', () => {
+    const [, card] = encodeLook(norm({ ...outfitA, race: 4, form: 'cat' })).split('.')
+    expect(readCard(card)).toEqual({ race: 4, sex: 0, form: 'cat' })
+  })
+
+  test('links made before compression still open, in the fragment and in the /l/ path', () => {
+    const old = v1(canonicalLook(dressed()))
+    expect(old.startsWith('ey')).toBe(true)
+    expect(decodeLook(old)).toEqual({ look: dressed(), notices: [] })
+    expect(lookFromLocation({ hash: '', pathname: `/l/${old}` })?.look).toEqual(dressed())
+    expect(lookFromLocation({ hash: '', pathname: `/l/${encodeLook(dressed())}` })?.look).toEqual(dressed())
+  })
+
+  test('a damaged compressed link is reported, not thrown', () => {
+    const [v, card] = encodeLook(dressed()).split('.')
+    for (const bad of [`${v}.${card}.AAAA`, `${v}.${card}`, `${v}.@@.AAAA`]) {
+      const r = decodeLook(bad)
+      expect(r.look, bad).toBeNull()
+      expect(r.notices[0], bad).toMatch(/^could not read the look link/)
+    }
+  })
+
+  test('is shorter than the old link for a single dressed character', () => {
+    expect(encodeLook(dressed()).length).toBeLessThan(v1(canonicalLook(dressed())).length)
+  })
+})
+
 describe('share link length', () => {
   // The guard against creep: every field a feature adds to the look makes every share link longer. The
-  // preview function (infra/functions/look-preview.js) reads looks up to MAX_LOOK characters, and CloudFront
-  // refuses URLs over 8,192 bytes. If this fails, make the format shorter instead of raising the cap.
-  test('the largest look the format allows stays under the preview function\'s cap', () => {
+  // preview function (infra/functions/look-preview.js) reads a card up to MAX_LOOK characters, and CloudFront
+  // refuses URLs over 8,192 bytes. Compressed, the largest look was 901 characters (2026-10-25). If this
+  // fails, make the format shorter instead of raising the limit.
+  test('the largest look the format allows stays under 1,000 characters and the preview function\'s cap', () => {
     const max = Number(/var MAX_LOOK = (\d+)/.exec(preview)?.[1])
     expect(max).toBeGreaterThan(0)
     const items = Object.fromEntries(SLOT_ORDER.map((s, i) => [s, 240000 + i * 137]))
@@ -369,6 +411,7 @@ describe('share link length', () => {
     const payload = encodeLook(look)
     // Every field above must be in the link, or the test measures less than the format allows.
     expect(decodeLook(payload).look!.compare.every((c) => c.identity?.guild === identity.guild)).toBe(true)
+    expect(payload.length).toBeLessThanOrEqual(1000)
     expect(payload.length).toBeLessThanOrEqual(max)
   })
 })
