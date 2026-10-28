@@ -10,9 +10,9 @@ public sealed record WowProduct(
     string CdnPath,
     string? Folder)
 {
-    // Forever has no product code of its own yet (the beta ships as wow_classic_beta, and launch is
-    // expected to add a new one), so it is recognized by the build name in the local build config, or by
-    // its patch line: 1.60 on, where Classic Era is 1.15. The beta's name lost "Forever" in 1.60.1.70532.
+    // Forever has shipped under more than one product code (wow_classic_beta for the beta, wowf since
+    // launch), so it is recognized by the build name in the local build config, or by its patch line:
+    // 1.60 on, where Classic Era is 1.15. The beta's name lost "Forever" in 1.60.1.70532.
     public bool IsForever => LooksLikeForever(BuildName, Version);
 
     public static bool LooksLikeForever(string? buildName, string version)

@@ -22,7 +22,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (['--product', '--bundle', '--bucket', '--distribution', '--profile'].includes(a) && argv[i + 1]) opts[a.slice(2)] = argv[++i]
   else fail(`Unknown or incomplete argument: ${a}`)
 }
-if (!opts.product) fail('--product is required, for example --product wow_classic_beta')
+if (!opts.product) fail('--product is required, for example --product wowf')
 if (!opts.bucket || !opts.distribution) fail('Set --bucket and --distribution, or BUNDLE_BUCKET and ASSET_DISTRIBUTION_ID')
 
 let current

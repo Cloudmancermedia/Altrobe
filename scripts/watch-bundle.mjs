@@ -17,7 +17,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === '--force') opts.force = true
   else fail(`Unknown or incomplete argument: ${a}`)
 }
-if (!opts.product) fail('--product is required, for example --product wow_classic_beta')
+if (!opts.product) fail('--product is required, for example --product wowf')
 
 async function get(url, { optional = false } = {}) {
   const res = await fetch(url, { cache: 'no-store' })
