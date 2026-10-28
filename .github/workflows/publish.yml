@@ -82,6 +82,7 @@ jobs:
           npm --prefix web run test:e2e:static
         env:
           ALTROBE_BUNDLE_DIR: ${{ github.workspace }}/output/bundle
+          VITE_ALTROBE_PRODUCT: ${{ env.PRODUCT }}
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         if: steps.watch.outputs.changed == 'true'
