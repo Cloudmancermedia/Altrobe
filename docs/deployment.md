@@ -249,4 +249,6 @@ product, and `deploy.yml` builds the web app to read it (`VITE_ALTROBE_PRODUCT`)
 4. Open altrobe.com: the header shows the new product and build.
 
 Publish before deploying: a web app that points at a product with nothing published shows "Altrobe
-could not load its game data".
+could not load its game data". Every push to `main` deploys, so a merge that changes the default
+product in `deploy.yml` or `web/src/api/client.ts` moves the site at once. Publish the new product
+first, or cancel the deploy that the merge starts and run "Deploy" once the publish has finished.
