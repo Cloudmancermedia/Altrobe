@@ -1,7 +1,7 @@
 // Every request the app makes goes through this module. A build-time switch picks the backend: the
 // local server (local.ts), or in Vite's static mode (`vite build --mode static`, `npm run dev:static`)
 // a baked bundle (static.ts) for the hosted site. VITE_ALTROBE_BUNDLE_URL (default /bundle) and
-// VITE_ALTROBE_PRODUCT (default wow_classic_beta) say where the bundle is. Base looks, resolved
+// VITE_ALTROBE_PRODUCT (default wowf) say where the bundle is. Base looks, resolved
 // items and set lists never change for a build, so they are cached here whichever backend answers.
 import { readEvents } from '../assistant/events'
 import type { Backend } from './backend'
@@ -18,7 +18,7 @@ export { ApiError } from './errors'
 export { rememberStatus }
 
 const staticBackend = import.meta.env.MODE === 'static'
-  ? createStaticBackend({ baseUrl: import.meta.env.VITE_ALTROBE_BUNDLE_URL || '/bundle', product: import.meta.env.VITE_ALTROBE_PRODUCT || 'wow_classic_beta' })
+  ? createStaticBackend({ baseUrl: import.meta.env.VITE_ALTROBE_BUNDLE_URL || '/bundle', product: import.meta.env.VITE_ALTROBE_PRODUCT || 'wowf' })
   : null
 const backend: Backend = staticBackend ?? localBackend
 /** The hosted site (altrobe.com), not the local app: share links there use the previewable /l/ form. */

@@ -59,7 +59,7 @@ Reads local files only; no network.
 ```sh
 dotnet build importer/src/Altrobe.Server
 dotnet importer/src/Altrobe.Server/bin/Debug/net10.0/Altrobe.Server.dll bake \
-  --out bundle --install "/Applications/World of Warcraft" --product wow_classic_beta \
+  --out bundle --install "/Applications/World of Warcraft" --product wowf \
   --limit-items 5 --limit-sets 2
 ```
 
@@ -85,7 +85,7 @@ npm --prefix web run test:e2e:static # one browser check against the bundle
 
 `ALTROBE_BUNDLE_DIR` points the dev server at another bundle folder. At build time,
 `VITE_ALTROBE_BUNDLE_URL` (default `/bundle`) says where the site fetches the bundle from, and
-`VITE_ALTROBE_PRODUCT` (default `wow_classic_beta`) which product folder it reads. CI sets it from the
+`VITE_ALTROBE_PRODUCT` (default `wowf`) which product folder it reads. CI sets it from the
 `BUNDLE_PRODUCT` repository variable ([deployment.md](deployment.md#switching-products)).
 
 ## The count check
@@ -101,7 +101,7 @@ then switches the site to it. It runs the AWS CLI with whatever credentials it f
 locally, the deploy role in CI. It writes to AWS, so run it with `--dry-run` first.
 
 ```sh
-npm run publish:bundle -- --product wow_classic_beta --profile <profile> --dry-run
+npm run publish:bundle -- --product wowf --profile <profile> --dry-run
 ```
 
 Add `--prune` to delete every build folder but the new build and the one it replaced, after the
@@ -143,9 +143,6 @@ the open one. A bake took 21 minutes and peaked at 8.3 GB of disk on 2026-10-13 
 5.2 GB of cache), under the 14 GB a standard GitHub-hosted Linux runner has. If builds outgrow it,
 move the bake to CodeBuild through CDK.
 
-The same workflow's `launch-watch` job opens an issue when Forever's builds reach a public product, so
-the site can move off the beta ([deployment.md](deployment.md#switching-products)).
-
 ## Run it from Blizzard's CDN
 
 This downloads several GB from Blizzard's public CDN. It asks the version service for the product's
@@ -161,7 +158,7 @@ A full bake is about 3 GB, with about 5 GB of download cache; a rerun with the c
 
 ```sh
 dotnet importer/src/Altrobe.Server/bin/Debug/net10.0/Altrobe.Server.dll bake \
-  --out bundle --cdn --product wow_classic_beta --region us --cache bake-cache
+  --out bundle --cdn --product wowf --region us --cache bake-cache
 ```
 
 `--versions-file <file>` uses a saved version-service answer instead of asking the service.

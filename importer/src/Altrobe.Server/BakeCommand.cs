@@ -50,7 +50,7 @@ public sealed record BakeArgs(
             }
         }
         if (output == null) throw new ArgumentException("--out is required: the folder the bundle is written to.");
-        if (product == null) throw new ArgumentException("--product is required, such as wow_classic_beta.");
+        if (product == null) throw new ArgumentException("--product is required, such as wowf.");
         if (!cdn && install == null) throw new ArgumentException("Pass --install <WoW folder> for a local bake, or --cdn to read from Blizzard's CDN.");
         return new(output, product, cdn, install, region, versions, limitItems, limitSets, previous, maxDrop, cache, parallel);
     }

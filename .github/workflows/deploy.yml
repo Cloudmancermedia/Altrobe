@@ -41,7 +41,7 @@ jobs:
           npm --prefix web run build:static
         env:
           VITE_ALTROBE_BUNDLE_URL: https://assets.altrobe.com
-          VITE_ALTROBE_PRODUCT: ${{ vars.BUNDLE_PRODUCT || 'wow_classic_beta' }}
+          VITE_ALTROBE_PRODUCT: ${{ vars.BUNDLE_PRODUCT || 'wowf' }}
           # The hosted prompt box: off unless PROMPT_API is set; preview shows it only at ?prompt=preview,
           # 1 to everyone (docs/hosted-prompt-box.md).
           VITE_PROMPT_API: ${{ vars.PROMPT_API }}
@@ -84,7 +84,7 @@ jobs:
           npm --prefix web run build:static
         env:
           VITE_ALTROBE_BUNDLE_URL: https://assets.altrobe.com
-          VITE_ALTROBE_PRODUCT: ${{ vars.BUNDLE_PRODUCT || 'wow_classic_beta' }}
+          VITE_ALTROBE_PRODUCT: ${{ vars.BUNDLE_PRODUCT || 'wowf' }}
           # The hosted prompt box: off unless PROMPT_API is set; preview shows it only at ?prompt=preview,
           # 1 to everyone (docs/hosted-prompt-box.md).
           VITE_PROMPT_API: ${{ vars.PROMPT_API }}
