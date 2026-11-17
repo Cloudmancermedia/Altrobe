@@ -5,10 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Anthropic" Version="13.3.0" />
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.11.0" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.11.0" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
+    <PackageReference Include="Anthropic" Version="13.9.0" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="11.0.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
   </ItemGroup>
 
   <PropertyGroup>
